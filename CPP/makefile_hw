@@ -1,0 +1,120 @@
+# -*- Makefile -*- 
+# Generic makefile for IMSL, MKL, blas/lapack, and FORTRAN libraries
+# Generic makefile Tao's and Daniel's C routines 
+# Generic makefile for various machines
+
+# MACHINE
+USE_WORK_64=USE_WORK_64
+
+# LIBRARIES SUPPORTED
+USE_TZ = USE_TZ
+USE_DW = USE_DW
+  #USE_DW_MATRIX = USE_DW_MATRIX
+  USE_DW_ERROR = USE_DW_ERROR
+  #USE_DW_ARRAY = USE_DW_ARRAY
+  #USE_DW_ASCII = USE_DW_ASCII
+  USE_DW_STAT = USE_DW_STAT
+  #USE_DW_SORT = USE_DW_SORT
+  #USE_DW_ELLIPTICAL = USE_DW_ELLIPTICAL
+  #USE_DW_HISTO = USE_DW_HISTO
+  #USE_DW_MATH = USE_DW_MATH
+  USE_DW_SWITCH = USE_DW_SWITCH
+  #USE_DW_STATE_SPACE = USE_DW_STATE_SPACE
+USE_MKL = USE_MKL
+#USE_NPSOL = USE_NPSOL 
+#USE_FORTRAN = USE_FORTRAN
+#USE_ATLAS = USE_ATLAS
+#USE_IMSL = USE_IMSL
+#USE_LAPACK = USE_LAPACK
+#USE_FORTRAN = USE_FORTRAN
+#USE_PTHREAD = USE_PTHREAD
+USE_MATH = USE_MATH
+USE_GSL = USE_GSL
+USE_GSL_CBLAS = USE_GSL_CBLAS
+#USE_BOOST = USE_BOOST
+#USE_MYSQL_CPP_CONN = USE_MYSQL_CPP_CONN
+#USE_LOG4CXX = USE_LOG4CXX
+
+GIT_DIR = $(HOME)/DW_TZ_GIT
+
+CC = gcc #mpicc #gcc
+CFLAGS = -g -Wall
+
+MAKEFILE_DIR = $(GIT_DIR)/projects_dw
+
+include $(MAKEFILE_DIR)/make_machines_master
+include $(MAKEFILE_DIR)/make_libraries_master
+
+NPSOL_LIB = $(HOME)/npsol/Linux-x86_64/optimized/lib
+LIBS_DIR := $(LIBS_DIR) -L$(NPSOL_LIB) 
+LIBS := $(LIBS) -lnpsol_f77 -llssol_f77 -lgfortran
+LIBS := $(LIBS) -lstdc++ -lpthread 
+LIBS := $(LIBS) -lmpich -lopa -lmpl -lrt #MPI-related
+
+#################################################################################
+# PROJECT PATHS
+MATH_INCLUDE_DIR = $(GIT_DIR)/utilities_dw/include
+MATH_DIR = $(GIT_DIR)/utilities_dw/math $(GIT_DIR)/utilities_dw/stat
+MATRIX_DIR = $(GIT_DIR)/utilities_dw/matrix/cpp
+
+ERROR_INCLUDE_DIR = $(GIT_DIR)/utilities_dw/error
+ERROR_DIR = $(GIT_DIR)/utilities_dw/error
+
+TZ_DIR = $(GIT_DIR)/TZcode/CFiles
+TZ_INCLUDE_DIR = $(TZ_DIR)
+
+DW_STATE_MODEL_DIR = $(GIT_DIR)/switch_dw/switching
+DW_STATE_MODEL_INCLUDE_DIR = $(DW_STATE_MODEL_DIR)
+
+EQUAL_ENERGY_DIR = $(HOME)/equal_energy_generic_interface
+EQUAL_ENERGY_CPP_DIR = $(EQUAL_ENERGY_DIR)/CPP
+EQUAL_ENERGY_INCLUDE_DIR = $(EQUAL_ENERGY_DIR)/CPP
+
+#################################################################################
+# Building
+
+BUILD_DIR = $(EQUAL_ENERGY_DIR)/build
+
+INCLUDE_DIR := $(INCLUDE_DIR) -I$(TZ_INCLUDE_DIR) -I$(MATH_INCLUDE_DIR) -I$(MATRIX_DIR) -I$(ERROR_INCLUDE_DIR) -I$(DW_STATE_MODEL_INCLUDE_DIR) -I$(EQUAL_ENERGY_INCLUDE_DIR)
+VPATH := $(VPATH) $(TZ_DIR) $(MATH_DIR) $(MATRIX_DIR) $(ERROR_DIR) $(DW_STATE_MODEL_DIR) $(EQUAL_ENERGY_CPP_DIR) $(BUILD_DIR)
+
+# ERROR FILES ######################################################################
+ERROR_OBJS = dw_error.o
+
+# CSMINWEL FILES ###################################################################
+
+# MATRIX FILES #####################################################################
+MATRIX_OBJS = dw_dense_matrix.o dw_utilities.o dw_rand_gsl.o dw_math.o
+
+# PROJECT FILES
+GENERIC_OBJS = CPutGetBin.o CStorageHead.o CEESParameter.o
+
+
+#################################################################################
+all : $(GENERIC_OBJS)
+
+#CMSSM_APP :  $(EXE_DIR)/est_all_mpi
+# $(EXE_DIR)/est_all
+
+#$(EXE_DIR)/est_all_mpi: $(CSMINWEL_OBJS) $(ERROR_OBJS) $(MATRIX_OBJS) $(GENERIC_OBJS) $(APP_OBJS) $(MPI_OBJS)
+#	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/est_all_mpi
+
+%.o : %.c
+	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $(BUILD_DIR)/$@
+%.o : %.cpp
+	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $(BUILD_DIR)/$@
+
+#################################################################################
+clean:
+	rm -f $(EXE_DIR)/*.o
+	rm -f $(BUILD_DIR)/*.o
+	rm -f $(BUILD_DIR)/*.[0-9]
+#
+#################################################################################
+display:
+	echo "EXE_DIR: $(EXE_DIR)"
+	echo "BUILD_DIR: $(BUILD_DIR)"
+	echo "VPATH: $(VPATH)"
+	echo "INCLUDE_DIR: $(INCLUDE_DIR)"
+	echo "LIBS_DIR: $(LIBS_DIR)"
+	echo "LIBS: $(LIBS)"
