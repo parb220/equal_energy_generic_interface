@@ -16,6 +16,25 @@ extern "C" {
 
 using namespace std;
 
+void CEqualEnergyModel::SaveSampleToStorage(const CSampleIDWeight &sample, const CEESParameter &parameter, CStorageHead &storage)
+{
+	int binIndex = parameter.BinIndex(-sample.weight, energy_level);
+        storage.DepositSample(binIndex, sample);
+}
+
+void CEquiEnergyModel::CStateModel::SaveSampleToFile(const CSampleIDWeight &sample, const CEESParameter &parameter, FILE *file)
+{
+	if (file == NULL)
+                return;
+
+	double log_prob = ((-sample.weight) > parameter.h[energy_level] ? (-sample.weight) : parameter.h[energy_level]) / parameter.t[energy_level]; 
+
+        fprintf(file, "%le %le", log_prob, sample.weight);  
+        for (int j=0; j<thetaDim+qDim; j++)
+                fprintf(file, " %le", sample.data[j]);
+        fprintf(file, "\n");
+}
+
 double CEquiEnergyModel::LogPosterior(const double *x, int nx)
 {
 	double *old_x = new double[nx]; 
@@ -76,7 +95,7 @@ int CEquiEnergyModel::EE_Draw(const CEESParameter &parameter, CStorageHead &stor
 		{
 			// calculate log_ratio in the current and the higher levels
 			double log_ratio = parameter.LogRatio_Level(-x_new.weight, -current_sample.weight, energy_level); 
-			log_ratio += parameter.LogRatio_Level(-current_sample.weight(), -x_new.weight(), energy_level+1); 
+			log_ratio += parameter.LogRatio_Level(-current_sample.weight, -x_new.weight, energy_level+1); 
 			if (log(dw_uniform_rnd()) <= log_ratio)
 			{
 				// accept the new sample
@@ -172,61 +191,59 @@ double CEquiEnergyModel::BurnIn(size_t burn_in_length)
 	return max_posterior;  
 }
 
-double CEquiEnergyModel::Simulation_Within(const CEESParameter &parameter, CStorageHead &storage, bool if_storage, FILE *dw_file_out, bool if_write_file)
+double CEquiEnergyModel::Simulation_Within(const CEESParameter &parameter, CStorageHead &storage, bool if_storage)
 {
 	CSampleIDWeight x_new; 
 	unsigned int nJump =0; 
 	double max_posterior = current_sample.weight; 
 	for (unsigned int i=0; i<parameter.simulation_length; i++)
 	{
-		if (i%parameter.deposit_frequency == 0)
-		{
-			if (if_storage)
-				SaveSampleToStorage(current_sample, parameter, storage); 
-			if (if_write_file)
-				SaveSampleToFile(current_sample, dw_file_out); 
+		for (unsigned int j=0; j<parameter.deposit_frequency; j++)
+			if (metropolis->BlockRandomWalkMetropolis(x_new.weight, x_new.data, current_sample.data) )
+                	{
+                        	current_sample = x_new;
+                        	current_sample.id = (int)(time(NULL)-timer_when_started);
+                        	max_posterior = current_sample.weight > max_posterior ? current_sample.weight : max_posterior;
+                        	nJump ++;
+                	}
 		
-		}
-		if (metropolis->BlockRandomWalkMetropolis(x_new.weight, x_new.data, current_sample.data) )
-                {
-                        current_sample = x_new;
-                        current_sample.id = (int)(time(NULL)-timer_when_started);
-                        max_posterior = current_sample.weight > max_posterior ? current_sample.weight : max_posterior;
-                        nJump ++;
-                }
+		if (if_storage)
+			SaveSampleToStorage(current_sample, parameter, storage); 
 	}
 	cout << "MH Jump " << nJump << " out of " << parameter.simulation_length << " in simulation.\n"; 
 	return max_posterior;  
 }
 
-double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStorageHead &storage, bool if_storage, FILE *dw_file_out, bool if_write_file)
+double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStorageHead &storage, bool if_storage)
 {
 	CSampleIDWeight x_new;
 
 	unsigned int nEEJump=0, nMHJump=0; 
 
 	double max_posterior = current_sample.weight; 
-	for (int i=0; i<parameter.simulation_length; i++)
+	for (unsigned int i=0; i<parameter.simulation_length; i++)
 	{
-		if (i%parameter.deposit_frequency ==0)
+		for (unsigned int j=0; j<parameter.deposit_frequency; j++)
 		{
-			if (if_storage)
-				SaveSampleToStorage(current_sample, parameter, storage); 
-			if (if_write_file)
-				SaveSampleToFile(current_sample, dw_file_out); 
-		}
-		int jump_code = EE_Draw(parameter, storage); 
-		if (jump_code == EQUI_ENERGY_JUMP)
-			nEEJump++; 
-		else if (jump_code == METROPOLIS_JUMP)
-			nMHJump++; 
-		max_posterior = max_posterior > current_sample.weight ? max_posterior : current_sample.weight; 
+			int jump_code = EE_Draw(parameter, storage); 
+			if (jump_code == EQUI_ENERGY_JUMP)
+				nEEJump++; 
+			else if (jump_code == METROPOLIS_JUMP)
+				nMHJump++; 
+			if (jump_code == EQUI_ENERGY_JUMP || jump_code == METROPOLIS_JUMP)
+				max_posterior = max_posterior > current_sample.weight ? max_posterior : current_sample.weight; 
+		}	
+	
+		if (if_storage)
+			SaveSampleToStorage(current_sample, parameter, storage); 
 	}
 	
 	cout << "EE Jump " << nEEJump << " out of " << parameter.simulation_length << " in simulation.\n"; 
 	cout << "MH Jump " << nMHJump << " out of " << parameter.simulation_length << " in simulation.\n"; 
 	return max_posterior; 
 }
+
+
 ///////////////////////////////////////////////////////////
 
 void DetermineBlockSize(int, int *, int, int); 
@@ -234,64 +251,7 @@ void DetermineScale_ReshuffleIndex_IfNeeded(double *, int *, int , const int *, 
 // random generator function:
 ptrdiff_t myrandom (ptrdiff_t i) { return rand()%i;}
 
-void CStateModel::SaveSampleToStorage(const CSampleIDWeight &sample, const CEESParameter &parameter, CStorageHead &storage)
-{
-	int binIndex = parameter.BinIndex(sample.GetWeight(), energy_level);
-        storage.DepositSample(binIndex, sample);
-}
-
-void CStateModel::SaveSampleToFile(const CSampleIDWeight &sample, FILE *file)
-{
-	if (file == NULL)
-                return;
-        fprintf(file, "%le %le", sample.log_prob, sample.GetWeight());  
-        for (int j=0; j<thetaDim+qDim; j++)
-                fprintf(file, " %le", *(sample.GetData()+j));
-        fprintf(file, "\n");
-}
-
-void CStateModel::GetCurrentSample(CSampleIDWeight &sample, bool if_calculate_energy) const
-{
-	sample.SetDataDimension(thetaDim+qDim); 
-
-	if (if_calculate_energy)
-		LogPosterior_StatesIntegratedOut(model);
-
-	ConvertThetaToFreeParameters(model, sample.Data());
-        ConvertQToFreeParameters(model, sample.Data()+thetaDim);
-	sample.SetID((int)time(NULL)); 
-
-	if (model->if_bounded > 0)
-		sample.log_prob = -(model->energy > model->h ? model->energy : model->h)/model->t;
-	else
-		sample.log_prob = -model->energy;
-
-	sample.SetWeight(model->energy);
-}
-
-/*int CStateModel::Calibrate_Diag(vector<CIndexBlockSizeScale> &scale_1, vector<CIndexBlockSizeScale> &scale_n, double center_s, double center_a, int period_s, int period_a, int max_period_s, int max_period_a)
-{
-	TMetropolis_theta *metropolis=model->metropolis_theta;
-	Setup_metropolis_theta_diagonal(metropolis);
-  	Setup_metropolis_theta_blocks_single(metropolis);
-
-	double *scale_array_1 = new double[thetaDim]; 	
-	double *scale_array_n = new double[thetaDim]; 
-
-	int ndraws=Calibrate_metropolis_theta_two_pass_scale_returned(scale_array_1, scale_array_n, thetaDim, model, center_s, period_s, max_period_s, center_a, period_a, max_period_a, 0);
-	
-	scale_1.resize(thetaDim); 	
-	scale_n.resize(thetaDim); 
-	for (int i=0; i<thetaDim; i++)
-	{
-		scale_1[i] = CIndexBlockSizeScale(i, 1, scale_array_1[i]); 
-		scale_n[i] = CIndexBlockSizeScale(i, thetaDim, scale_array_n[i]); 
-	}
-	delete [] scale_array_1; 
-	delete [] scale_array_n;  
-	return ndraws; 
-}
-
+/*
 int CStateModel::Calibrate_Diag_Random_Block(vector<CIndexBlockSizeScale> &scale_random_block, const vector<CIndexBlockSizeScale> &scale_1, const vector<CIndexBlockSizeScale > &scale_n, double center, int period, int max_period, const CEESParameter &parameter)
 // scale_random_block: scale of each dimension estimated during random-block tuning
 {

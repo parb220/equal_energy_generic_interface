@@ -78,6 +78,12 @@ protected:
 	double Simulation_Cross(const CEESParameter &, CStorageHead &storage, bool if_storage, FILE *, bool if_write_file); 	// Simulation across levels. Returns the maximum posterior during simulation 
 	
 	
+///////////////////////////////////////////////////////////////////////////////////////////
+// IO 
+public:
+	void SaveSampleToStorage(const CSampleIDWeight &sample, const CEESParameter &parameter, CStorageHead &storage); 
+	void SaveSampleToFile(const CSampleIDWeight &sample, const CEESParameter &parameter, FILE *file); 
+
 protected:
 	// Functions
 	int EE_Draw_MultipleBlock(const double*, int *, int *, int, const CEESParameter &, CStorageHead &, const gsl_rng *); 	// equi-energy draw in multiple blocks
@@ -90,13 +96,8 @@ public:
 	
 	double Simulation_Cross_MultipleBlock(const vector<vector<CIndexBlockSizeScale> > &, const CEESParameter &, CStorageHead &storage, bool if_storage, FILE *, bool if_write_file, const gsl_rng *);
 
-///////////////////////////////////////////////////////////////////////////////////////////
-// IO 
-public:
-	bool LoadMetropolisParameter(string); 
-	void SaveSampleToStorage(const CSampleIDWeight &sample, const CEESParameter &parameter, CStorageHead &storage); 
-	void SaveSampleToFile(const CSampleIDWeight &sample, FILE *file); 
 
+	bool LoadMetropolisParameter(string); 
 ///////////////////////////////////////////////////////////////////////////////////////////// Construction, deconstruction
 public: 
 	CEquiEnergyModel(TStateModel *_target=NULL, CMetropolis *_metropolis=NULL, int _level=0, double _h=0 double _t=1, const CSampleIDWeight &_x=CSampleIDWeight() ); 

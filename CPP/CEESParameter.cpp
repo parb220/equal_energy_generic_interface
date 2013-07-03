@@ -66,7 +66,7 @@ bool CEESParameter::LoadParameterFromFile(string file_name)
         if (!iFile)
                 return false;
 
-	int name_len; 
+	size_t name_len; 
 	iFile.read((char*)(&name_len), sizeof(size_t)); 
 	char *storage_dir_array = new char [name_len+1]; 
 	iFile.read(storage_dir_array, sizeof(char)*name_len); 

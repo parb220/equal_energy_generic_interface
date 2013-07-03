@@ -1,10 +1,11 @@
 #include "CMetropolis.h"
 #include <cmath>
 #include "dw_rand.h"
+#include <fstream>
 
 using namespace std; 
 
-void CMetropolis::BlockAdaptive(const TDenseVector &adaptive_start_point, const vector<TDenseMatrix> &B, double mid, int period, int max_period)
+void CMetropolis::BlockAdaptive(const TDenseVector &adaptive_start_point, const vector<TDenseMatrix> &B, double mid, size_t period, size_t max_period)
 // Makes block-wise random-walk Metropolis draws, adjusting the block scale until the target acceptance rate 
 // is hit.
 //
@@ -25,12 +26,12 @@ void CMetropolis::BlockAdaptive(const TDenseVector &adaptive_start_point, const 
 {
 	size_t k = B.size(); 	// number of blocks
 
-	int n_draws =0;
-	vector<int> n_accepted(k,0); 
-	vector<int> begin_draws(k,0); 
-	vector<int> begin_jumps(k,0); 
-	vector<int> periods(k,period); 
-	vector<int> end_draws(k,period); 
+	unsigned int n_draws =0;
+	vector<unsigned int> n_accepted(k,0); 
+	vector<unsigned int> begin_draws(k,0); 
+	vector<unsigned int> begin_jumps(k,0); 
+	vector<unsigned int> periods(k,period); 
+	vector<unsigned int> end_draws(k,period); 
 	
 	TDenseVector previous_ratio(k,0.0); 
 	TDenseVector scale(k,1.0); 
@@ -53,7 +54,7 @@ void CMetropolis::BlockAdaptive(const TDenseVector &adaptive_start_point, const 
 	y.CopyContent(adaptive_start_point); 
 	double log_previous = model->LogPosterior(y), log_current, new_scale, diff;
 	bool done = false; 
-	int check = period; 
+	unsigned int check = period; 
 	while (!done)
 	{
 		// draw metropolis blocks
@@ -181,4 +182,150 @@ bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, TDenseVect
 	
 	log_posterior_y = log_previous; 
 	return if_new_sample; 
+}
+
+void CMetropolis::FourPassAdaptive(const TDenseVector &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, const string &rb_file)
+// first pass
+// 	identity variance matrix / n blocks
+// second pass
+// 	diagonal variance matrix / 1 block
+// third pass 
+// 	simulate from second pass block structure
+// 	variance matrix from simulation / n blocks
+// forth pass
+// 	variance matrix from simulation with scaled columns / 1 block
+{
+	TDenseVector x; 
+	x.CopyContent(adaptive_start_point); 
+
+	// first pass
+	size_t n_blocks = x.dim; 
+	vector<TDenseMatrix> B_matrix(n_blocks); 
+	TDenseMatrix I_matrix = Identity(x.dim); 
+	for (unsigned int i=0; i<n_blocks; i++)
+		B_matrix[i] = ColumnMatrix(ColumnVector(I_matrix,i));
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	// blocks should now contain n matrixes, each of which is a n-by-1 matrix
+
+	// second pass
+	n_blocks = 1; 
+	B_matrix.resize(n_blocks); 
+	B_matrix[0].Zeros(x.dim,x.dim); 
+	// B{1}(:,i) = blocks{i} <=> B[0][:,i] = blocks[i][:,0]
+	for (unsigned int i=0; i<x.dim; i++)
+		for (unsigned int j=0; j<x.dim; j++)
+			B_matrix[0](j,i) = blocks[i](j,0);  		
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+
+	// simulate
+	// burn-in
+	double log_posterior_y; 
+	TDenseVector y; 
+	for (unsigned int t=0; t<burn_in; t++)
+	{
+		if (BlockRandomWalkMetropolis(log_posterior_y, y, x) )
+			x.CopyContent(y);
+	}
+
+	vector<TDenseVector> Y_simulation(n_draws); 
+	// simulate
+	for (unsigned int i=0; i<n_draws; i++)
+	{
+		for (unsigned int t=0; t<thin; t++)
+		{
+			if (BlockRandomWalkMetropolis(log_posterior_y, y, x) )
+                        	x.CopyContent(y);
+		}
+		Y_simulation[i].CopyContent(y); 
+	} 
+
+	// Compute variance 
+	TDenseMatrix variance(y.dim,y.dim,0.0), U_matrix, V_matrix, D_matrix; 
+	TDenseVector d_vector; 
+	for (unsigned int i=0; i<n_draws; i++)
+		variance = variance + Y_simulation[i]*Transpose(Y_simulation[i]); 
+	variance = 0.5*(variance+Transpose(variance)) / n_draws; 
+	SVD(U_matrix, d_vector, V_matrix, variance); 
+	D_matrix = DiagonalMatrix(d_vector); 
+	U_matrix = U_matrix *D_matrix; 
+
+	// third-pass: n blocks
+	n_blocks = x.dim; 
+	B_matrix.resize(n_blocks); 
+	for (unsigned int i=0; i<n_blocks; i++)
+		B_matrix[i] = ColumnMatrix(ColumnVector(U_matrix,i)); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period);
+	// blocks should contain n_blocks matrices, each of them being a x.dim-by-1 matrix
+	if (!rbfile.empty())
+	{
+		// convert blocks to random blocks and save, in case RandomBlockAdaptive is used
+		random_blocks.resize(x.dim); 
+		for (unsigned int i=0; i<x.dim; i++)
+		{
+			random_blocks[i] = ColumnVector(blocks[i],0); 
+			random_block_scales[i] = TDenseVector(x.dim,1.0); 
+		}
+		if (!Write_RandomBlocks_RandomBlockScales(rbfile))
+			cerr << "CMetropolis::FourPassAdaptive() : error in writing " << rbfile << endl; 	}
+
+	// forth-pass: 1 block
+	n_blocks = 1; 
+	B_matrix.resize(n_blocks); 
+	B[0].Zeros(x.dim,x.dim); 
+	// B{1}{:,i} = blocks{i} <=> B[0][:,i] = blocks[i](:,0)
+	for (unsigned int i=0; i<x.dim; i++)
+		for (unsigned int j=0; j<x.dim; j++)
+			B[0](j,i) = blocks[i](j,0); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+}
+
+bool CMetropolis::ReadBlocks(const string &file_name)
+{
+	fstream iFile(file_name.c_str(), ios::in|ios::binary); 
+	if (!iFile)
+		return false; 
+	size_t n_blocks; 
+	iFile.read((char*)(&n_blocks),sizeof(size_t) ); 
+	blocks.resize(n_blocks); 
+	for (unsigned int i=0; i<n_blocks; i++)
+	{
+		size_t m, n; 
+		iFile.read((char*)(&m),sizeof(size_t) ); 
+		iFile.read((char*)(&n),sizeof(size_t) ); 
+		blocks[i].Resize(m,n); 
+		for (unsigned int j=0; j<n; j++)
+			for (unsigned int k=0; k<m; k++)
+			{
+				double data; 
+				iFile.read((char*)(&data),sizeof(double)); 
+				blocks[i](k,j)=data; 
+			}	
+	}
+
+	iFile.close(); 
+	return true; 	
+}
+
+bool CMetropolis::WriteBlocks(const string &file_name)
+{
+	fstream oFile(file_name.c_str(), ios::out|ios::binary); 
+	if (!oFile)
+		return false;
+	size_t n_blocks = blocks.size(); 
+	oFile.write((char*)(&n_blocks), sizeof(size_t));	// number of blocks
+	for (unsigned int i=0; i<n_blocks; i++)
+	{
+		size_t m = blocks[i].rows; 
+		size_t n = blocks[i].cols; 
+		oFile.write((char*)(&m), sizeof(size_t)); 
+		oFile.write((char*)(&n), sizeof(size_t)); 
+		for (unsigned int j=0; j<n; j++)
+			for (unsigned int k=0; k<m; k++)
+			{
+				double data = blocks[i](k,j); 
+				oFile.write((char*)(&data), sizeof(double)); 
+			}
+	}
+	oFile.close(); 
+	return true;
 }
