@@ -34,7 +34,7 @@ public:
 	// Random block learning
 	void RandomBlockAdaptive(const TDenseVector &adaptive_start_point, double target_ratio, size_t period, size_t max_period); 
 	void FourPassRandomBlockAdaptive(const TDenseVector &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, size_t avg_block_size); 
-	void OnePassRandomBlockAdaptive(const TDenseVector &adaptive_start_point, size_t period, size_t max_period, size_t avg_block_size); 
+	bool OnePassRandomBlockAdaptive(const TDenseVector &adaptive_start_point, size_t period, size_t max_period, size_t avg_block_size); 
 	// Draw one sample using random blocks
 	bool RandomBlockRandomWalkMetropolis(double &, TDenseVector &, const TDenseVector &x); 
 
