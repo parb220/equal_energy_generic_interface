@@ -5,11 +5,13 @@
 #include "CEquiEnergyModel.h"
 #include "dw_dense_matrix.hpp"
 
-extern "C" {
+/*extern "C" {
 	#include "dw_switch.h"
-}
+}*/
 
 using namespace std; 
+
+class CEquiEnergyModel; 
 
 class CMetropolis
 {
@@ -34,7 +36,7 @@ public:
 	// Random block learning
 	void RandomBlockAdaptive(const TDenseVector &adaptive_start_point, double target_ratio, size_t period, size_t max_period); 
 	void FourPassRandomBlockAdaptive(const TDenseVector &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, size_t avg_block_size); 
-	bool OnePassRandomBlockAdaptive(const TDenseVector &adaptive_start_point, size_t period, size_t max_period, size_t avg_block_size); 
+	bool OnePassRandomBlockAdaptive(const TDenseVector &adaptive_start_point, size_t period, size_t max_period, size_t avg_block_size, const string &file_name); 
 	// Draw one sample using random blocks
 	bool RandomBlockRandomWalkMetropolis(double &, TDenseVector &, const TDenseVector &x); 
 

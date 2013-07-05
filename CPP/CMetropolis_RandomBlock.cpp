@@ -19,21 +19,21 @@ bool CMetropolis::RandomBlockRandomWalkMetropolis(double &log_posterior_y, TDens
 {
 	size_t n_blocks = random_block_assignments.size(); 	// number of blocks
 	
-	TDenseVector x, y, increment; 
+	TDenseVector x, increment; 
 	x.CopyContent(initial_x); 
-	double log_previous = model->LogPosterior(x), log_current; 	
+	double log_previous = model->log_posterior_function(x), log_current; 	
 	bool if_new_sample = false; 
 	for (unsigned int i=0; i<n_blocks; i++)
 	{
-		size_t block_size = random_block_assignment[i].size();	// size of the current block
+		size_t block_size = random_block_assignments[i].size();	// size of the current block
 		increment.Zeros(x.dim); 
 		for (unsigned int j=0; j<block_size; j++)
 		{
-			unsigned int d_index = random_block_assignment[i][j]; 
-			increment = increment + random_blocks[d_index] * random_block_scales[d_index][block_size-1] * dw_normal_rnd();  
+			unsigned int d_index = random_block_assignments[i][j]; 
+			increment = increment + random_blocks[d_index] * random_block_scales[d_index][block_size-1] * dw_gaussian_rnd();  
 		}
 		y = x + increment; 
-		log_current = model->LogPosterior(y); 
+		log_current = model->log_posterior_function(y); 
 		if (log_current - log_previous >= log(dw_uniform_rnd() ) )
 		{
 			x = y; 
@@ -61,16 +61,16 @@ void CMetropolis::RandomBlockAdaptive(const TDenseVector &adaptive_start_point, 
 	TDenseVector best_scale(n_blocks,1.0); 
 	TDenseVector low_scale(n_blocks,-1.0); 
 	TDenseVector low_jump_ratio(n_blocks,-1.0); 
-	TDenseVector hig_scale(n_blocks,-1.0); 
+	TDenseVector high_scale(n_blocks,-1.0); 
 	TDenseVector high_jump_ratio(n_blocks,-1.0); 	
 
-	double log_mid = log(mid);
+	double log_mid = log(target_ratio);
 	double lower_bound = exp(log_mid/0.2);
 	double upper_bound = exp(log_mid/5.0); 
 
 	TDenseVector x(adaptive_start_point.dim), y(adaptive_start_point.dim), increment(adaptive_start_point.dim); 
 	x.CopyContent(adaptive_start_point); 
-	double log_previous = model->LogPosterior(x), log_current, new_scale, diff; 
+	double log_previous = model->log_posterior_function(x), log_current, new_scale, diff; 
 	bool done = false; 
 	unsigned int check = period; 
 	while (!done)	
@@ -79,13 +79,13 @@ void CMetropolis::RandomBlockAdaptive(const TDenseVector &adaptive_start_point, 
 		{
 			// draw metropolis
 			increment.Zeros(increment.dim); 
-			for (unsigned int j=0; j<random_block_assignment[i].size(); j++)
+			for (unsigned int j=0; j<random_block_assignments[i].size(); j++)
 			{
 				unsigned int d_index = random_block_assignments[i][j]; 
-				increment = increment + random_blocks[d_index]*scale[i]*dw_normal_rnd(); 
+				increment = increment + random_blocks[d_index]*scale[i]*dw_gaussian_rnd(); 
 			}
 			y = x+increment; 
-			log_current = model->LogPosterior(y); 
+			log_current = model->log_posterior_function(y); 
 			if (log_current-log_previous >= log(dw_uniform_rnd() ) )
 			{
 				x = y; 
@@ -107,7 +107,7 @@ void CMetropolis::RandomBlockAdaptive(const TDenseVector &adaptive_start_point, 
 				if (end_draws[i] <= n_draws)
 				{
 					// set new low or high bounds
-					if (previous_ratio[i] < mid)
+					if (previous_ratio[i] < target_ratio)
 					{
 						low_scale[i] = scale[i]; 
 						low_jump_ratio[i] = previous_ratio[i]; 
@@ -118,7 +118,7 @@ void CMetropolis::RandomBlockAdaptive(const TDenseVector &adaptive_start_point, 
 						high_jump_ratio[i] = previous_ratio[i]; 
 					}
 					// new scale and best scale
-					if (low_jump_ratio < 0.0)
+					if (low_jump_ratio[i] < 0.0)
 					{
 						best_scale[i] = scale[i]; 
 						if (previous_ratio[i] > upper_bound)
@@ -126,7 +126,7 @@ void CMetropolis::RandomBlockAdaptive(const TDenseVector &adaptive_start_point, 
 						else 
 							new_scale = (log_mid/log(previous_ratio[i]))*high_scale[i]; 
 					}
-					else if (high_jump_rati < 0.0)
+					else if (high_jump_ratio[i] < 0.0)
 					{
 						best_scale[i] = scale[i]; 
 						if (previous_ratio[i] < lower_bound)
@@ -138,7 +138,7 @@ void CMetropolis::RandomBlockAdaptive(const TDenseVector &adaptive_start_point, 
 					{
 						diff = high_jump_ratio[i]-low_jump_ratio[i]; 
 						if (diff > 1.0e-6)
-							new_scale = ((mid-low_jump_ratio[i])*low_scale[i] + (high_jump_ratio[i]-mid)*high_scale[i])/diff;
+							new_scale = ((target_ratio-low_jump_ratio[i])*low_scale[i] + (high_jump_ratio[i]-target_ratio)*high_scale[i])/diff;
 						else 
 							new_scale = 0.5 * (low_scale[i]+high_scale[i]); 
 						best_scale[i] = new_scale; 
@@ -238,8 +238,8 @@ void CMetropolis::FourPassRandomBlockAdaptive(const TDenseVector &adaptive_start
 	TDenseMatrix variance(y.dim,y.dim,0.0), U_matrix, V_matrix, D_matrix;
         TDenseVector d_vector;
         for (unsigned int i=0; i<n_draws; i++)
-                variance = variance + Y_simulation[i]*Transpose(Y_simulation[i]);
-        variance = 0.5*(variance+Transpose(variance)) / n_draws;
+                variance = variance + Multiply(Y_simulation[i],Y_simulation[i]);
+        variance = 0.5*(variance+Transpose(variance))*(1.0/(double)n_draws);
         SVD(U_matrix, d_vector, V_matrix, variance);
         D_matrix = DiagonalMatrix(d_vector);
         U_matrix = U_matrix *D_matrix;
@@ -279,8 +279,8 @@ bool CMetropolis::OnePassRandomBlockAdaptive(const TDenseVector &adaptive_start_
 		cerr << "CMetropolis::OnePassRandomBlockAdaptive : error in loading " << file_name << endl; 
 		return false; 
 	}
-	AssignDimensionsToRandomBlocks(x.dim, avg_block_size);
-        RandomBlockAdaptive(x, 0.25, period, max_period);
+	AssignDimensionsToRandomBlocks(adaptive_start_point.dim, avg_block_size);
+        RandomBlockAdaptive(adaptive_start_point, 0.25, period, max_period);
 	return true; 
 }
 

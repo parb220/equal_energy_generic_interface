@@ -25,7 +25,7 @@ CSampleIDWeight &CSampleIDWeight::operator = (const CSampleIDWeight &right)
 	return *this; 
 }
 
-bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, int offset, int length)
+bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, unsigned int offset, size_t length)
 {
 	if (data.dim < offset+length || right.data.dim < offset+length)
 	{
@@ -42,7 +42,7 @@ bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, int offset, 
 	return true; 
 }
 
-bool CSampleIDWeight::PartialCopyFrom(int offset1, const CSampleIDWeight &right, int offset2, int length)
+bool CSampleIDWeight::PartialCopyFrom(unsigned int offset1, const CSampleIDWeight &right, unsigned offset2, size_t length)
 {
 	if (data.dim < offset1+length || right.data.dim < offset2+length )
 	{

@@ -52,7 +52,7 @@ void CMetropolis::BlockAdaptive(const TDenseVector &adaptive_start_point, const 
 	// Beginning adaptive burn-in 
 	TDenseVector x, y(adaptive_start_point.dim); 
 	y.CopyContent(adaptive_start_point); 
-	double log_previous = model->LogPosterior(y), log_current, new_scale, diff;
+	double log_previous = model->log_posterior_function(y), log_current, new_scale, diff;
 	bool done = false; 
 	unsigned int check = period; 
 	while (!done)
@@ -61,7 +61,7 @@ void CMetropolis::BlockAdaptive(const TDenseVector &adaptive_start_point, const 
 		for (unsigned int i=0; i<k; i++)
 		{
 			x = y + scale[i]*(B[i]*RandomNormalVector(b[i]));
-			log_current = model->LogPosterior(x); 
+			log_current = model->log_posterior_function(x); 
 
 			if (log_current-log_previous >= log(dw_uniform_rnd()) )
 			{
@@ -163,14 +163,14 @@ bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, TDenseVect
 	for (unsigned int i=0; i<k; i++)
 		b[i] = blocks[i].cols; 
 
-	TDenseVector x, y; 
+	TDenseVector x; 
 	x.CopyContent(initial_v); 
-	double log_previous = model->LogPosterior(x), log_current; 
+	double log_previous = model->log_posterior_function(x), log_current; 
 	bool if_new_sample = false; 
 	for (unsigned int i=0; i<k; i++)
 	{
 		y = x+blocks[i]*RandomNormalVector(b[i]); 
-		log_current = model->LogPosterior(y); 
+		log_current = model->log_posterior_function(y); 
 		if (log_current - log_previous >= log(dw_uniform_rnd()) )
 		{
 			x = y; 
@@ -243,8 +243,8 @@ void CMetropolis::FourPassAdaptive(const TDenseVector &adaptive_start_point, siz
 	TDenseMatrix variance(y.dim,y.dim,0.0), U_matrix, V_matrix, D_matrix; 
 	TDenseVector d_vector; 
 	for (unsigned int i=0; i<n_draws; i++)
-		variance = variance + Y_simulation[i]*Transpose(Y_simulation[i]); 
-	variance = 0.5*(variance+Transpose(variance)) / n_draws; 
+		variance = variance + Multiply(Y_simulation[i],Y_simulation[i]); 
+	variance = 0.5*(variance+Transpose(variance))*(1.0/(double)n_draws); 
 	SVD(U_matrix, d_vector, V_matrix, variance); 
 	D_matrix = DiagonalMatrix(d_vector); 
 	U_matrix = U_matrix *D_matrix; 
@@ -256,7 +256,7 @@ void CMetropolis::FourPassAdaptive(const TDenseVector &adaptive_start_point, siz
 		B_matrix[i] = ColumnMatrix(ColumnVector(U_matrix,i)); 
 	BlockAdaptive(x, B_matrix, 0.25, period, max_period);
 	// blocks should contain n_blocks matrices, each of them being a x.dim-by-1 matrix
-	if (!rbfile.empty())
+	if (!rb_file.empty())
 	{
 		// convert blocks to random blocks and save, in case RandomBlockAdaptive is used
 		random_blocks.resize(x.dim); 
@@ -265,17 +265,17 @@ void CMetropolis::FourPassAdaptive(const TDenseVector &adaptive_start_point, siz
 			random_blocks[i] = ColumnVector(blocks[i],0); 
 			random_block_scales[i] = TDenseVector(x.dim,1.0); 
 		}
-		if (!Write_RandomBlocks_RandomBlockScales(rbfile))
-			cerr << "CMetropolis::FourPassAdaptive() : error in writing " << rbfile << endl; 	}
+		if (!Write_RandomBlocks_RandomBlockScales(rb_file))
+			cerr << "CMetropolis::FourPassAdaptive() : error in writing " << rb_file << endl; 	}
 
 	// forth-pass: 1 block
 	n_blocks = 1; 
 	B_matrix.resize(n_blocks); 
-	B[0].Zeros(x.dim,x.dim); 
+	B_matrix[0].Zeros(x.dim,x.dim); 
 	// B{1}{:,i} = blocks{i} <=> B[0][:,i] = blocks[i](:,0)
 	for (unsigned int i=0; i<x.dim; i++)
 		for (unsigned int j=0; j<x.dim; j++)
-			B[0](j,i) = blocks[i](j,0); 
+			B_matrix[0](j,i) = blocks[i](j,0); 
 	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
 }
 

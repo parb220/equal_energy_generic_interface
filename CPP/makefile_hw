@@ -87,7 +87,7 @@ ERROR_OBJS = dw_error.o
 MATRIX_OBJS = dw_dense_matrix.o dw_utilities.o dw_rand_gsl.o dw_math.o
 
 # PROJECT FILES
-GENERIC_OBJS = CPutGetBin.o CStorageHead.o CEESParameter.o
+GENERIC_OBJS = CPutGetBin.o CStorageHead.o CSampleIDWeight.o CEESParameter.o CMetropolis.o CMetropolis_RandomBlock.o  CEquiEnergyModel.o
 
 
 #################################################################################
