@@ -234,12 +234,20 @@ void CMetropolis::FourPassRandomBlockAdaptive(const TDenseVector &adaptive_start
                 Y_simulation[i].CopyContent(y);
         }
 	
-	// calculate variance
+	// calculate variance and mean
+	TDenseVector mean(y.dim, 0.0); 
 	TDenseMatrix variance(y.dim,y.dim,0.0), U_matrix, V_matrix, D_matrix;
         TDenseVector d_vector;
         for (unsigned int i=0; i<n_draws; i++)
+	{
+		mean = mean + Y_simulation[i]; 
                 variance = variance + Multiply(Y_simulation[i],Y_simulation[i]);
-        variance = 0.5*(variance+Transpose(variance))*(1.0/(double)n_draws);
+	}
+	
+	mean = (1.0/(double)n_draws)*mean; 
+        variance = (0.5/(double)n_draws)*(variance+Transpose(variance)); 
+	variance = variance - Multiply(mean,mean); 
+
         SVD(U_matrix, d_vector, V_matrix, variance);
         D_matrix = DiagonalMatrix(d_vector);
         U_matrix = U_matrix *D_matrix;
