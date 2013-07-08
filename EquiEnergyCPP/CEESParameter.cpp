@@ -10,7 +10,6 @@ CEESParameter::CEESParameter() :
 	storage_marker(0), 
 	run_id(0), 
 	number_energy_level(0), 
-	data_dimension(0), 
 	pee(0.0),
 	h0(0.0), 
 	hk_1(0.0),
@@ -43,7 +42,6 @@ bool CEESParameter::SaveParameterToFile(string file_name) const
 	oFile.write((char*)(&storage_marker), sizeof(size_t)); 
 	oFile.write((char*)(&run_id), sizeof(int)); 
 	oFile.write((char*)(&number_energy_level), sizeof(size_t)); 
-	oFile.write((char*)(&data_dimension), sizeof(size_t)); 
 	oFile.write((char*)(&pee), sizeof(double)); 
 	oFile.write((char*)(&h0), sizeof(double)); 
 	oFile.write((char*)(&hk_1), sizeof(double)); 
@@ -76,7 +74,6 @@ bool CEESParameter::LoadParameterFromFile(string file_name)
 	iFile.read((char*)(&storage_marker), sizeof(size_t));
         iFile.read((char*)(&run_id), sizeof(int));
         iFile.read((char*)(&number_energy_level), sizeof(size_t));
-        iFile.read((char*)(&data_dimension), sizeof(size_t));
         iFile.read((char*)(&pee), sizeof(double));
         iFile.read((char*)(&h0), sizeof(double));
         iFile.read((char*)(&hk_1), sizeof(double));
@@ -102,7 +99,6 @@ bool CEESParameter::WriteSummaryFile(string file_name) const
 	if (!oFile) 
 		return false; 
 	oFile << "Storage Marker:\t" << storage_marker << endl; 
-	oFile << "Data Dimension:\t" << data_dimension << endl; 
 	oFile << "Number of Energy Levels:\t" << number_energy_level << endl; 
 	oFile << "Energy Thresholds:"; 
 	for (unsigned int i=0; i<=number_energy_level; i++)

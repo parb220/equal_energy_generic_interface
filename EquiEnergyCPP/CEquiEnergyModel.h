@@ -20,23 +20,19 @@ const int EQUI_ENERGY_JUMP = -1;
 const int NO_JUMP = 0; 
 
 class CMetropolis; 
+class MinusLogPosterior_NPSOL; 
 
 class CEquiEnergyModel
 {
-protected:
-	time_t timer_when_started; 
 public:
-	TStateModel *target_model; 	// pointer to the TStateModel 
-	CMetropolis *metropolis;	// pointer to metropolis
-
 ///////////////////////////////////////////////////////////////
 // Parameters for equi-energy sampling
 // 	energy_level: i
 // 	energy_bound: h[i]
 // 	temperature_bound: t[i]
+	bool if_bounded; 
  	unsigned int energy_level;		 
 	double h_bound, t_bound;
-
 //////////////////////////////////////////////////////////////
 // Current sample holding the following 
 // 	Sample: 
@@ -45,29 +41,26 @@ public:
 // 	Weight:	energy (log posterior)
 	CSampleIDWeight current_sample; 
 
+	TStateModel *target_model; 	// pointer to the TStateModel 
+	CMetropolis *metropolis;	// pointer to metropolis
+
+protected:
+	time_t timer_when_started; 
+
 ///////////////////////////////////////////////////////////////
 // Calculate log-posterior and log-likelihood of a given sample
 // Depending on TStateModel, LogPosterior and LogLikelihood can be implemented 
 // differently. 
+protected:
+	virtual double log_posterior_function(const double *x, size_t n); 
+	virtual double log_likelihood_function(const double *x, size_t n); 
 public:
-	virtual double log_posterior_function(const double *x, int nx); 
-	virtual double log_likelihood_function(const double *x, int nx);
-	double log_posterior_function(const CSampleIDWeight &x)
-	{
-		return log_posterior_function(x.data.vector, x.data.dim); 
-	}
-	double log_likelihood_function(const CSampleIDWeight &x)
-	{
-		return log_likelihood_function(x.data.vector, x.data.dim); 
-	}
-	double log_posterior_function(const TDenseVector &x) 
-	{
-		return log_posterior_function(x.vector, x.dim);
-	}
-	double log_likelihood_function(const TDenseVector &x)
-	{
-		return log_likelihood_function(x.vector, x.dim); 
-	}
+	virtual double log_posterior_function(CSampleIDWeight &x); 
+	// x cannot be constant because x.weight will be set as the real log_posterior calculated
+	// from target_model, where the returning value is the bounded log_posterior
+	// that is, return value = -(-x.weight>h_bound ? -x.weight:h_bound)/t_bound; 
+	virtual double log_likelihood_function(const CSampleIDWeight &x);
+	// returning value is the real log_likelihood calculated from target_model
 
 protected:
 	// Draw samples
@@ -82,41 +75,24 @@ public:
 	double Simulation_Within_RandomBlock(const CEESParameter &, CStorageHead &storage, bool if_storage);  
 	double Simulation_Cross(const CEESParameter &, CStorageHead &storage, bool if_storage); 	// Simulation across levels. Returns the maximum posterior during simulation 	
 	double Simulation_Cross_RandomBlock(const CEESParameter &, CStorageHead &storage, bool if_storage); 
+	void HillClimb(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter); 
 	
 ///////////////////////////////////////////////////////////////////////////////////////////
 // IO 
 public:
 	void SaveSampleToStorage(const CSampleIDWeight &sample, const CEESParameter &parameter, CStorageHead &storage); 
-	void SaveSampleToFile(const CSampleIDWeight &sample, const CEESParameter &parameter, FILE *file); 
+	void SaveSampleToFile(const CSampleIDWeight &sample, FILE *file); 
+	bool InitializeFromFile(const string &file_name); 
 
-protected:
-	/* Functions
-	int EE_Draw_MultipleBlock(const double*, int *, int *, int, const CEESParameter &, CStorageHead &, const gsl_rng *); 	// equi-energy draw in multiple blocks
+///////////////////////////////////////////////////////////////////////////////////////////
+// Construction & Destruction functions here
 public:
-
-
-	double BurnIn_MultipleBlock(const vector <vector<CIndexBlockSizeScale> > &, const CEESParameter &, int); 
-
-	double Simulation_Within_MultipleBlock(const vector<vector<CIndexBlockSizeScale> > &, const CEESParameter &, CStorageHead &storage, bool if_storage, FILE *, bool if_write_file, const gsl_rng *);
-	
-	double Simulation_Cross_MultipleBlock(const vector<vector<CIndexBlockSizeScale> > &, const CEESParameter &, CStorageHead &storage, bool if_storage, FILE *, bool if_write_file, const gsl_rng *);
-
-
-	bool LoadMetropolisParameter(string); 
-///////////////////////////////////////////////////////////////////////////////////////////// Construction, deconstruction
-public: 
-	CEquiEnergyModel(TStateModel *_target=NULL, CMetropolis *_metropolis=NULL, int _level=0, double _h=0 double _t=1, const CSampleIDWeight &_x=CSampleIDWeight() ); 
-	virtual ~CEquiEnergyModel();
-	
-
-	All Calibrate functions return a vector of thetaDim*2 containing the scales 
-	// of each dimension during the two-passes training
-	int Calibrate_Diag(vector<CIndexBlockSizeScale> &, vector<CIndexBlockSizeScale> &, double, double, int, int, int, int);
-	int Calibrate_Variance_Initialize_Sample(vector<CIndexBlockSizeScale> &, vector<CIndexBlockSizeScale> &, string, double, double, int, int, int, int); 
-	int Calibrate_Diag_Random_Block(vector<CIndexBlockSizeScale> &, const vector <CIndexBlockSizeScale> &, const vector<CIndexBlockSizeScale> &, double, int, int, const CEESParameter&); 
-	int Calibrate_Variance_Initialize_Sample_Random_Block(vector<CIndexBlockSizeScale> &, const vector<CIndexBlockSizeScale> &, const vector<CIndexBlockSizeScale> &, string, double, int, int, const CEESParameter &); 
+	CEquiEnergyModel(); 
+	CEquiEnergyModel(bool _if_bounded, unsigned int eL, double _h, double _t, const CSampleIDWeight & _x=CSampleIDWeight(), TStateModel *_model=NULL, CMetropolis *_metropolis =NULL, time_t _time=time(NULL)); 
+	~CEquiEnergyModel(); 
+	/* Functions
 	*/
-
+friend class MinusLogPosterior_NPSOL; 
 };
 
 #endif

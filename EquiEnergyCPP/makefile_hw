@@ -67,8 +67,8 @@ DW_STATE_MODEL_DIR = $(GIT_DIR)/switch_dw/switching
 DW_STATE_MODEL_INCLUDE_DIR = $(DW_STATE_MODEL_DIR)
 
 EQUAL_ENERGY_DIR = $(HOME)/equal_energy_generic_interface
-EQUAL_ENERGY_CPP_DIR = $(EQUAL_ENERGY_DIR)/CPP
-EQUAL_ENERGY_INCLUDE_DIR = $(EQUAL_ENERGY_DIR)/CPP
+EQUAL_ENERGY_CPP_DIR = $(EQUAL_ENERGY_DIR)/EquiEnergyCPP
+EQUAL_ENERGY_INCLUDE_DIR = $(EQUAL_ENERGY_DIR)/EquiEnergyCPP
 
 #################################################################################
 # Building
@@ -87,7 +87,7 @@ ERROR_OBJS = dw_error.o
 MATRIX_OBJS = dw_dense_matrix.o dw_utilities.o dw_rand_gsl.o dw_math.o
 
 # PROJECT FILES
-GENERIC_OBJS = CPutGetBin.o CStorageHead.o CSampleIDWeight.o CEESParameter.o CMetropolis.o CMetropolis_RandomBlock.o  CEquiEnergyModel.o
+GENERIC_OBJS = CPutGetBin.o CStorageHead.o CSampleIDWeight.o CEESParameter.o CMetropolis.o CMetropolis_RandomBlock.o  CEquiEnergyModel.o CEquiEnergyModel_HillClimb.o
 
 
 #################################################################################

@@ -15,7 +15,6 @@ public:
 	size_t storage_marker;		// number of samples stored in memory for retrieve 
 	int run_id; 
 	size_t number_energy_level;	// number of energy levels
-	int data_dimension; 	// dimension of samples
 	double pee; 	// probability of equi-energy-jump
 	double h0; 	// energy bound for the lowest energy level
 	double hk_1; 	// energy bound for the highest energy level
