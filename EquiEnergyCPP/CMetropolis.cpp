@@ -183,16 +183,16 @@ bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDW
 	return if_new_sample; 
 }
 
-void CMetropolis::FourPassAdaptive(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, const string &rb_file)
+void CMetropolis::FourPassAdaptive(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin)
 // first pass
 // 	identity variance matrix / n blocks
 // second pass
 // 	diagonal variance matrix / 1 block
 // third pass 
 // 	simulate from second pass block structure
-// 	variance matrix from simulation / n blocks
+// 	variance matrix estimated from simulation / n blocks
 // forth pass
-// 	variance matrix from simulation with scaled columns / 1 block
+// 	variance matrix estimated from simulation with scaled columns / 1 block
 {
 	CSampleIDWeight x=adaptive_start_point; 
 
@@ -262,18 +262,7 @@ void CMetropolis::FourPassAdaptive(const CSampleIDWeight &adaptive_start_point, 
 		B_matrix[i] = ColumnMatrix(ColumnVector(U_matrix,i)); 
 	BlockAdaptive(x, B_matrix, 0.25, period, max_period);
 	// blocks should contain n_blocks matrices, each of them being a x.dim-by-1 matrix
-	if (!rb_file.empty())
-	{
-		// convert blocks to random blocks and save, in case RandomBlockAdaptive is used
-		random_blocks.resize(x.data.dim); 
-		for (unsigned int i=0; i<x.data.dim; i++)
-		{
-			random_blocks[i] = ColumnVector(blocks[i],0); 
-			random_block_scales[i] = TDenseVector(x.data.dim,1.0); 
-		}
-		if (!Write_RandomBlocks_RandomBlockScales(rb_file))
-			cerr << "CMetropolis::FourPassAdaptive() : error in writing " << rb_file << endl; 	}
-
+	
 	// forth-pass: 1 block
 	n_blocks = 1; 
 	B_matrix.resize(n_blocks); 
@@ -334,5 +323,90 @@ bool CMetropolis::WriteBlocks(const string &file_name)
 	}
 	oFile.close(); 
 	return true;
+}
+
+bool CMetropolis::AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name)
+// There are two passes before simulations
+// first pass
+// 	identity variance matrix / n blocks
+// second pass
+// 	diagonal variance matrix / 1 block
+// Here file_name refers to a file that blocks are written into. 
+// Simulation will first read blocks from the file and then simulate
+{
+	CSampleIDWeight x=adaptive_start_point; 
+
+	// first pass
+	size_t n_blocks = x.data.dim; 
+	vector<TDenseMatrix> B_matrix(n_blocks); 
+	TDenseMatrix I_matrix = Identity(x.data.dim); 
+	for (unsigned int i=0; i<n_blocks; i++)
+		B_matrix[i] = ColumnMatrix(ColumnVector(I_matrix,i));
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	// blocks should now contain n matrixes, each of which is a n-by-1 matrix
+
+	// second pass
+	n_blocks = 1; 
+	B_matrix.resize(n_blocks); 
+	B_matrix[0].Zeros(x.data.dim,x.data.dim); 
+	// B{1}(:,i) = blocks{i} <=> B[0][:,i] = blocks[i][:,0]
+	for (unsigned int i=0; i<x.data.dim; i++)
+		for (unsigned int j=0; j<x.data.dim; j++)
+			B_matrix[0](j,i) = blocks[i](j,0);  		
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+
+	return WriteBlocks(block_file_name); 
+}
+
+bool CMetropolis::AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name) 
+// There are two more passes after Simulation
+// third pass 
+// 	variance matrix estimated from simulation / n blocks
+// forth pass
+// 	variance matrix estimated from simulation with scaled columns / 1 block
+// Here filename refers to the file where samples are stored to. 
+// So we first load these samples, and then calculate mean and variance. 
+// finally blocks will be written into a file so that simulation can start from there
+{	
+	vector<CSampleIDWeight> Y; 
+	if (!LoadSampleFromFile(sample_file_name, Y) )
+		return false; 		
+
+	// Compute variance and mean
+	TDenseVector mean(Y[0].data.dim,0.0);  
+	TDenseMatrix variance(Y[0].data.dim,Y[0].data.dim,0.0), U_matrix, V_matrix, D_matrix; 
+	TDenseVector d_vector; 
+	for (unsigned int i=0; i<Y.size(); i++)
+	{
+		mean = mean + Y[i].data; 
+		variance = variance + Multiply(Y[i].data,Y[i].data);
+	}
+	
+	mean = (1.0/(double)Y.size()) * mean; 
+	variance = (1.0/(double)Y.size())*(variance+Transpose(variance)); 
+	variance = variance - Multiply(mean, mean); 
+ 
+	SVD(U_matrix, d_vector, V_matrix, variance); 
+	D_matrix = DiagonalMatrix(d_vector); 
+	U_matrix = U_matrix *D_matrix; 
+
+	// third-pass: n blocks
+	CSampleIDWeight x=adaptive_start_point; 
+	size_t n_blocks = x.data.dim; 
+	vector<TDenseMatrix> B_matrix(n_blocks); 
+	for (unsigned int i=0; i<n_blocks; i++)
+		B_matrix[i] = ColumnMatrix(ColumnVector(U_matrix,i)); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period);
+	
+	// forth-pass: 1 block
+	n_blocks = 1; 
+	B_matrix.resize(n_blocks); 
+	B_matrix[0].Zeros(x.data.dim,x.data.dim); 
+	// B{1}{:,i} = blocks{i} <=> B[0][:,i] = blocks[i](:,0)
+	for (unsigned int i=0; i<x.data.dim; i++)
+		for (unsigned int j=0; j<x.data.dim; j++)
+			B_matrix[0](j,i) = blocks[i](j,0); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	return WriteBlocks(block_file_name); 
 }
 

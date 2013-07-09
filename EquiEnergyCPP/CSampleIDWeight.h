@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include "dw_dense_matrix.hpp"
 
 using namespace std; 
@@ -34,5 +35,8 @@ public:
 	friend istream& operator>>(istream &, CSampleIDWeight &); 
 	friend ostream& operator<<(ostream &, const CSampleIDWeight &); 
 }; 
+
+bool LoadSampleFromFile(const string &file, vector<CSampleIDWeight> &Y); 
+bool SaveSampleToFile(const string &file, const vector<CSampleIDWeight> &Y); 
 
 #endif

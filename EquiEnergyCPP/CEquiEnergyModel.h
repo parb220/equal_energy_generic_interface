@@ -71,17 +71,16 @@ public:
 	double BurnIn_RandomBlock(const CEESParameter &, CStorageHead &); 	// burn-in using random blocks
 	bool Initialize(CStorageHead &, unsigned int start_bin, unsigned int end_bin, size_t desired_pool_size);	// Initialize model (setting values for current_sample) using bins indexed from start_bin through (including) end_bin. 
 	bool InitializeWithBestSample(CStorageHead &storage, unsigned int start_bin, unsigned int end_bin); 		// Initialize model using the best sample in the bins indexed from start_bin to end_bin
-	double Simulation_Within(const CEESParameter &, CStorageHead &storage, bool if_storage); 	// Simulation within the same energy level (no jumping across levels). Returns the maximum posterior during simulation
-	double Simulation_Within_RandomBlock(const CEESParameter &, CStorageHead &storage, bool if_storage);  
-	double Simulation_Cross(const CEESParameter &, CStorageHead &storage, bool if_storage); 	// Simulation across levels. Returns the maximum posterior during simulation 	
-	double Simulation_Cross_RandomBlock(const CEESParameter &, CStorageHead &storage, bool if_storage); 
+	double Simulation_Within(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy level (no jumping across levels). Returns the maximum posterior during simulation
+	double Simulation_Within_RandomBlock(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string());  
+	double Simulation_Cross(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string()); 	// Simulation across levels. Returns the maximum posterior during simulation 	
+	double Simulation_Cross_RandomBlock(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string()); 
 	void HillClimb(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter); 
 	
 ///////////////////////////////////////////////////////////////////////////////////////////
 // IO 
 public:
 	void SaveSampleToStorage(const CSampleIDWeight &sample, const CEESParameter &parameter, CStorageHead &storage); 
-	void SaveSampleToFile(const CSampleIDWeight &sample, FILE *file); 
 	bool InitializeFromFile(const string &file_name); 
 
 ///////////////////////////////////////////////////////////////////////////////////////////

@@ -20,19 +20,6 @@ void CEquiEnergyModel::SaveSampleToStorage(const CSampleIDWeight &sample, const 
         storage.DepositSample(binIndex, sample);
 }
 
-void CEquiEnergyModel::SaveSampleToFile(const CSampleIDWeight &sample, FILE *file)
-{
-	if (file == NULL)
-                return;
-
-	double log_likelihood = log_likelihood_function(sample); 
-
-        fprintf(file, "%le %le", log_likelihood, sample.weight);  
-        for (int j=0; j<sample.data.dim; j++)
-                fprintf(file, " %le", sample.data[j]);
-        fprintf(file, "\n");
-}
-
 bool CEquiEnergyModel::InitializeFromFile(const string &file_name)
 {
 	ifstream input_file; 
@@ -222,11 +209,20 @@ double CEquiEnergyModel::BurnIn(size_t burn_in_length)
 	return max_posterior;  
 }
 
-double CEquiEnergyModel::Simulation_Within(const CEESParameter &parameter, CStorageHead &storage, bool if_storage)
+double CEquiEnergyModel::Simulation_Within(const CEESParameter &parameter, CStorageHead &storage, bool if_storage, const string &sample_file_name)
 {
 	CSampleIDWeight x_new; 
 	unsigned int nJump =0; 
 	double max_posterior = current_sample.weight, bounded_log_posterior_new; 
+	bool if_write_file = false; 
+	ofstream output_file; 
+	if (!sample_file_name.empty() )
+	{
+		output_file.open(sample_file_name.c_str(), ios::binary | ios::out); 
+		if (output_file)
+			if_write_file = true; 
+	}
+
 	for (unsigned int i=0; i<parameter.simulation_length; i++)
 	{
 		for (unsigned int j=0; j<parameter.deposit_frequency; j++)
@@ -240,16 +236,29 @@ double CEquiEnergyModel::Simulation_Within(const CEESParameter &parameter, CStor
 		
 		if (if_storage)
 			SaveSampleToStorage(current_sample, parameter, storage); 
+		if (if_write_file)
+			write(output_file, &current_sample); 
 	}
+	if (if_write_file)
+		output_file.close(); 
+
 	cout << "MH Jump " << nJump << " out of " << parameter.simulation_length << " in simulation.\n"; 
 	return max_posterior;  
 }
 
-double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStorageHead &storage, bool if_storage)
+double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStorageHead &storage, bool if_storage, const string &sample_file_name)
 {
 	CSampleIDWeight x_new;
 
 	unsigned int nEEJump=0, nMHJump=0; 
+	bool if_write_file = false;
+        ofstream output_file;
+        if (!sample_file_name.empty() )
+        {
+                output_file.open(sample_file_name.c_str(), ios::binary | ios::out);
+                if (output_file)
+                        if_write_file = true;
+        }
 
 	double max_posterior = current_sample.weight; 
 	for (unsigned int i=0; i<parameter.simulation_length; i++)
@@ -267,8 +276,13 @@ double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStora
 	
 		if (if_storage)
 			SaveSampleToStorage(current_sample, parameter, storage); 
+		if (if_write_file)
+			write(output_file, &current_sample); 
 	}
-	
+
+	if (if_write_file)
+		output_file.close(); 	
+
 	cout << "EE Jump " << nEEJump << " out of " << parameter.simulation_length << " in simulation.\n"; 
 	cout << "MH Jump " << nMHJump << " out of " << parameter.simulation_length << " in simulation.\n"; 
 	return max_posterior; 

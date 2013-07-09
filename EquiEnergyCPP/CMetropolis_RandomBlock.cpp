@@ -274,19 +274,60 @@ void CMetropolis::FourPassRandomBlockAdaptive(const CSampleIDWeight &adaptive_st
 		blocks[i].CopyContent(blocks_backup[i]); 
 }
 
-bool CMetropolis::OnePassRandomBlockAdaptive(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t avg_block_size, const string &file_name)
-// Assume random_blocks (directions) and random_block_scales (scales) have already been obtained at the third pass of FourPassAdaptive and are stored in a file
-// So we only need to load these parameters in, and then do RandomBlockAdaptive in one pass
-// In practice, we can try CMetropolis::OnePassRandomBlockAdaptive first. If it fails (because the file does not exist or file loading fails), then we call CMetropolis::FourPassRandomBlockAdaptive
+bool CMetropolis::RandomBlockAdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t avg_block_size, const string &sample_file_name, const string &block_file_name)
 {
-	if (!Read_RandomBlocks_RandomBlockScales(file_name))
+	vector<CSampleIDWeight> Y; 
+	if (LoadSampleFromFile(sample_file_name, Y) )
+                return false;
+	
+	// calculate variance and mean
+	TDenseVector mean(Y[0].data.dim, 0.0); 
+	TDenseMatrix variance(Y[0].data.dim,Y[0].data.dim,0.0), U_matrix, V_matrix, D_matrix;
+        TDenseVector d_vector;
+        for (unsigned int i=0; i<Y.size(); i++)
 	{
-		cerr << "CMetropolis::OnePassRandomBlockAdaptive : error in loading " << file_name << endl; 
-		return false; 
+		mean = mean + Y[i].data; 
+                variance = variance + Multiply(Y[i].data,Y[i].data);
 	}
-	AssignDimensionsToRandomBlocks(adaptive_start_point.data.dim, avg_block_size);
-        RandomBlockAdaptive(adaptive_start_point, 0.25, period, max_period);
-	return true; 
+	
+	mean = (1.0/(double)Y.size())*mean; 
+        variance = (0.5/(double)Y.size())*(variance+Transpose(variance)); 
+	variance = variance - Multiply(mean,mean); 
+
+        SVD(U_matrix, d_vector, V_matrix, variance);
+        D_matrix = DiagonalMatrix(d_vector);
+        U_matrix = U_matrix *D_matrix;
+
+	// Copy blocks to blocks-backup, because blocks will be used later	
+	vector<TDenseMatrix> blocks_backup(blocks.size()); 
+	for (unsigned int i=0; i<blocks.size(); i++)
+		blocks_backup[i].CopyContent(blocks[i]); 
+	
+	// third pass: n blocks
+	CSampleIDWeight x= adaptive_start_point; 
+	size_t n_blocks = x.data.dim;
+        vector<TDenseMatrix> B_matrix(n_blocks);
+        for (unsigned int i=0; i<n_blocks; i++)
+                B_matrix[i] = ColumnMatrix(ColumnVector(U_matrix,i));
+        BlockAdaptive(x, B_matrix, 0.25, period, max_period);
+	// blocks should contain n_blocks matrices, each of them being a x.dim-by-1 matrix
+	
+	// forth pass: random block
+	random_blocks.resize(x.data.dim); 
+	random_block_scales.resize(x.data.dim); 
+	for (unsigned int i=0; i<x.data.dim; i++)
+	{
+		random_blocks[i] = ColumnVector(blocks[i],0); 
+		random_block_scales[i] = TDenseVector(x.data.dim,1.0); 
+	}
+	AssignDimensionsToRandomBlocks(x.data.dim, avg_block_size); 
+	RandomBlockAdaptive(x, 0.25, period, max_period);
+
+	// Copy back blocks
+	blocks.resize(blocks_backup.size()); 
+	for (unsigned int i=0; i<blocks_backup.size(); i++) 
+		blocks[i].CopyContent(blocks_backup[i]); 
+	return Write_RandomBlocks_RandomBlockScales(block_file_name); 
 }
 
 void CMetropolis::AssignDimensionsToRandomBlocks(size_t n, size_t avg_block_size)

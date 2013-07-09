@@ -13,6 +13,7 @@
 using namespace std; 
 
 class CEquiEnergyModel; 
+bool LoadSampleFromFile(const string &file_name, vector<CSampleIDWeight> &Y); 
 
 class CMetropolis
 {
@@ -29,7 +30,9 @@ public:
 	
 	// learning blocks
 	void BlockAdaptive(const CSampleIDWeight &adaptive_start_point, const vector<TDenseMatrix > &B, double target_ratio, size_t period, size_t max_period); 
-	void FourPassAdaptive(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, const string &rb_file=string()); 
+	void FourPassAdaptive(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin); 
+	bool AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name);
+	bool AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name);
 
 	// draw one sample
 	bool BlockRandomWalkMetropolis(double &, CSampleIDWeight &, const CSampleIDWeight &x); 
@@ -37,7 +40,7 @@ public:
 	// Random block learning
 	void RandomBlockAdaptive(const CSampleIDWeight &adaptive_start_point, double target_ratio, size_t period, size_t max_period); 
 	void FourPassRandomBlockAdaptive(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, size_t avg_block_size); 
-	bool OnePassRandomBlockAdaptive(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t avg_block_size, const string &file_name); 
+	bool RandomBlockAdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t avg_block_size, const string &sample_file_name, const string &block_file_name); 
 	// Draw one sample using random blocks
 	bool RandomBlockRandomWalkMetropolis(double &, CSampleIDWeight &, const CSampleIDWeight &x); 
 

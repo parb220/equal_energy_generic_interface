@@ -110,3 +110,30 @@ ostream& operator << (ostream &outputStr, const CSampleIDWeight &sample)
 
 	return outputStr; 
 }
+
+bool LoadSampleFromFile(const string &file_name, vector<CSampleIDWeight> &Y)
+{
+	ifstream input_file(file_name.c_str(), ios::binary|ios::in);
+	if (!input_file)
+		return false;
+	CSampleIDWeight sample; 
+	while (!input_file.eof())
+	{
+		read(input_file, &sample); 
+		Y.push_back(sample); 
+	}	 
+
+	input_file.close(); 
+	return true; 		
+}
+
+bool SaveSampleToFile(const string &file_name, const vector<CSampleIDWeight> &Y)
+{
+	ofstream output_file(file_name.c_str(), ios::binary|ios::out);
+	if (!output_file)
+		return false; 
+	for (unsigned int i=0; i<Y.size(); i++)
+		write(output_file, &(Y[i]) ); 
+	output_file.close(); 
+	return true;  
+}
