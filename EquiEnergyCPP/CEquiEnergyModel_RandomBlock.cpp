@@ -3,8 +3,13 @@
 #include <vector>
 #include <functional>
 #include <ctime>
-#include "CEquiEnergyModel.h"
 #include <fstream>
+#include "CSampleIDWeight.h"
+#include "CEESParameter.h"
+#include "CStorageHead.h"
+#include "CEquiEnergyModel.h"
+#include "CMetropolis.h"
+
 
 extern "C" {
         #include "dw_math.h"

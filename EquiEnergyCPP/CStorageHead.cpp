@@ -2,6 +2,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
+
+#include "CSampleIDWeight.h"
+#include "CPutGetBin.h"
 #include "CStorageHead.h"
 
 using namespace std;
@@ -10,14 +13,14 @@ CStorageHead::CStorageHead(int _run_id, size_t _storage_marker, size_t _number_b
 {
 	stringstream str; 
 	str << run_id << "/" << run_id << ".binary/";
+	bin.resize(number_bins); 
 	for (unsigned int i=0; i<bin.size(); i++)
-		bin[i] = CPutGetBin(0,0,storage_marker,filename_base+str.str(), cluster_node); 
+		bin[i] = CPutGetBin(i,0,storage_marker,filename_base+str.str(), cluster_node); 
 }
 
 CStorageHead::~CStorageHead()
 {
 }
-
 
 unsigned int CStorageHead::DepositSample(unsigned int _bin_id, const CSampleIDWeight &sample)
 {
@@ -163,4 +166,9 @@ void CStorageHead::RestoreForFetch(unsigned int start_bin, unsigned int end_bin)
 			bin[i].RestoreForFetch(); 
 	}
 
+}
+
+size_t CStorageHead::GetNumberRecrod(unsigned int index) const
+{
+	return bin[index].GetTotalNumberRecord();
 }

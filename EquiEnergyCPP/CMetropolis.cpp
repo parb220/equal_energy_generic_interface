@@ -1,7 +1,9 @@
-#include "CMetropolis.h"
 #include <cmath>
 #include "dw_rand.h"
 #include <fstream>
+#include "CSampleIDWeight.h"
+#include "CEquiEnergyModel.h"
+#include "CMetropolis.h"
 
 using namespace std; 
 
@@ -25,7 +27,8 @@ void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, con
 // Usually b(1)+...+b(k) = n and the matrix[B{1} ... B{k}] has orthogonal columsn, though this is not checked	
 {
 	size_t k = B.size(); 	// number of blocks
-
+	blocks = vector<TDenseMatrix>(k);  
+	
 	unsigned int n_draws =0;
 	vector<unsigned int> n_accepted(k,0); 
 	vector<unsigned int> begin_draws(k,0); 
@@ -140,7 +143,6 @@ void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, con
 		}
 	}
 	
-	blocks.resize(k); 
 	for (unsigned int i=0; i<k; i++)
 		blocks[i] = B[i]*scale[i]; 
 }
@@ -159,7 +161,7 @@ bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDW
 // 	model:	contains target distribution	
 {
 	size_t k=blocks.size(); 	// number of blocks	
-	vector<size_t> b; 	// size of each block
+	vector<size_t> b(k); 	// size of each block
 	for (unsigned int i=0; i<k; i++)
 		b[i] = blocks[i].cols; 
 
@@ -207,7 +209,7 @@ void CMetropolis::FourPassAdaptive(const CSampleIDWeight &adaptive_start_point, 
 
 	// second pass
 	n_blocks = 1; 
-	B_matrix.resize(n_blocks); 
+	B_matrix = vector<TDenseMatrix>(n_blocks);
 	B_matrix[0].Zeros(x.data.dim,x.data.dim); 
 	// B{1}(:,i) = blocks{i} <=> B[0][:,i] = blocks[i][:,0]
 	for (unsigned int i=0; i<x.data.dim; i++)
@@ -257,7 +259,7 @@ void CMetropolis::FourPassAdaptive(const CSampleIDWeight &adaptive_start_point, 
 
 	// third-pass: n blocks
 	n_blocks = x.data.dim; 
-	B_matrix.resize(n_blocks); 
+	B_matrix = vector<TDenseMatrix>(n_blocks); 
 	for (unsigned int i=0; i<n_blocks; i++)
 		B_matrix[i] = ColumnMatrix(ColumnVector(U_matrix,i)); 
 	BlockAdaptive(x, B_matrix, 0.25, period, max_period);
@@ -265,7 +267,7 @@ void CMetropolis::FourPassAdaptive(const CSampleIDWeight &adaptive_start_point, 
 	
 	// forth-pass: 1 block
 	n_blocks = 1; 
-	B_matrix.resize(n_blocks); 
+	B_matrix = vector<TDenseMatrix>(n_blocks); 
 	B_matrix[0].Zeros(x.data.dim,x.data.dim); 
 	// B{1}{:,i} = blocks{i} <=> B[0][:,i] = blocks[i](:,0)
 	for (unsigned int i=0; i<x.data.dim; i++)
@@ -281,7 +283,7 @@ bool CMetropolis::ReadBlocks(const string &file_name)
 		return false; 
 	size_t n_blocks; 
 	iFile.read((char*)(&n_blocks),sizeof(size_t) ); 
-	blocks.resize(n_blocks); 
+	blocks = vector<TDenseMatrix>(n_blocks); 
 	for (unsigned int i=0; i<n_blocks; i++)
 	{
 		size_t m, n; 
@@ -347,7 +349,7 @@ bool CMetropolis::AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start
 
 	// second pass
 	n_blocks = 1; 
-	B_matrix.resize(n_blocks); 
+	B_matrix = vector<TDenseMatrix>(n_blocks); 
 	B_matrix[0].Zeros(x.data.dim,x.data.dim); 
 	// B{1}(:,i) = blocks{i} <=> B[0][:,i] = blocks[i][:,0]
 	for (unsigned int i=0; i<x.data.dim; i++)
@@ -400,7 +402,7 @@ bool CMetropolis::AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_
 	
 	// forth-pass: 1 block
 	n_blocks = 1; 
-	B_matrix.resize(n_blocks); 
+	B_matrix = vector<TDenseMatrix>(n_blocks); 
 	B_matrix[0].Zeros(x.data.dim,x.data.dim); 
 	// B{1}{:,i} = blocks{i} <=> B[0][:,i] = blocks[i](:,0)
 	for (unsigned int i=0; i<x.data.dim; i++)

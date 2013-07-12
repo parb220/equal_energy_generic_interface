@@ -7,7 +7,6 @@
 #include "CSampleIDWeight.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
-#include "CMetropolis.h"
 
 extern "C" {
 	#include "dw_switch.h"
@@ -20,7 +19,14 @@ const int EQUI_ENERGY_JUMP = -1;
 const int NO_JUMP = 0; 
 
 class CMetropolis; 
-class MinusLogPosterior_NPSOL; 
+class CEquiEnergyModel; 
+
+class MinusLogPosterior_NPSOL
+{
+public:
+        static CEquiEnergyModel *model;
+        static void *function(int *mode, int *n, double *x, double *f, double *g, int *nstate);
+};
 
 class CEquiEnergyModel
 {
@@ -42,7 +48,7 @@ public:
 	CSampleIDWeight current_sample; 
 
 	TStateModel *target_model; 	// pointer to the TStateModel 
-	CMetropolis *metropolis;	// pointer to metropolis
+	CMetropolis *metropolis; 	// pointer to CMetropolis
 
 protected:
 	time_t timer_when_started; 
@@ -71,6 +77,8 @@ public:
 	double BurnIn_RandomBlock(const CEESParameter &, CStorageHead &); 	// burn-in using random blocks
 	bool Initialize(CStorageHead &, unsigned int start_bin, unsigned int end_bin, size_t desired_pool_size);	// Initialize model (setting values for current_sample) using bins indexed from start_bin through (including) end_bin. 
 	bool InitializeWithBestSample(CStorageHead &storage, unsigned int start_bin, unsigned int end_bin); 		// Initialize model using the best sample in the bins indexed from start_bin to end_bin
+	bool InitializeFromTarget(); 
+
 	double Simulation_Within(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy level (no jumping across levels). Returns the maximum posterior during simulation
 	double Simulation_Within_RandomBlock(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string());  
 	double Simulation_Cross(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string()); 	// Simulation across levels. Returns the maximum posterior during simulation 	

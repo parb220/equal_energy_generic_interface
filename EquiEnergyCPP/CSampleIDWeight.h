@@ -23,11 +23,7 @@ public:
 	bool PartialCopyFrom(const CSampleIDWeight &, unsigned int offset, size_t length);
 	bool PartialCopyFrom(unsigned int offset1, const CSampleIDWeight &, unsigned int offset2, size_t length);
 
-	unsigned int GetSize_Data()
-	{
-		return sizeof(int)+data.dim*sizeof(double)+sizeof(int)+sizeof(double);
-		// data.dim, data.vector, id, weight 
-	}
+	size_t GetSize_Data() const; 
 
 	friend istream& read(istream &, CSampleIDWeight *); 
 	friend ostream& write(ostream &, const CSampleIDWeight *);

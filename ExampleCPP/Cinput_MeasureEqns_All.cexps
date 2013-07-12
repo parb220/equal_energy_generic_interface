@@ -1,0 +1,36 @@
+if (dsgemodel_ps->indx_hard_restrict < 100)
+{
+   #include "Cinput_MeasureEqns.exps"
+}
+else if (!strncmp("modb103_5v", dsgemodel_ps->modeltag_cv->v,  10) || !strncmp("modb105_5v", dsgemodel_ps->modeltag_cv->v,  10))
+{
+   #include "Cinput_MeasureEqns_modb_5v.exps"
+}
+else if (!strncmp("modb103_6v", dsgemodel_ps->modeltag_cv->v,  10) || !strncmp("modb105_6v", dsgemodel_ps->modeltag_cv->v,  10))
+{
+   #include "Cinput_MeasureEqns_modb_6v.exps"
+}
+else if (!strncmp("modc203_5v", dsgemodel_ps->modeltag_cv->v,  10) || !strncmp("modc205_5v", dsgemodel_ps->modeltag_cv->v,  10))
+{
+   #include "Cinput_MeasureEqns_modc_5v.exps"
+}
+else if (!strncmp("modc203_6v", dsgemodel_ps->modeltag_cv->v,  10) || !strncmp("modc205_6v", dsgemodel_ps->modeltag_cv->v,  10) || 
+         !strncmp("modc207_6v", dsgemodel_ps->modeltag_cv->v,  10))
+{
+   #include "Cinput_MeasureEqns_modc_6v.exps"
+}
+else
+{
+   if (0)
+   {
+      fprintf(tzGetDebugFile(), "\nFatal Error in .../CInput_MeasureEqns_ALL.cexps: no match for modeltag_cv->v (%s).\n", dsgemodel_ps->modeltag_cv->v);
+      fflush(tzGetDebugFile());
+   }
+   else
+   {
+      fprintf(stdout, "\nFatal Error in .../CInput_MeasureEqns_ALL.cexps: no match for modeltag_cv->v (%s).\n", dsgemodel_ps->modeltag_cv->v);
+      fflush(stdout);
+   }
+}
+
+   //$$## Make sure that modeltag_cv matches the specified.

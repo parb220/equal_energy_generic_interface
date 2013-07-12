@@ -3,8 +3,9 @@
 #include <vector> 
 #include <functional>
 #include <ctime>
-#include "CEquiEnergyModel.h"
 #include <fstream>
+#include "CEquiEnergyModel.h"
+#include "CMetropolis.h"
 
 extern "C" {
 	#include "dw_math.h"
@@ -40,6 +41,24 @@ bool CEquiEnergyModel::InitializeFromFile(const string &file_name)
 	current_sample.id = (unsigned int)(time(NULL)-timer_when_started); 
 	double bounded_log_posterior = log_posterior_function(current_sample); 
 	return true;  
+}
+
+bool CEquiEnergyModel::InitializeFromTarget()
+{
+	if (target_model == NULL)
+		return false; 
+	size_t n = NumberFreeParametersTheta(target_model)+NumberFreeParametersQ(target_model); 
+	current_sample.data.Resize(n); 
+	double *x = new double[n]; 
+	ConvertThetaToFreeParameters(target_model,x); 
+	ConvertQToFreeParameters(target_model,x+NumberFreeParametersTheta(target_model) ); 
+	
+	for (unsigned int i=0; i<current_sample.data.dim; i++)
+		current_sample.data[i] = x[i]; 
+	current_sample.id = (unsigned int)(time(NULL)-timer_when_started);
+	log_posterior_function(current_sample);
+	delete []x; 
+	return true; 
 }
 
 double CEquiEnergyModel::log_posterior_function(CSampleIDWeight &x)
@@ -299,4 +318,5 @@ if_bounded(_if_bounded), energy_level(eL), h_bound(_h), t_bound(_t), current_sam
 
 CEquiEnergyModel::~CEquiEnergyModel()
 {
+	delete metropolis; 
 }

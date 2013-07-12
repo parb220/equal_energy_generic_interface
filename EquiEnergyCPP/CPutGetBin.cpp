@@ -3,9 +3,10 @@
 #include <cmath>
 #include <cstdio>
 #include <glob.h>
-#include "CPutGetBin.h"
 #include "dw_rand.h"
 
+#include "CSampleIDWeight.h"
+#include "CPutGetBin.h"
 string CPutGetBin::GetFileNameForDump() const
 {
 	stringstream convert;

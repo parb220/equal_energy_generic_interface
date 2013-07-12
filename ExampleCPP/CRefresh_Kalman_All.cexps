@@ -1,0 +1,12 @@
+wne_dv->v[0] = finalpars_ps->gsigmaglambdaa_dv->v[indx_st_var[si][0]];
+wne_dv->v[1] = finalpars_ps->gsigmaglambdaz_dv->v[indx_st_var[si][1]];
+wne_dv->v[2] = finalpars_ps->gsigmagnuz_dv    ->v[indx_st_var[si][2]];
+wne_dv->v[3] = finalpars_ps->gsigmaglambdaq_dv->v[indx_st_var[si][3]];
+wne_dv->v[4] = finalpars_ps->gsigmagnuq_dv    ->v[indx_st_var[si][4]];
+wne_dv->v[5] = finalpars_ps->gsigmagvarphi_dv ->v[indx_st_var[si][5]];
+wne_dv->v[6] = finalpars_ps->gsigmagpsi_dv    ->v[indx_st_var[si][6]];
+wne_dv->v[7] = finalpars_ps->gsigmagtheta_dv  ->v[indx_st_var[si][7]];
+if ((dsgemodel_ps->indx_hard_restrict >= 100) && (dsgemodel_ps->indx_hard_restrict < 200))
+   wne_dv->v[8] = finalpars_ps->gsigmagdelta_dv  ->v[indx_st_var[si][8]];
+       //$$## Hard-coded.  7(8)+1 must match ne, which may be greater than nshocks=finalpars_ps->n_tvvarpars in CreateTSfinalpars().
+wne_dv->flag = V_DEF;

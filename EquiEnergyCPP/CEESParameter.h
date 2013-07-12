@@ -3,9 +3,10 @@
 
 #include <string>
 #include <vector>
-#include "CSampleIDWeight.h"
 
 using namespace std; 
+
+class CSampleIDWeight; 
 
 class CEESParameter 
 {

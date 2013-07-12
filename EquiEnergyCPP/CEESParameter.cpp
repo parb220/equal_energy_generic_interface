@@ -1,6 +1,8 @@
 #include <fstream>
 #include <gsl/gsl_poly.h>
 #include <cmath>
+
+#include "CSampleIDWeight.h"
 #include "CEESParameter.h"
 
 using namespace std; 
@@ -120,38 +122,45 @@ bool CEESParameter::SetEnergyBound()
  *   *     gamma is determined by solving a polynomial equation 
  *    *     gamma+gamma^2+...+gamma^{K-1} = H[K-1]-H[0]; 
  *     *     */
-
-        double *coefficients = new double [number_energy_level];
-        coefficients[0] = h0-hk_1;
-        for (unsigned int i=1; i<number_energy_level; i++)
-                coefficients[i]=1.0;
-        double *Z = new double [(number_energy_level-1)*2];
-
-        gsl_poly_complex_workspace *w = gsl_poly_complex_workspace_alloc(number_energy_level);
-        gsl_poly_complex_solve(coefficients, number_energy_level, w, Z);
-
-        double gamma;
-        bool continue_flag = true;
-        for (unsigned int i=0; i<number_energy_level-1 && continue_flag; i++)
-        {
-                if (Z[2*i]>0 && abs(Z[2*i+1]) <= 1.0e-6)
-                {
-                        gamma = Z[2*i];
-                        continue_flag = false;
-                }
-        }
-        delete [] Z;
-        delete [] coefficients;
-        if (continue_flag)
-                return false;
-
 	h.resize(number_energy_level+1);  
-	h[0] = h0; 
-	h[number_energy_level-1] = hk_1; 
-	for (unsigned int i=1; i<number_energy_level-1; i++)
-		h[i] = h[i-1]+pow(gamma, i);
-	h[number_energy_level] = h[number_energy_level-1]+pow(gamma, number_energy_level);  
-	return true; 
+	if (number_energy_level == 1)
+	{
+		h[number_energy_level] = h[0] = h0; 
+		return true; 
+	}
+	else 
+	{
+		double *coefficients = new double [number_energy_level];
+        	coefficients[0] = h0-hk_1;
+        	for (unsigned int i=1; i<number_energy_level; i++)
+                	coefficients[i]=1.0;
+        	double *Z = new double [(number_energy_level-1)*2];
+
+        	gsl_poly_complex_workspace *w = gsl_poly_complex_workspace_alloc(number_energy_level);
+        	gsl_poly_complex_solve(coefficients, number_energy_level, w, Z);
+
+        	double gamma;
+        	bool continue_flag = true;
+        	for (unsigned int i=0; i<number_energy_level-1 && continue_flag; i++)
+        	{
+                	if (Z[2*i]>0 && abs(Z[2*i+1]) <= 1.0e-6)
+                	{
+                        	gamma = Z[2*i];
+                        	continue_flag = false;
+                	}
+        	}
+        	delete [] Z;
+        	delete [] coefficients;
+        	if (continue_flag)
+                	return false;
+
+		h[0] = h0; 
+		h[number_energy_level-1] = hk_1; 
+		for (unsigned int i=1; i<number_energy_level-1; i++)
+			h[i] = h[i-1]+pow(gamma, i);
+		h[number_energy_level] = h[number_energy_level-1]+pow(gamma, number_energy_level);  
+		return true; 
+	}
 }
 
 bool CEESParameter::SetTemperature()

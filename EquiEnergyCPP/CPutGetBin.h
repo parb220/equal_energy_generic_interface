@@ -3,7 +3,8 @@
 
 #include <string>
 #include <vector>
-#include "CSampleIDWeight.h"
+
+class CSampleIDWeight; 
 
 using namespace std; 
 

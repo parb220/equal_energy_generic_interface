@@ -1,0 +1,13 @@
+if (dsgemodel_ps->indx_hard_restrict < 100)
+{
+   #include "Cinput_Gensys.exps"
+}
+else if (dsgemodel_ps->indx_hard_restrict < 200)
+{
+   #include "Cinput_Gensys_modb.exps"
+}
+else if (dsgemodel_ps->indx_hard_restrict < 300)
+{
+   #include "Cinput_Gensys_modc.exps"
+}
+    //$$## Depending on whether additional shocks are included.

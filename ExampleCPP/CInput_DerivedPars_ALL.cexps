@@ -1,0 +1,31 @@
+if (dsgemodel_ps->indx_hard_restrict<=2)
+{
+   #include "Cinput_DerivedPars_FixedLambdaa.exps"
+}
+else if ((dsgemodel_ps->indx_hard_restrict==3) || (dsgemodel_ps->indx_hard_restrict==4) || (dsgemodel_ps->indx_hard_restrict==5))
+{
+   #include "Cinput_DerivedPars_DerivedLambdaa.exps"
+}
+else if (dsgemodel_ps->indx_hard_restrict==6)
+{
+   #include "Cinput_DerivedPars_FreeBeta.exps"
+}
+else if ((dsgemodel_ps->indx_hard_restrict==103) || (dsgemodel_ps->indx_hard_restrict==105) ||
+         (dsgemodel_ps->indx_hard_restrict==203) || (dsgemodel_ps->indx_hard_restrict==205) ||
+         (dsgemodel_ps->indx_hard_restrict==207) )
+{
+   #include "Cinput_DerivedPars_modb7c_3a5.exps"
+}
+else
+{
+   if (0)
+   {
+      fprintf(tzGetDebugFile(), "\nFatal Error in .../CInput_DerivedPars_ALL.cexps: dsgemodel_ps->indx_hard_restrict = %d has not bee considered.\n", dsgemodel_ps->indx_hard_restrict);
+      fflush(tzGetDebugFile());
+   }
+   else
+   {
+      fprintf(stdout, "\nFatal Error in .../CInput_DerivedPars_ALL.cexps: dsgemodel_ps->indx_hard_restrict = %d has not bee considered.\n", dsgemodel_ps->indx_hard_restrict);
+      fflush(stdout);
+   }
+}

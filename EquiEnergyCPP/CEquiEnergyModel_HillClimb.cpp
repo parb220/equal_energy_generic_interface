@@ -1,19 +1,17 @@
 #include <cmath>
-#include "CEquiEnergyModel.h"
 #include "dw_rand.h"
+#include "CSampleIDWeight.h"
+#include "CEESParameter.h"
+#include "CStorageHead.h"
+#include "CEquiEnergyModel.h"
+#include "CMetropolis.h"
 
 extern "C" {
 	void npoptn_(char *, int);
 	void npsol_(int *n, int *nclin, int *ncnln, int *ldA, int *ldJ, int *ldR, double *A, double *bl, double *bu, void *funcon(int *mode, int *ncnln, int *n, int *ldJ, int *needc, double *x, double *c, double *cJac, int *nstate), void *funobj(int *mode, int *n, double *x, double *f, double *g, int *nstate), int *inform, int *iter, int *istate, double *c, double *cJac, double *clamda, double *f, double *g, double *R, double *x, int *iw, int *leniw, double *w, int *lenw);
 }
 
-class MinusLogPosterior_NPSOL
-{
-public: 
-	static CEquiEnergyModel *model; 
-	static void *function(int *mode, int *n, double *x, double *f, double *g, int *nstate); 
-};
-
+CEquiEnergyModel* MinusLogPosterior_NPSOL::model; 
 void *MinusLogPosterior_NPSOL::function(int *mode, int *n, double *x, double *f, double *g, int *nstate)
 {
 	*f = model->log_posterior_function(x,(size_t)*n); 

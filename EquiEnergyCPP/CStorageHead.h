@@ -3,10 +3,11 @@
 
 #include <vector>
 #include <string>
-#include "CPutGetBin.h"
-#include "CSampleIDWeight.h"
 
 using namespace std; 
+
+class CSampleIDWeight; 
+class CPutGetBin; 
 
 class CStorageHead
 {
@@ -28,7 +29,7 @@ public:
 	bool makedir(); 
 	void finalize(unsigned int =1,  unsigned int =0)  ;
 	size_t GetNumberBins() const { return number_bins; }
-	size_t GetNumberRecrod(unsigned int index) const { return bin[index].GetTotalNumberRecord(); }
+	size_t GetNumberRecrod(unsigned int index) const ;  
 
 	/* for reassigning samples into different bins */
 	virtual void DisregardHistorySamples(unsigned int = 1, unsigned int = 0); 

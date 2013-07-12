@@ -1,14 +1,21 @@
 #include <string>
+#include "dw_dense_matrix.hpp"
 #include "CSampleIDWeight.h"
 
 using namespace std; 
+
+size_t CSampleIDWeight::GetSize_Data() const
+{
+	return sizeof(int)+(size_t)data.dim*sizeof(double)+sizeof(int)+sizeof(double);
+	// data.dim, data.vector, id, weight 
+}
 
 CSampleIDWeight::CSampleIDWeight(const TDenseVector &_x, int _id, double _weight) : id(_id), weight(_weight)
 {
 	data.CopyContent(_x); 
 }
 
-CSampleIDWeight::CSampleIDWeight(const CSampleIDWeight &right) : id(right.id), weight(right.id)
+CSampleIDWeight::CSampleIDWeight(const CSampleIDWeight &right) : id(right.id), weight(right.weight)
 {
 	data.CopyContent(right.data); 
 }
@@ -117,11 +124,15 @@ bool LoadSampleFromFile(const string &file_name, vector<CSampleIDWeight> &Y)
 	if (!input_file)
 		return false;
 	CSampleIDWeight sample; 
-	while (!input_file.eof())
-	{
-		read(input_file, &sample); 
-		Y.push_back(sample); 
-	}	 
+	read(input_file, &sample); 
+	input_file.seekg(0,ios::beg); 
+	input_file.seekg(0,ios::end); 
+	size_t lenFile = input_file.tellg(); 
+	size_t nSample = lenFile/sample.GetSize_Data(); 
+	Y.resize(nSample); 
+	input_file.seekg(0, ios::beg); 
+	for (unsigned int i=0; i<nSample; i++)	
+		read(input_file, &(Y[i])); 
 
 	input_file.close(); 
 	return true; 		

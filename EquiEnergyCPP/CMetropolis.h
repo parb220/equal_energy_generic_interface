@@ -2,8 +2,6 @@
 #define _CLASS_METHOPOLIS_
 
 #include <vector>
-#include "CEquiEnergyModel.h"
-#include "CSampleIDWeight.h"
 #include "dw_dense_matrix.hpp"
 
 /*extern "C" {
@@ -11,9 +9,11 @@
 }*/
 
 using namespace std; 
-
+class CSampleIDWeight; 
 class CEquiEnergyModel; 
+
 bool LoadSampleFromFile(const string &file_name, vector<CSampleIDWeight> &Y); 
+
 
 class CMetropolis
 {
