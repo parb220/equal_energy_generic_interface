@@ -53,8 +53,7 @@ void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, con
 		b[i] = B[i].cols;  
 
 	// Beginning adaptive burn-in 
-	CSampleIDWeight x, y; 
-	y=adaptive_start_point; 
+	CSampleIDWeight y=adaptive_start_point, x; 
 	double log_previous = model->log_posterior_function(y), log_current, new_scale, diff;
 	bool done = false; 
 	unsigned int check = period; 
@@ -64,6 +63,7 @@ void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, con
 		for (unsigned int i=0; i<k; i++)
 		{
 			x.data = y.data + scale[i]*(B[i]*RandomNormalVector(b[i]));
+			x.DataChanged(); 
 			log_current = model->log_posterior_function(x); 
 
 			if (log_current-log_previous >= log(dw_uniform_rnd()) )
@@ -144,7 +144,7 @@ void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, con
 	}
 	
 	for (unsigned int i=0; i<k; i++)
-		blocks[i] = B[i]*scale[i]; 
+		blocks[i] = B[i]*best_scale[i]; 
 }
 
 bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDWeight &y, const CSampleIDWeight &initial_v)
@@ -171,6 +171,7 @@ bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDW
 	for (unsigned int i=0; i<k; i++)
 	{
 		y.data = x.data+blocks[i]*RandomNormalVector(b[i]); 
+		y.DataChanged(); 
 		log_current = model->log_posterior_function(y); 
 		if (log_current - log_previous >= log(dw_uniform_rnd()) )
 		{
@@ -289,7 +290,7 @@ bool CMetropolis::ReadBlocks(const string &file_name)
 		size_t m, n; 
 		iFile.read((char*)(&m),sizeof(size_t) ); 
 		iFile.read((char*)(&n),sizeof(size_t) ); 
-		blocks[i].Resize(m,n); 
+		blocks[i]=TDenseMatrix(m,n); 
 		for (unsigned int j=0; j<n; j++)
 			for (unsigned int k=0; k<m; k++)
 			{
@@ -357,7 +358,8 @@ bool CMetropolis::AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start
 			B_matrix[0](j,i) = blocks[i](j,0);  		
 	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
 
-	return WriteBlocks(block_file_name); 
+	bool return_value = WriteBlocks(block_file_name); 
+	return return_value; 
 }
 
 bool CMetropolis::AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name) 
@@ -409,6 +411,7 @@ bool CMetropolis::AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_
 		for (unsigned int j=0; j<x.data.dim; j++)
 			B_matrix[0](j,i) = blocks[i](j,0); 
 	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
-	return WriteBlocks(block_file_name); 
+	bool return_value = WriteBlocks(block_file_name); 
+	return return_value; 
 }
 

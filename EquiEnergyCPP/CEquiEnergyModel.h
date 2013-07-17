@@ -46,6 +46,7 @@ public:
 // 		between when it is drawn and when the program is started)
 // 	Weight:	energy (log posterior)
 	CSampleIDWeight current_sample; 
+	CSampleIDWeight original_sample; 	// to save the original setting of TStateModel
 
 	TStateModel *target_model; 	// pointer to the TStateModel 
 	CMetropolis *metropolis; 	// pointer to CMetropolis
@@ -97,8 +98,9 @@ public:
 	CEquiEnergyModel(); 
 	CEquiEnergyModel(bool _if_bounded, unsigned int eL, double _h, double _t, const CSampleIDWeight & _x=CSampleIDWeight(), TStateModel *_model=NULL, CMetropolis *_metropolis =NULL, time_t _time=time(NULL)); 
 	~CEquiEnergyModel(); 
-	/* Functions
-	*/
+	bool SaveTargetModelOriginalSetting(); 
+	bool RecoverTargetModelOriginalSetting(); 
+
 friend class MinusLogPosterior_NPSOL; 
 };
 

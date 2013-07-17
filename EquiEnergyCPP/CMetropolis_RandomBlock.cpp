@@ -36,6 +36,7 @@ bool CMetropolis::RandomBlockRandomWalkMetropolis(double &log_posterior_y, CSamp
 			increment.data = increment.data + random_blocks[d_index] * random_block_scales[d_index][block_size-1] * dw_gaussian_rnd();  
 		}
 		y.data = x.data + increment.data; 
+		y.DataChanged(); 
 		log_current = model->log_posterior_function(y); 
 		if (log_current - log_previous >= log(dw_uniform_rnd() ) )
 		{
@@ -87,6 +88,7 @@ void CMetropolis::RandomBlockAdaptive(const CSampleIDWeight &adaptive_start_poin
 				increment.data = increment.data + random_blocks[d_index]*scale[i]*dw_gaussian_rnd(); 
 			}
 			y.data = x.data+increment.data; 
+			y.DataChanged(); 
 			log_current = model->log_posterior_function(y); 
 			if (log_current-log_previous >= log(dw_uniform_rnd() ) )
 			{

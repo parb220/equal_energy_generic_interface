@@ -31,7 +31,7 @@ void TopDownTuningSimulation(CEquiEnergyModel &model, const vector <unsigned int
 		// STEP 1: 
 		// if it is the highest temperature level, tune diag for the highest temp level
 		// otherwise, tune  covariance based on samples at the higher temp level
-		if (level == parameter.number_energy_level-1)
+		/*if (level == parameter.number_energy_level-1)
 		{
 			if (!model.metropolis->AdaptiveBeforeSimulation(model.current_sample, period, max_period, block_file_name))
 			{
@@ -58,6 +58,7 @@ void TopDownTuningSimulation(CEquiEnergyModel &model, const vector <unsigned int
 		estimation_length = 5000; 
 		DispatchSimulation(nodePool, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_FIRST);	
 
+		*/
 		// STEP 3: tuning covaraince based on the samples of the current level	
 		convert.str(string()); 
 		convert << parameter.run_id << "/" << parameter.run_id << BLOCK_2ND << level; 

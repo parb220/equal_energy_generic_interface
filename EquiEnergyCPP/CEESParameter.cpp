@@ -157,8 +157,8 @@ bool CEESParameter::SetEnergyBound()
 		h[0] = h0; 
 		h[number_energy_level-1] = hk_1; 
 		for (unsigned int i=1; i<number_energy_level-1; i++)
-			h[i] = h[i-1]+pow(gamma, i);
-		h[number_energy_level] = h[number_energy_level-1]+pow(gamma, number_energy_level);  
+			h[i] = h[i-1]+pow(gamma, (double)i);
+		h[number_energy_level] = h[number_energy_level-1]+pow(gamma, (double)number_energy_level);  
 		return true; 
 	}
 }

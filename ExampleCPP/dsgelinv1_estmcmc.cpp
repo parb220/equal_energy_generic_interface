@@ -32,6 +32,7 @@ if (1)
 #include <cstring>
 #include <sstream>
 #include <mpi.h>
+#include "dw_rand.h"
 #include "CStorageHead.h"
 #include "CSampleIDWeight.h"
 #include "CEESParameter.h"
@@ -763,6 +764,7 @@ int main(int n_args_cl, char **args_cl)
 	CEquiEnergyModel model;
 	//target model; 
 	model.target_model = state_space_model;	
+	model.SaveTargetModelOriginalSetting(); 
 	
 	if (if_original > 0)	// if only the original model is used, 
 		model.if_bounded = false; 
@@ -779,12 +781,14 @@ int main(int n_args_cl, char **args_cl)
 	model.metropolis = new CMetropolis(&model);  
 	
 	// master dispatches while slave runs tasks
+	dw_initialize_generator(time(NULL)+my_rank*1000);
 	if (my_rank == 0)
 		master_deploying(n_args_cl, args_cl, model, parameter, storage, mode); 
 	else 
 		slave_computing(n_args_cl, args_cl, model, parameter, storage, mode);
 
 	// end
+	model.RecoverTargetModelOriginalSetting(); 
         MPI_Finalize();
         cout << "equi energy sampling : simulation done.\n";	
 

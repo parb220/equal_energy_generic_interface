@@ -8,14 +8,18 @@
 
 using namespace std; 
 
+class CEquiEnergyModel; 
+
 class CSampleIDWeight
 {
+protected:
+	bool calculated; 
 public:
 	TDenseVector data; 
 	int id; 
 	double weight; 
 
-	CSampleIDWeight(const TDenseVector &_x=TDenseVector(), int _id=0, double _weight=0.0); 
+	CSampleIDWeight(const TDenseVector &_x=TDenseVector(), int _id=0, double _weight=0.0, bool _calculated=false); 
 	CSampleIDWeight(const CSampleIDWeight &); 
 	~CSampleIDWeight();
 
@@ -24,12 +28,14 @@ public:
 	bool PartialCopyFrom(unsigned int offset1, const CSampleIDWeight &, unsigned int offset2, size_t length);
 
 	size_t GetSize_Data() const; 
+	void DataChanged(); 
 
 	friend istream& read(istream &, CSampleIDWeight *); 
 	friend ostream& write(ostream &, const CSampleIDWeight *);
 
 	friend istream& operator>>(istream &, CSampleIDWeight &); 
 	friend ostream& operator<<(ostream &, const CSampleIDWeight &); 
+	friend class CEquiEnergyModel; 
 }; 
 
 bool LoadSampleFromFile(const string &file, vector<CSampleIDWeight> &Y); 

@@ -138,6 +138,7 @@ void CEquiEnergyModel::HillClimb(size_t nSolution, CStorageHead &storage, const 
 		sample.data.Resize(n); 
 		for (unsigned int j=0; j<n; j++)
 			sample.data[i] = x[i]; 
+		sample.DataChanged(); 
 		sample.id = (unsigned int)(time(NULL)-timer_when_started);    
 		log_posterior_function(sample); 
 

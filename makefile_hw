@@ -90,16 +90,21 @@ SCHEDULE_OBJS = DispatchSimulation.o DispatchHillClimbTask.o TopDownTuningTracki
 
 EXAMPLE_OBJS = dsgelinv1_benchmark.o dw_dsgelinv1.o dsgelinv1_comfuns.o dsgelinv1_estmcmc.o 
 
+PARSE_RESULT_OBJS = binary2text.o
 #################################################################################
-all : $(EXE_DIR)/credit_friction2_benchmark
+all : $(EXE_DIR)/credit_friction2_benchmark $(EXE_DIR)/binary2text
 
-OBJS := $(OBJS) $(DW_OBJS) $(TZ_OBJS) $(MATRIX_OBJS) $(GENERIC_OBJS) $(SCHEDULE_OBJS) $(EXAMPLE_OBJS) 
+OBJS1 := $(OBJS) $(DW_OBJS) $(TZ_OBJS) $(MATRIX_OBJS) $(GENERIC_OBJS) $(SCHEDULE_OBJS) $(EXAMPLE_OBJS) 
+OBJS2 := $(OBJS) $(MATRIX_OBJS) CSampleIDWeight.o $(PARSE_RESULT_OBJS)
 
 #CMSSM_APP :  $(EXE_DIR)/est_all_mpi
 # $(EXE_DIR)/est_all
 
-$(EXE_DIR)/credit_friction2_benchmark: $(OBJS) $(BUILD_DIR)/CStorageHead.o
+$(EXE_DIR)/credit_friction2_benchmark: $(OBJS1) $(BUILD_DIR)/CStorageHead.o
 	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/credit_friction2_benchmark
+
+$(EXE_DIR)/binary2text: $(OBJS2)
+	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/binary2text
 
 $(BUILD_DIR)/CStorageHead.o : $(EQUAL_ENERGY_CPP_DIR)/CStorageHead.cpp
 	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $@
