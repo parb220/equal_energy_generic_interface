@@ -65,7 +65,7 @@ double CEquiEnergyModel::log_likelihood_function(const double *x, size_t n)
 // will be set as its original value. 
 // Samples generated during HillClimb will be saved into storage but always at the level of number_energy_level
 // (the extra level)
-void CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
+double CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
 {
 	energy_level = parameter.number_energy_level; 
 	bool if_bounded_old = if_bounded; 
@@ -132,15 +132,17 @@ void CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, 
 	double f; 	// value of objective f(x) at the final iterate
 	double *g = new double[n]; // objective gradient	   
 
+	double max_log_posterior = -1.0e300; 
+
 	npoptn_((char*)DERIVATIVE_LEVEL.c_str(), DERIVATIVE_LEVEL.length());
         // npoptn_((char*)NO_PRINT_OUT.c_str(), NO_PRINT_OUT.length());
 
 	// test if LogPosterior_StatesIntegratedOut works
 	for (unsigned int i=0; i<nSolution; i++)
 	{
-		for (unsigned int i=0; i<n; i++)
-			// x[i]=dw_gaussian_rnd();  
-			x[i] = dw_uniform_rnd(); 
+		for (unsigned int j=0; j<n; j++)
+			// x[j]=dw_gaussian_rnd();  
+			x[j] = dw_uniform_rnd(); 
         	npoptn_((char*)COLD_START.c_str(), COLD_START.length());
 		npsol_(&n, &nclin, &ncnln, &ldA, &ldJ, &ldR, A, bl, bu, NULL, MinusLogPosterior_NPSOL::function, &inform, &iter, istate, c, cJac, clambda, &f, g, R, x, iw, &leniw, w, &lenw); 
 		if (f < 1.0e300)
@@ -148,13 +150,14 @@ void CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, 
 			CSampleIDWeight sample; 
 			sample.data.Resize(n); 
 			for (unsigned int j=0; j<n; j++)
-				sample.data[i] = x[i]; 
+				sample.data[j] = x[j]; 
 			sample.DataChanged(); 
 			sample.id = (unsigned int)(time(NULL)-timer_when_started);    
 			log_posterior_function(sample); 
 
 			int binIndex = parameter.BinIndex(sample.weight, energy_level);
                 	storage.DepositSample(binIndex, sample);
+			max_log_posterior = sample.weight > max_log_posterior ? sample.weight : max_log_posterior; 
 		}
 	}
 
@@ -178,9 +181,10 @@ void CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, 
 	// ConvertFreeParametersToQ(target_model, x_old+NumberFreeParametersTheta(target_model)); 
 	// delete [] x_old;
 	if_bounded = if_bounded_old; 
+	return max_log_posterior; 
 }
 
-void CEquiEnergyModel::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
+double CEquiEnergyModel::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
 {
 	energy_level = parameter.number_energy_level;
         bool if_bounded_old = if_bounded;
@@ -193,6 +197,7 @@ void CEquiEnergyModel::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storag
 	int nit=50, itct, fcount; 
 	int retcodeh; 
 	const double IniHCsminwel=1.0e-5; 
+	double max_log_posterior = -1.0e300; 
 	
 	for (unsigned int iSolution=0; iSolution < nSolution; iSolution ++)
 	{
@@ -217,6 +222,7 @@ void CEquiEnergyModel::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storag
 
                         int binIndex = parameter.BinIndex(sample.weight, energy_level);
                         storage.DepositSample(binIndex, sample);
+			max_log_posterior = sample.weight > max_log_posterior ? sample.weight : max_log_posterior; 
 		}
 	}
 
@@ -227,4 +233,5 @@ void CEquiEnergyModel::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storag
 	storage.finalize(parameter.BinIndex_Start(energy_level), parameter.BinIndex_End(energy_level));  
         storage.ClearDepositDrawHistory(parameter.BinIndex_Start(energy_level), parameter.BinIndex_End(energy_level));
 	if_bounded = if_bounded_old; 
+	return max_log_posterior; 
 }

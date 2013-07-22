@@ -91,8 +91,8 @@ public:
 	double Simulation_Within_RandomBlock(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string());  
 	double Simulation_Cross(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string()); 	// Simulation across levels. Returns the maximum posterior during simulation 	
 	double Simulation_Cross_RandomBlock(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string()); 
-	void HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter); 
-	void HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter); 
+	double HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter); 
+	double HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter); 
 	
 ///////////////////////////////////////////////////////////////////////////////////////////
 // IO 

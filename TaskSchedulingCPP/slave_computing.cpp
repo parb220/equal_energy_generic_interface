@@ -26,8 +26,7 @@ void slave_computing(int argc, char **argv, CEquiEnergyModel &model, CEESParamet
 			exit(0); 
 		}		
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
-			model.HillClimb_CSMINWEL(rPackage[LENGTH_INDEX], storage, parameter); 
-			// model.HillClimb_NPSOL(rPackage[LENGTH_INDEX], storage, parameter); 
+			min_energy = -model.HillClimb_CSMINWEL(rPackage[LENGTH_INDEX], storage, parameter); 
 		else if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == TUNE_TAG_SIMULATION_SECOND || status.MPI_TAG == SIMULATION_TAG) 
 		{	
 			model.energy_level = (unsigned int)(rPackage[LEVEL_INDEX]);
@@ -61,10 +60,10 @@ void slave_computing(int argc, char **argv, CEquiEnergyModel &model, CEESParamet
 				cerr << "Error in simulation.\n"; 
 				abort(); 
 			}
-			sPackage[LEVEL_INDEX] = model.energy_level;
-			sPackage[H0_INDEX] = min_energy; 	
-			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD); 
 		}
+		sPackage[LEVEL_INDEX] = model.energy_level;
+		sPackage[H0_INDEX] = min_energy; 	
+		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD); 
 	}
 }
 
