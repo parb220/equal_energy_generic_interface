@@ -9,45 +9,54 @@
 extern "C" {
 	void npoptn_(char *, int);
 	void npsol_(int *n, int *nclin, int *ncnln, int *ldA, int *ldJ, int *ldR, double *A, double *bl, double *bu, void *funcon(int *mode, int *ncnln, int *n, int *ldJ, int *needc, double *x, double *c, double *cJac, int *nstate), void *funobj(int *mode, int *n, double *x, double *f, double *g, int *nstate), int *inform, int *iter, int *istate, double *c, double *cJac, double *clamda, double *f, double *g, double *R, double *x, int *iw, int *leniw, double *w, int *lenw);
+	#include "dw_csminwel.h"
 }
 
 CEquiEnergyModel* MinusLogPosterior_NPSOL::model; 
+CEquiEnergyModel* MinusLogPosterior_CSMINWEL::model; 
+
 void *MinusLogPosterior_NPSOL::function(int *mode, int *n, double *x, double *f, double *g, int *nstate)
 {
-	*f = model->log_posterior_function(x,(size_t)*n); 
+	*f = -model->log_posterior_function(x,(size_t)*n); 
+}
+
+double MinusLogPosterior_CSMINWEL::function(double *x, int n, double **args, int *dims)
+{
+	double return_value = -model->log_posterior_function(x, (size_t)n); 
+	return return_value; 
 }
 
 
 double CEquiEnergyModel::log_posterior_function(const double *x, size_t n)
 {
-        double *old_x = new double[n];
-	ConvertThetaToFreeParameters(target_model, old_x);
-        ConvertQToFreeParameters(target_model, old_x+NumberFreeParametersTheta(target_model) );
+        //double *old_x = new double[n];
+	//ConvertThetaToFreeParameters(target_model, old_x);
+        //ConvertQToFreeParameters(target_model, old_x+NumberFreeParametersTheta(target_model) );
 	
 	ConvertFreeParametersToTheta(target_model, (double*)x);
 	ConvertFreeParametersToQ(target_model, (double*)x+NumberFreeParametersTheta(target_model) );
 	double log_posterior = LogPosterior_StatesIntegratedOut(target_model);
-	ConvertFreeParametersToTheta(target_model, old_x);
-        ConvertFreeParametersToQ(target_model, old_x+NumberFreeParametersTheta(target_model) );
-	delete [] old_x; 
+	//ConvertFreeParametersToTheta(target_model, old_x);
+        //ConvertFreeParametersToQ(target_model, old_x+NumberFreeParametersTheta(target_model) );
+	//delete [] old_x; 
 	
 	return if_bounded ? -(-log_posterior>h_bound ? -log_posterior:h_bound)/t_bound : log_posterior; 
 }
 
 double CEquiEnergyModel::log_likelihood_function(const double *x, size_t n)
 {
-	double *old_x = new double[n];
-        ConvertThetaToFreeParameters(target_model, old_x);
-        ConvertQToFreeParameters(target_model, old_x+NumberFreeParametersTheta(target_model) );
+	// double *old_x = new double[n];
+        // ConvertThetaToFreeParameters(target_model, old_x);
+        // ConvertQToFreeParameters(target_model, old_x+NumberFreeParametersTheta(target_model) );
         
         ConvertFreeParametersToTheta(target_model, (double *)x);
         ConvertFreeParametersToQ(target_model, (double *)x+NumberFreeParametersTheta(target_model) );
 	double log_likelihood = LogLikelihood_StatesIntegratedOut(target_model);
 
 	// post old_x back to target_model 
-	ConvertFreeParametersToTheta(target_model, old_x);
-	ConvertFreeParametersToQ(target_model, old_x+NumberFreeParametersTheta(target_model) );
-	delete [] old_x; 
+	// ConvertFreeParametersToTheta(target_model, old_x);
+	// ConvertFreeParametersToQ(target_model, old_x+NumberFreeParametersTheta(target_model) );
+	// delete [] old_x; 
 	return log_likelihood; 
 }
 
@@ -56,15 +65,15 @@ double CEquiEnergyModel::log_likelihood_function(const double *x, size_t n)
 // will be set as its original value. 
 // Samples generated during HillClimb will be saved into storage but always at the level of number_energy_level
 // (the extra level)
-void CEquiEnergyModel::HillClimb(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
+void CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
 {
 	energy_level = parameter.number_energy_level; 
 	bool if_bounded_old = if_bounded; 
 	if_bounded = false;	// temperarily set if_bounded as false so all calculation is done on original model
  
-	double *x_old = new double[current_sample.data.dim]; 
-	ConvertThetaToFreeParameters(target_model, x_old); 
-	ConvertQToFreeParameters(target_model, x_old+NumberFreeParametersTheta(target_model)); 
+	// double *x_old = new double[current_sample.data.dim]; 
+	// ConvertThetaToFreeParameters(target_model, x_old); 
+	// ConvertQToFreeParameters(target_model, x_old+NumberFreeParametersTheta(target_model)); 
 	
 	const string COLD_START = string("Cold Start");
         const string NO_PRINT_OUT = string("Major print level = 0");
@@ -116,8 +125,6 @@ void CEquiEnergyModel::HillClimb(size_t nSolution, CStorageHead &storage, const 
 
 	// initial estimate of the solution 
 	double *x = new double[n]; 	
-	for (unsigned int i=0; i<n; i++)
-		x[i]=dw_gaussian_rnd();  
 
 	// returning value of npsol
 	int inform, iter;
@@ -126,24 +133,29 @@ void CEquiEnergyModel::HillClimb(size_t nSolution, CStorageHead &storage, const 
 	double *g = new double[n]; // objective gradient	   
 
 	npoptn_((char*)DERIVATIVE_LEVEL.c_str(), DERIVATIVE_LEVEL.length());
-        npoptn_((char*)NO_PRINT_OUT.c_str(), NO_PRINT_OUT.length());
+        // npoptn_((char*)NO_PRINT_OUT.c_str(), NO_PRINT_OUT.length());
 
 	// test if LogPosterior_StatesIntegratedOut works
 	for (unsigned int i=0; i<nSolution; i++)
 	{
+		for (unsigned int i=0; i<n; i++)
+			// x[i]=dw_gaussian_rnd();  
+			x[i] = dw_uniform_rnd(); 
         	npoptn_((char*)COLD_START.c_str(), COLD_START.length());
 		npsol_(&n, &nclin, &ncnln, &ldA, &ldJ, &ldR, A, bl, bu, NULL, MinusLogPosterior_NPSOL::function, &inform, &iter, istate, c, cJac, clambda, &f, g, R, x, iw, &leniw, w, &lenw); 
+		if (f < 1.0e300)
+		{
+			CSampleIDWeight sample; 
+			sample.data.Resize(n); 
+			for (unsigned int j=0; j<n; j++)
+				sample.data[i] = x[i]; 
+			sample.DataChanged(); 
+			sample.id = (unsigned int)(time(NULL)-timer_when_started);    
+			log_posterior_function(sample); 
 
-		CSampleIDWeight sample; 
-		sample.data.Resize(n); 
-		for (unsigned int j=0; j<n; j++)
-			sample.data[i] = x[i]; 
-		sample.DataChanged(); 
-		sample.id = (unsigned int)(time(NULL)-timer_when_started);    
-		log_posterior_function(sample); 
-
-		int binIndex = parameter.BinIndex(sample.weight, energy_level);
-                storage.DepositSample(binIndex, sample);
+			int binIndex = parameter.BinIndex(sample.weight, energy_level);
+                	storage.DepositSample(binIndex, sample);
+		}
 	}
 
 	delete [] g; 
@@ -162,8 +174,57 @@ void CEquiEnergyModel::HillClimb(size_t nSolution, CStorageHead &storage, const 
 	storage.ClearDepositDrawHistory(parameter.BinIndex_Start(energy_level), parameter.BinIndex_End(energy_level));
 
 	// recover to the old seeting
-	ConvertFreeParametersToTheta(target_model, x_old); 
-	ConvertFreeParametersToQ(target_model, x_old+NumberFreeParametersTheta(target_model)); 
-	delete [] x_old;
+	// ConvertFreeParametersToTheta(target_model, x_old); 
+	// ConvertFreeParametersToQ(target_model, x_old+NumberFreeParametersTheta(target_model)); 
+	// delete [] x_old;
+	if_bounded = if_bounded_old; 
+}
+
+void CEquiEnergyModel::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
+{
+	energy_level = parameter.number_energy_level;
+        bool if_bounded_old = if_bounded;
+        if_bounded = false; 
+
+	MinusLogPosterior_CSMINWEL::model = this;	
+
+	int n = current_sample.data.dim;
+	double *H=new double[n*n], *g=new double[n], *x=new double[n], crit = 1.0e-3, fh; 
+	int nit=50, itct, fcount; 
+	int retcodeh; 
+	const double IniHCsminwel=1.0e-5; 
+	
+	for (unsigned int iSolution=0; iSolution < nSolution; iSolution ++)
+	{
+		for (unsigned int i=0; i<n; i++)
+			x[i] = dw_uniform_rnd(); 
+		for (unsigned int i=0; i<n; i++)
+			for (unsigned int j=0; j<n; j++)
+				H[i*n+j] = IniHCsminwel; 
+		for (unsigned int i=0; i<n; i++)
+			g[i] = 0.0; 
+	
+		dw_csminwel(MinusLogPosterior_CSMINWEL::function, x, n, H, g, NULL, &fh, crit, &itct, nit, &fcount, &retcodeh, NULL, NULL);
+		if (retcodeh == 0)
+		{
+			CSampleIDWeight sample;
+                        sample.data.Resize(n);
+                        for (unsigned int i=0; i<n; i++)
+                                sample.data[i] = x[i];
+                        sample.DataChanged();
+                        sample.id = (unsigned int)(time(NULL)-timer_when_started);
+                        log_posterior_function(sample);
+
+                        int binIndex = parameter.BinIndex(sample.weight, energy_level);
+                        storage.DepositSample(binIndex, sample);
+		}
+	}
+
+	delete []x; 
+	delete []g; 
+	delete []H; 
+	
+	storage.finalize(parameter.BinIndex_Start(energy_level), parameter.BinIndex_End(energy_level));  
+        storage.ClearDepositDrawHistory(parameter.BinIndex_Start(energy_level), parameter.BinIndex_End(energy_level));
 	if_bounded = if_bounded_old; 
 }

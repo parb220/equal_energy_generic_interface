@@ -15,6 +15,7 @@ bool ExecutingSimulationTask(double &min_energy, bool if_within, bool if_write_s
 	storage.RestoreForFetch(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1) );
 	// model::current_sample
 	if (storage.empty(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1) ) || !model.Initialize(storage, parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1), initialPoolSize) )
+// || !model.InitializeWithBestSample(storage, parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1) ) )// 
 		model.current_sample = mode;
 
 	// metropolis

@@ -45,8 +45,11 @@ void master_deploying(int argc, char **argv, CEquiEnergyModel &model, CEESParame
 	else if (parameter.simulation_length > 0)
 	{
 		for (int level=parameter.highest_level; level>=parameter.lowest_level; level--)
+		{
+			cout << "Simulation at ... " << level << " ... for " << parameter.simulation_length << endl; 
 			DispatchSimulation(nodePool, parameter, storage, parameter.simulation_length, level, SIMULATION_TAG); 
 	}
+		}
 	cout << "Done simulation" << endl; 
 
 	// tell all the slaves to exit by sending an empty messag with 0 simulation length 

@@ -28,6 +28,13 @@ public:
         static void *function(int *mode, int *n, double *x, double *f, double *g, int *nstate);
 };
 
+class MinusLogPosterior_CSMINWEL
+{
+public: 
+	static CEquiEnergyModel *model; 
+	static double function(double *x, int n, double **args, int *dims); 
+}; 
+
 class CEquiEnergyModel
 {
 public:
@@ -84,7 +91,8 @@ public:
 	double Simulation_Within_RandomBlock(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string());  
 	double Simulation_Cross(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string()); 	// Simulation across levels. Returns the maximum posterior during simulation 	
 	double Simulation_Cross_RandomBlock(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string()); 
-	void HillClimb(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter); 
+	void HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter); 
+	void HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter); 
 	
 ///////////////////////////////////////////////////////////////////////////////////////////
 // IO 
@@ -97,11 +105,12 @@ public:
 public:
 	CEquiEnergyModel(); 
 	CEquiEnergyModel(bool _if_bounded, unsigned int eL, double _h, double _t, const CSampleIDWeight & _x=CSampleIDWeight(), TStateModel *_model=NULL, CMetropolis *_metropolis =NULL, time_t _time=time(NULL)); 
-	~CEquiEnergyModel(); 
+	virtual ~CEquiEnergyModel(); 
 	bool SaveTargetModelOriginalSetting(); 
 	bool RecoverTargetModelOriginalSetting(); 
 
 friend class MinusLogPosterior_NPSOL; 
+friend class MinusLogPosterior_CSMINWEL; 
 };
 
 #endif

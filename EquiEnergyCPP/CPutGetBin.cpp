@@ -85,7 +85,7 @@ bool CPutGetBin::Fetch(const vector<string> &filename_fetch)
 {
 	if (filename_fetch.empty() && capacity > nPutUsed)
 	{
-		cerr << "Error in Fetch(): files are empty and bins are not full yet.\n"; 
+		// cerr << "Error in Fetch(): files are empty and bins are not full yet.\n"; 
 		return false;
 	}
 
@@ -362,11 +362,16 @@ bool CPutGetBin::DrawSample(CSampleIDWeight &sample)
 			net increment, nGetUsed - capacity exceeds the number of samples in 
 			nPutUsed.
  			*/
-			if (nGetUsed >= capacity + nPutUsed)
+			/*if (nGetUsed >= capacity + nPutUsed)
 			{
 				cerr << "Error in DrawSample(): files are empty while samples in bins have been exhausitively used.\n"; 
 				return false; 
-			}
+			}*/
+
+			/*
+ 			If DrawSample is attempted even after all data in dataPut have been exhausted,
+			we will let dataPut continue to be used
+ 			*/
 			index = dw_uniform_int(nPutUsed); 
 			sample = dataPut[index];
 			nGetUsed ++;  
