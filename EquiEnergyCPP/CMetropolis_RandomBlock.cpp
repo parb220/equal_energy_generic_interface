@@ -177,7 +177,7 @@ void CMetropolis::RandomBlockAdaptive(const CSampleIDWeight &adaptive_start_poin
 	}
 }
 
-void CMetropolis::FourPassRandomBlockAdaptive(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, size_t avg_block_size)
+bool CMetropolis::FourPassRandomBlockAdaptive_StartWithoutSampleFile(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, size_t avg_block_size, const string &block_file_name)
 // first pass: 
 // 	identity variance matrix/n blocks
 // second pass
@@ -278,6 +278,11 @@ void CMetropolis::FourPassRandomBlockAdaptive(const CSampleIDWeight &adaptive_st
 	blocks=vector<TDenseMatrix>(blocks_backup.size()); 
 	for (unsigned int i=0; i<blocks_backup.size(); i++) 
 		blocks[i].CopyContent(blocks_backup[i]); 
+
+	if (block_file_name.empty())
+		return true; 
+	else 
+		return Write_RandomBlocks_RandomBlockScales(block_file_name);
 }
 
 bool CMetropolis::RandomBlockAdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t avg_block_size, const string &sample_file_name, const string &block_file_name)
@@ -333,7 +338,10 @@ bool CMetropolis::RandomBlockAdaptiveAfterSimulation(const CSampleIDWeight &adap
 	blocks=vector<TDenseMatrix>(blocks_backup.size()); 
 	for (unsigned int i=0; i<blocks_backup.size(); i++) 
 		blocks[i].CopyContent(blocks_backup[i]); 
-	return Write_RandomBlocks_RandomBlockScales(block_file_name); 
+	if (block_file_name.empty())
+		return true; 
+	else 
+		return Write_RandomBlocks_RandomBlockScales(block_file_name); 
 }
 
 void CMetropolis::AssignDimensionsToRandomBlocks(size_t n, size_t avg_block_size)

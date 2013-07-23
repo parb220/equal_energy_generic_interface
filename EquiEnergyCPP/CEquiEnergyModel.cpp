@@ -24,22 +24,13 @@ void CEquiEnergyModel::SaveSampleToStorage(const CSampleIDWeight &sample, const 
 bool CEquiEnergyModel::InitializeFromFile(const string &file_name)
 {
 	ifstream input_file; 
-	input_file.open(file_name.c_str()); 
+	input_file.open(file_name.c_str(), ios::binary|ios::in); 
 	if (!input_file)
 		return false; 
-	size_t dim; 
-	double value; 
-
-	input_file >> dim; 
-	current_sample.data.Resize(dim); 
-	for (unsigned int i=0; i<current_sample.data.dim; i++)
-	{
-		input_file >> value; 
-		current_sample.data[i] = value; 
-	}
-	current_sample.DataChanged(); 
+	read(input_file, &(current_sample)); 
 	input_file.close(); 
 	current_sample.id = (unsigned int)(time(NULL)-timer_when_started); 
+	current_sample.DataChanged(); 
 	double bounded_log_posterior = log_posterior_function(current_sample); 
 	return true;  
 }

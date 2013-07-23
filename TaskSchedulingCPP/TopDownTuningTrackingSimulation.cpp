@@ -4,10 +4,12 @@
 
 using namespace std;
 
-void TopDownTuningSimulation(CEquiEnergyModel &model, const vector <unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode, size_t period, size_t max_period)
+double TopDownTuningSimulation(CEquiEnergyModel &model, const vector <unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode, size_t period, size_t max_period)
 {
 	string block_file_name, sample_file_name; 
 	stringstream convert; 
+	
+	double max_log_posterior = -1.0e300, received_log_posterior; 
 
 	for (unsigned int level = parameter.highest_level; level >= parameter.lowest_level; level --)
 	{
@@ -56,7 +58,8 @@ void TopDownTuningSimulation(CEquiEnergyModel &model, const vector <unsigned int
 		// STEP 2: simulation to estimate covariance matrix of the current level 
 		cout << "Simulating to estimate covariance matrix of the current level: " << level << endl; 
 		estimation_length = 5000; 
-		DispatchSimulation(nodePool, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_FIRST);	
+		received_log_posterior = DispatchSimulation(nodePool, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_FIRST);	
+		max_log_posterior = max_log_posterior > received_log_posterior ? max_log_posterior : received_log_posterior; 
 
 		
 		// STEP 3: tuning covaraince based on the samples of the current level	
@@ -79,10 +82,14 @@ void TopDownTuningSimulation(CEquiEnergyModel &model, const vector <unsigned int
 
 		// STEP 4: simulation
 		cout << "Simulating for " << parameter.simulation_length << " steps at " << level << endl;
-		DispatchSimulation(nodePool, parameter, storage, parameter.simulation_length, level, SIMULATION_TAG); 
+		recieved_log_posterior = DispatchSimulation(nodePool, parameter, storage, parameter.simulation_length, level, SIMULATION_TAG); 
+		max_log_posterior = max_log_posterior > received_log_posterior ? max_log_posterior : received_log_posterior;
+
 		// STEP 5: simulation to estimate covariance matrix of the lower temp level
 		estimation_length = 5000; 
 		cout << "Simulating to estimate covaraince matrix of the lower temp level : " << level << endl;
-		DispatchSimulation(nodePool, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
+		received_log_posterior = DispatchSimulation(nodePool, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
+		max_log_posterior = max_log_posterior < received_log_posterior ? max_log_posterior : received_log_posterior;
 	}
+	return max_log_posterior; 
 }

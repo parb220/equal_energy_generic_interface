@@ -8,6 +8,7 @@ const unsigned int BURN_INDEX = 2;
 const unsigned int FREQ_INDEX = 3;
 const unsigned int H0_INDEX = 4; 
 
+const int TUNE_TAG = 19; 
 const int TUNE_TAG_DIAG = 20;
 const int TUNE_TAG_VARIANCE = 21;  
 const int TUNE_TAG_VARIANCE_BASED_ON_DIAG = 25; 
@@ -26,7 +27,6 @@ const int TUNE_TAG_SIMULATION_FIRST = 32;
 const int TUNE_TAG_SIMULATION_FIRST_MULTIPLE_BLOCK = 37; 
 const int TUNE_TAG_SIMULATION_SECOND = 42;
 const int TUNE_TAG_SIMULATION_SECOND_MULTIPLE_BLOCK = 47;
-
 
 const int TRACKING_TAG_SIMULATION = 50;
 const int TRACKING_TAG_SIMULATION_MULTIPLE_BLOCK = 51; 

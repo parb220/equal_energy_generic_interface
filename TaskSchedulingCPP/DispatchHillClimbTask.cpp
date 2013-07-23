@@ -2,10 +2,10 @@
 
 using namespace std; 
 
-void DispatchHillClimbTask(const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, int number_hill_climb)
+double DispatchHillClimbTask(const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, int number_hill_climb)
 {
 	size_t nFeasibleSolutionPerNode = ceil((double)number_hill_climb/(double)(nodePool.size()));
-        // Hill climber for the highest-plus-one level 
+	double max_log_posterior = -1.0e300, received_log_posterior; 
 
 	double *sPackage = new double [N_MESSAGE]; 
 	sPackage[LENGTH_INDEX] = nFeasibleSolutionPerNode; 
@@ -21,11 +21,16 @@ void DispatchHillClimbTask(const vector<unsigned int> &nodePool, const CEESParam
 	MPI_Status status; 
 	double *rPackage = new double [N_MESSAGE];
 	for (unsigned int i=0; i<nodePool.size(); i++)
+	{
 		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, HILL_CLIMB_TAG, MPI_COMM_WORLD, &status);
+		received_log_posterior = rPackage[H0_INDEX]; 
+		max_log_posterior = max_log_posterior > received_log_posterior ? max_log_posterior : received_log_posterior;
+	}
 	delete [] rPackage;
  
 	// Consolidate partial storage files
 	unsigned int start_bin = parameter.BinIndex_Start(parameter.number_energy_level); 
 	unsigned int end_bin = parameter.BinIndex_End(parameter.number_energy_level); 
 	storage.consolidate(start_bin, end_bin);
+	return max_log_posterior; 
 }

@@ -14,10 +14,12 @@ extern "C"
         #include "dw_parse_cmd.h"
 }
 
-void DispatchHillClimbTask(const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, int number_hill_climb);
+double DispatchHillClimbTask(const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, int number_hill_climb);
 
-void TopDownTuningSimulation(CEquiEnergyModel &model, const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode, size_t period, size_t max_period);
+double DispatchTuneSimulation(const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length);
 
-void DispatchSimulation(const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, unsigned int level, int tag);
+double TopDownTuningSimulation(CEquiEnergyModel &model, const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode, size_t period, size_t max_period);
+
+double DispatchSimulation(const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, unsigned int level, int tag);
 
 #endif

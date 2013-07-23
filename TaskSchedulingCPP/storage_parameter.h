@@ -5,6 +5,7 @@
 
 using namespace std; 
 
+const string START_POINT = string(".start_point."); 
 const string BLOCK_1ST = string(".block.1st."); 
 const string BLOCK_2ND = string(".block.2nd."); 
 const string VARIANCE_SAMPLE_FILE_TAG = string(".variance.sample."); 

@@ -58,10 +58,10 @@ bool ConsolidateSampleForCovarianceEstimation(const CEESParameter &parameter, un
 }
 
 
-void DispatchSimulation(const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, unsigned int level, int message_tag)
+double DispatchSimulation(const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, unsigned int level, int message_tag)
 {
 	double *sPackage = new double [N_MESSAGE]; 
-	int simulation_length_per_node = ceil((double)simulation_length/(double)nodePool.size()); 
+	size_t simulation_length_per_node = (size_t)((double)simulation_length/(double)nodePool.size()); 
 	sPackage[LENGTH_INDEX] = simulation_length_per_node; 
 	// burn_in_length: 0.1*simulation_length_per_node or 5000, whichever is larger
 	sPackage[BURN_INDEX] = (simulation_length_per_node*parameter.deposit_frequency)/10 >= 5000 ? (simulation_length_per_node*parameter.deposit_frequency)/10 : 5000; 
@@ -75,12 +75,12 @@ void DispatchSimulation(const vector<unsigned int> &nodePool, const CEESParamete
 
 	MPI_Status status;
 	double *rPackage = new double [N_MESSAGE];
-	double min_h0 = parameter.h0, receivedH0; 
+	double max_log_posterior =-1.0e300, received_log_posterior; 
 	for (unsigned int i=0; i<nodePool.size(); i++)
 	{
 		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status); 
-		receivedH0 = rPackage[H0_INDEX]; 
-		min_h0 = min_h0 < receivedH0 ? min_h0 : receivedH0; 
+		received_log_posterior = rPackage[H0_INDEX]; 
+		max_log_posterior = max_log_posterior > received_log_posterior ? max_log_posterior : received_log_posterior; 
 	}
 	delete [] rPackage;
 
@@ -98,4 +98,5 @@ void DispatchSimulation(const vector<unsigned int> &nodePool, const CEESParamete
                 	abort();
 		}
 	}
+	return max_log_posterior; 
 }
