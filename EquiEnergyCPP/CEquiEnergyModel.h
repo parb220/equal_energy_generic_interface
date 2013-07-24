@@ -85,6 +85,8 @@ public:
 	double BurnIn_RandomBlock(const CEESParameter &, CStorageHead &); 	// burn-in using random blocks
 	bool Initialize(CStorageHead &, unsigned int start_bin, unsigned int end_bin, size_t desired_pool_size);	// Initialize model (setting values for current_sample) using bins indexed from start_bin through (including) end_bin. 
 	bool InitializeWithBestSample(CStorageHead &storage, unsigned int start_bin, unsigned int end_bin); 		// Initialize model using the best sample in the bins indexed from start_bin to end_bin
+	bool InitializeWith_Kth_BestSample(unsigned int K, CStorageHead &storage, unsigned int start_bin, unsigned int end_bin);
+	bool Initialize_RandomlyPickFrom_K_BestSample(size_t K, CStorageHead &storage, unsigned int start_bin, unsigned int end_bin); 
 	bool InitializeFromTarget(); 
 
 	double Simulation_Within(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy level (no jumping across levels). Returns the maximum posterior during simulation

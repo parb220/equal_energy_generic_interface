@@ -3,10 +3,10 @@
 
 using namespace std; 
 
-bool ExecutingTuningTask(size_t period, size_t max_period, CEquiEnergyModel &model, CStorageHead &storage, const CEESParameter &parameter, unsigned int my_rank, size_t initialPoolSize, const CSampleIDWeight &mode)
+bool ExecutingTuningTask(size_t period, size_t max_period, CEquiEnergyModel &model, CStorageHead &storage, const CEESParameter &parameter, unsigned int my_rank, size_t pool_size, const CSampleIDWeight &mode)
 {
 	storage.RestoreForFetch(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1) );
-	if (storage.empty(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1) ) || !model.Initialize(storage, parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1), initialPoolSize) )
+	if (storage.empty(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1) ) || !model.Initialize_RandomlyPickFrom_K_BestSample(pool_size, storage, parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1)) )
 		model.current_sample = mode;
 	storage.ClearDepositDrawHistory(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1));
 
@@ -16,7 +16,7 @@ bool ExecutingTuningTask(size_t period, size_t max_period, CEquiEnergyModel &mod
 	// block_file
 	stringstream convert; 
 	convert.str(string());
-        convert << parameter.run_id << "/" << parameter.run_id << BLOCK_2ND << model.energy_level; 
+        convert << parameter.run_id << "/" << parameter.run_id << BLOCK_2ND << model.energy_level << "." << my_rank; 
         block_file_name = parameter.storage_dir + convert.str();
 	// sample file
 	convert.str(string());

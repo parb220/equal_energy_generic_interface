@@ -27,6 +27,16 @@ unsigned int CStorageHead::DepositSample(unsigned int _bin_id, const CSampleIDWe
 	return bin[_bin_id].DepositSample(sample); 
 }
 
+bool CStorageHead::Draw_K_LeastWeightSample(size_t K, unsigned int _bin_id, vector<CSampleIDWeight> &sample) const
+{
+        return bin[_bin_id].Draw_K_LeastWeightSample(K, sample);
+}
+
+bool CStorageHead::Draw_K_MostWeightSample(size_t K, unsigned int _bin_id, vector<CSampleIDWeight> &sample) const
+{
+        return bin[_bin_id].Draw_K_MostWeightSample(K, sample);
+}
+
 
 bool CStorageHead::DrawLeastWeightSample(unsigned int _bin_id, CSampleIDWeight &sample) const
 {

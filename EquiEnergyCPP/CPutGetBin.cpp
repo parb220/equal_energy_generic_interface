@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdio>
 #include <glob.h>
+#include <algorithm>
 #include "dw_rand.h"
 
 #include "CSampleIDWeight.h"
@@ -182,6 +183,46 @@ unsigned int CPutGetBin::NumberRecord(const string &file_name) const
 	return number_record; 
 }
 
+bool compare_CSampleIDWeight(const CSampleIDWeight &i, const CSampleIDWeight &j) 
+{
+	return i.weight < j.weight; 
+}
+
+bool CPutGetBin::Load_K_MostWeightSample(size_t K, const string &file_name, vector<CSampleIDWeight> &best_samples) const
+{
+	vector <CSampleIDWeight> samples = ReadSampleFromFile(file_name); 
+	if (samples.empty())
+		return false; 
+	samples.insert(samples.end(), best_samples.begin(), best_samples.end()); // merge sampels and best_samples together
+	sort(samples.begin(), samples.end(), compare_CSampleIDWeight); // ascending based on weight
+	if (samples.size() <=K)
+		best_samples = samples; 
+	else 
+	{
+		best_samples.resize(K); 
+		copy(samples.end()-K, samples.end(), best_samples.begin()); 
+	}
+	reverse(best_samples.begin(), best_samples.end()); 
+	return true; 
+}
+
+bool CPutGetBin::Load_K_LeastWeightSample(size_t K, const string &file_name, vector<CSampleIDWeight> &best_samples) const
+{
+	vector <CSampleIDWeight > samples = ReadSampleFromFile(file_name); 
+	if (samples.empty()) 
+		return false; 
+	samples.insert(samples.end(), best_samples.begin(), best_samples.end()); // merge sampels and best_samples together
+	sort(samples.begin(), samples.end(), compare_CSampleIDWeight); // ascending based on weight
+	if (samples.size() <= K)
+		best_samples = samples; 
+	else 
+	{
+		best_samples.resize(K); 
+		copy(samples.begin(), samples.begin()+K, best_samples.begin()); 
+	}
+	return true; 
+}
+
 bool CPutGetBin::LoadLeastWeightSample(const string &file_name, CSampleIDWeight &best) const
 {
 	vector <CSampleIDWeight > samples = ReadSampleFromFile(file_name); 
@@ -289,6 +330,47 @@ unsigned int CPutGetBin::DepositSample(const CSampleIDWeight &sample)
 	return nDumpFile*capacity+nPutUsed; 
 }
 
+bool CPutGetBin::Draw_K_MostWeightSample(size_t K, vector<CSampleIDWeight> &sample) const
+{
+	vector <string> file = GetFileNameForConsolidate();
+        vector <string> fetch_file = GetFileNameForFetch();
+        file.insert(file.end(), fetch_file.begin(), fetch_file.end());
+
+	if (file.empty())
+		return false; 
+        
+        for (unsigned int i=0; i<file.size(); i++)
+        {
+                if (!Load_K_MostWeightSample(K, file[i], sample) )
+                {
+                        cerr << "Draw_K_MostWeightSample : Error in opening " << file[i] << " for reading data.\n";
+                        return false;
+                }
+        }
+        return true;
+
+}
+
+bool CPutGetBin::Draw_K_LeastWeightSample(size_t K, vector<CSampleIDWeight> &sample) const
+{
+	vector <string> file = GetFileNameForConsolidate();
+        vector <string> fetch_file = GetFileNameForFetch();
+	file.insert(file.end(), fetch_file.begin(), fetch_file.end());
+
+	if (file.empty())
+		return false; 	
+
+	for (unsigned int i=0; i<file.size(); i++)
+	{
+		if (!Load_K_LeastWeightSample(K, file[i], sample) )
+		{
+			cerr << "Draw_K_LeastWeightSample : Error in opening " << file[i] << " for reading data.\n"; 
+			return false; 
+		}
+	}
+	return true; 
+}
+
 bool CPutGetBin::DrawLeastWeightSample(CSampleIDWeight &sample)  const
 {
 	CSampleIDWeight temp_sample; 
@@ -296,12 +378,14 @@ bool CPutGetBin::DrawLeastWeightSample(CSampleIDWeight &sample)  const
 	vector <string> file = GetFileNameForConsolidate();
 	vector <string> fetch_file = GetFileNameForFetch(); 
 	file.insert(file.end(), fetch_file.begin(), fetch_file.end()); 
-	 
+	if (file.empty())
+		return false; 	 
+
 	for (unsigned int i=0; i<file.size(); i++)
 	{
 		if (!LoadLeastWeightSample(file[i], temp_sample)) 
 		{
-			cerr << "Error in opening " << file[i] << " for reading data.\n"; 
+			cerr << "DrawLeastWeightSample : Error in opening " << file[i] << " for reading data.\n"; 
 			return false; 
 		}
 		if (i==0 || temp_sample.weight < sample.weight)
@@ -317,6 +401,9 @@ bool CPutGetBin::DrawMostWeightSample(CSampleIDWeight &sample)  const
         vector <string> file = GetFileNameForConsolidate();
         vector <string> fetch_file = GetFileNameForFetch();
         file.insert(file.end(), fetch_file.begin(), fetch_file.end());
+	
+	if (file.empty())
+		return false; 
 
         for (unsigned int i=0; i<file.size(); i++)
         {

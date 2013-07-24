@@ -32,6 +32,8 @@ protected:
 	unsigned int NumberRecord(const string &) const; 
 	bool LoadLeastWeightSample(const string &, CSampleIDWeight &) const; 
 	bool LoadMostWeightSample(const string &, CSampleIDWeight &) const; 
+	bool Load_K_LeastWeightSample(size_t, const string &, vector<CSampleIDWeight> &) const; 
+	bool Load_K_MostWeightSample(size_t, const string &, vector<CSampleIDWeight> &) const; 
 public: 
 	CPutGetBin(int _id=0, unsigned int _nDumpFile=0, size_t _capacity=0, string _grandPrefix=string(), int _suffix=0); 
 	CPutGetBin(const CPutGetBin &); 
@@ -58,6 +60,8 @@ public:
 
 	bool DrawLeastWeightSample(CSampleIDWeight &) const;  
 	bool DrawMostWeightSample(CSampleIDWeight &) const; 
+	bool Draw_K_LeastWeightSample(size_t, vector<CSampleIDWeight> &) const; 
+	bool Draw_K_MostWeightSample(size_t, vector<CSampleIDWeight> &) const; 
 	bool DrawSample(CSampleIDWeight &); 
 
 	void finalize(); 	// save unsaved data

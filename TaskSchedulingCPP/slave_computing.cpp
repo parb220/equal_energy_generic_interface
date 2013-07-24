@@ -50,7 +50,8 @@ void slave_computing(int argc, char **argv, CEquiEnergyModel &model, CEESParamet
 			
 			size_t period = (size_t)dw_ParseInteger_String(argc, argv, "pr", 20);
                 	size_t max_period = (size_t)dw_ParseInteger_String(argc, argv, "mpr", 16*period);
-			if (!ExecutingTuningTask(period, max_period, model, storage, parameter, my_rank, (size_t)nCPU*2, mode) )
+			size_t n_initial = (size_t)dw_ParseInteger_String(argc, argv, "nInitial", 10); 
+			if (!ExecutingTuningTask(period, max_period, model, storage, parameter, my_rank, 10*n_initial, mode) )
 			{
 				cout << "ExecutingTuningTask() : Error occurred :: sample file reading or block_file writing or start_tune_point writing error.\n"; 
 				abort(); 

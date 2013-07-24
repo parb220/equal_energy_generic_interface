@@ -31,7 +31,7 @@ bool CEquiEnergyModel::InitializeFromFile(const string &file_name)
 	input_file.close(); 
 	current_sample.id = (unsigned int)(time(NULL)-timer_when_started); 
 	current_sample.DataChanged(); 
-	double bounded_log_posterior = log_posterior_function(current_sample); 
+	log_posterior_function(current_sample); 
 	return true;  
 }
 
@@ -219,19 +219,48 @@ bool CEquiEnergyModel::Initialize(CStorageHead &storage, unsigned int start_bin,
 
 bool CEquiEnergyModel::InitializeWithBestSample(CStorageHead &storage, unsigned int start_bin, unsigned int end_bin)
 {
-        unsigned int bin=start_bin, number_sample;
-        while (bin <= end_bin && (number_sample = storage.GetNumberRecrod(bin)) <= 0)
-                bin ++;
+        unsigned int bin=start_bin; 
+        while (bin <= end_bin && !(storage.DrawMostWeightSample(bin, current_sample) ) )
+		bin ++; 
         if (bin > end_bin)
                 return false;
-        if (storage.DrawLeastWeightSample(bin, current_sample))
-	{
-		current_sample.id = (int)(time(NULL)-timer_when_started); 
-                return true;
-	}
-	else
-        	return false;
+	current_sample.id = (int)(time(NULL)-timer_when_started); 
+        return true;
 }
+
+bool CEquiEnergyModel::InitializeWith_Kth_BestSample(unsigned int K, CStorageHead &storage, unsigned int start_bin, unsigned int end_bin)
+{
+	vector<CSampleIDWeight> sample;
+	unsigned int bin=start_bin; 
+	while (bin <= end_bin && sample.size() < K)
+	{
+		storage.Draw_K_MostWeightSample(K, bin, sample); 
+		bin ++; 
+	}
+	if (sample.size() < K)
+		return false; 
+	current_sample = sample.back(); 
+	current_sample.id = (int)(time(NULL)-timer_when_started); 
+        return true;
+}
+
+bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(size_t K, CStorageHead &storage, unsigned int start_bin, unsigned int end_bin)
+{
+	vector<CSampleIDWeight> sample; 
+	unsigned int bin = start_bin; 
+	while (bin <= end_bin && sample.size() < K)
+	{
+		storage.Draw_K_MostWeightSample(K, bin, sample); 
+		bin ++; 
+	}
+	if (sample.size() < K)
+		return false; 
+	unsigned int index = dw_uniform_int(K); 
+	current_sample = sample[index]; 
+	current_sample.id = (int)(time(NULL)-timer_when_started); 
+	return true; 
+}
+
 
 double CEquiEnergyModel::BurnIn(size_t burn_in_length)
 {

@@ -24,7 +24,9 @@ public:
 
 	virtual unsigned int DepositSample(unsigned int, const CSampleIDWeight &) ; 
 	virtual bool DrawLeastWeightSample(unsigned int, CSampleIDWeight &) const; 
+	virtual bool Draw_K_LeastWeightSample(size_t, unsigned int, vector<CSampleIDWeight> &) const; 
 	virtual bool DrawMostWeightSample(unsigned int, CSampleIDWeight &)const; 
+	virtual bool Draw_K_MostWeightSample(size_t, unsigned int, vector<CSampleIDWeight> &) const;
 	virtual bool DrawSample(unsigned int, CSampleIDWeight &) ; 
 	bool makedir(); 
 	void finalize(unsigned int =1,  unsigned int =0)  ;

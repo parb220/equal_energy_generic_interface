@@ -25,7 +25,7 @@ bool ExecutingSimulationTask(double &max_log_posterior, bool if_within, bool if_
         if (message_tag == TUNE_TAG_SIMULATION_FIRST)
         	convert << parameter.run_id << "/" << parameter.run_id << BLOCK_1ST << model.energy_level;
         else
-        	convert << parameter.run_id << "/" << parameter.run_id << BLOCK_2ND << model.energy_level;
+        	convert << parameter.run_id << "/" << parameter.run_id << BLOCK_2ND << model.energy_level << "." << my_rank;
         
        	string block_file_name = parameter.storage_dir + convert.str();
        	if (!model.metropolis->ReadBlocks(block_file_name) )
