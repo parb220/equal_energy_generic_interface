@@ -4,7 +4,7 @@
 
 using namespace std;
 
-double TopDownTuningSimulation(CEquiEnergyModel &model, const vector <unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode, size_t period, size_t max_period)
+double TopDownTuningSimulation(CEquiEnergyModel &model, const vector <vector<unsigned int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode, size_t period, size_t max_period)
 {
 	string block_file_name, sample_file_name; 
 	stringstream convert; 
@@ -58,7 +58,7 @@ double TopDownTuningSimulation(CEquiEnergyModel &model, const vector <unsigned i
 		// STEP 2: simulation to estimate covariance matrix of the current level 
 		cout << "Simulating to estimate covariance matrix of the current level: " << level << endl; 
 		estimation_length = 5000; 
-		received_log_posterior = DispatchSimulation(nodePool, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_FIRST);	
+		received_log_posterior = DispatchSimulation(nodeGroup, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_FIRST);	
 		max_log_posterior = max_log_posterior > received_log_posterior ? max_log_posterior : received_log_posterior; 
 
 		
@@ -82,13 +82,13 @@ double TopDownTuningSimulation(CEquiEnergyModel &model, const vector <unsigned i
 
 		// STEP 4: simulation
 		cout << "Simulating for " << parameter.simulation_length << " steps at " << level << endl;
-		recieved_log_posterior = DispatchSimulation(nodePool, parameter, storage, parameter.simulation_length, level, SIMULATION_TAG); 
+		recieved_log_posterior = DispatchSimulation(nodeGroup, parameter, storage, parameter.simulation_length, level, SIMULATION_TAG); 
 		max_log_posterior = max_log_posterior > received_log_posterior ? max_log_posterior : received_log_posterior;
 
 		// STEP 5: simulation to estimate covariance matrix of the lower temp level
 		estimation_length = 5000; 
 		cout << "Simulating to estimate covaraince matrix of the lower temp level : " << level << endl;
-		received_log_posterior = DispatchSimulation(nodePool, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
+		received_log_posterior = DispatchSimulation(nodeGroup, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
 		max_log_posterior = max_log_posterior < received_log_posterior ? max_log_posterior : received_log_posterior;
 	}
 	return max_log_posterior; 
