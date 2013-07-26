@@ -155,7 +155,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage
 			sample.id = (unsigned int)(time(NULL)-timer_when_started);    
 			log_posterior_function(sample); 
 
-			int binIndex = parameter.BinIndex(sample.weight, energy_level);
+			int binIndex = parameter.BinIndex(-sample.weight, energy_level);
                 	storage.DepositSample(binIndex, sample);
 			max_log_posterior = sample.weight > max_log_posterior ? sample.weight : max_log_posterior; 
 		}
@@ -220,7 +220,7 @@ double CEquiEnergyModel::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &stor
                         sample.id = (unsigned int)(time(NULL)-timer_when_started);
                         log_posterior_function(sample);
 
-                        int binIndex = parameter.BinIndex(sample.weight, energy_level);
+                        int binIndex = parameter.BinIndex(-sample.weight, energy_level);
                         storage.DepositSample(binIndex, sample);
 			max_log_posterior = sample.weight > max_log_posterior ? sample.weight : max_log_posterior; 
 		}

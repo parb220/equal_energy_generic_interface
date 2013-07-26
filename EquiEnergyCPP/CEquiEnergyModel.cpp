@@ -233,7 +233,7 @@ bool CEquiEnergyModel::InitializeWithBestSample(CStorageHead &storage, unsigned 
                 bin ++;
         if (bin > end_bin)
                 return false;
-        if (storage.DrawLeastWeightSample(bin, current_sample))
+        if (storage.DrawMostWeightSample(bin, current_sample))
 	{
 		current_sample.id = (int)(time(NULL)-timer_when_started); 
                 return true;
