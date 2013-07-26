@@ -42,6 +42,8 @@ double DispatchTuneSimulation(const vector<vector<unsigned int> > &nodeGroup, co
 			sPackage[GROUP_INDEX] = i;
                         MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][0], TUNE_TAG_AFTER_SIMULATION, MPI_COMM_WORLD);
 		}
+		for (unsigned int i=0; i<nodeGroup.size(); i++)
+			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_AFTER_SIMULATION, MPI_COMM_WORLD, &status);
 
 		// simualtion
 		cout << "Simulation at " << level << " for " << parameter.simulation_length << endl; 
