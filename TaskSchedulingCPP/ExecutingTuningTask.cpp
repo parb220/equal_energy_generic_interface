@@ -74,7 +74,7 @@ bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEqui
 	// block_file for writing
 	convert.str(string());
        	convert << parameter.run_id << "/" << parameter.run_id << BLOCK_2ND << model.energy_level << "." << group_index; 
-        block_file_name = parameter.storage_dir + convert.str();
+        string block_file_name = parameter.storage_dir + convert.str();
 	// sample file: based on the samples of the current level (group specific)
 	convert.str(string());
         convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_level << "." << group_index;	

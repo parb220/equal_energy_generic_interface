@@ -56,7 +56,7 @@ void slave_computing(int argc, char **argv, CEquiEnergyModel &model, CEESParamet
 
 			if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION)
 			{
-				if (!ExecutingTuningTask_BeforeSimulation(period, max_period, model, storage, parameter, group_index, 10*n_initial, mode) )
+				if (!ExecutingTuningTask_BeforeSimulation(period, max_period, model, storage, parameter, group_index, 2*n_initial, mode) )
 				{
 					cout << "ExecutingTuningTask_BeforeSimulation() : Error occurred :: sample file reading or block_file writing or start_tune_point writing error.\n"; 
 					abort(); 

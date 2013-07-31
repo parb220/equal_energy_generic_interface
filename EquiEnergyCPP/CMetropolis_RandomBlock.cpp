@@ -234,7 +234,7 @@ bool CMetropolis::FourPassRandomBlockAdaptive_StartWithoutSampleFile(const CSamp
                         if (BlockRandomWalkMetropolis(log_posterior_y, y, x) )
                                 x=y; 
                 }
-                Y_simulation[i]=y;
+                Y_simulation[i]=x;
         }
 	
 	// calculate variance and mean
@@ -248,10 +248,12 @@ bool CMetropolis::FourPassRandomBlockAdaptive_StartWithoutSampleFile(const CSamp
 	}
 	
 	mean = (1.0/(double)n_draws)*mean; 
-        variance = (0.5/(double)n_draws)*(variance+Transpose(variance)); 
-	variance = variance - Multiply(mean,mean); 
+        variance = (1.0/(double)n_draws)*variance - Multiply(mean,mean); 
+	variance = 0.5 * (variance+Transpose(variance)); 
 
         SVD(U_matrix, d_vector, V_matrix, variance);
+	for (unsigned int i=0; i<d_vector.dim; i++)
+		d_vector[i] = sqrt(d_vector[i]); 
         D_matrix = DiagonalMatrix(d_vector);
         U_matrix = U_matrix *D_matrix;
 
@@ -302,10 +304,12 @@ bool CMetropolis::RandomBlockAdaptiveAfterSimulation(const CSampleIDWeight &adap
 	}
 	
 	mean = (1.0/(double)Y.size())*mean; 
-        variance = (0.5/(double)Y.size())*(variance+Transpose(variance)); 
-	variance = variance - Multiply(mean,mean); 
+        variance = (1.0/(double)Y.size())*variance - Multiply(mean,mean); 
+	variance = 0.5 * (variance+Transpose(variance)); 
 
         SVD(U_matrix, d_vector, V_matrix, variance);
+	for (unsigned int i=0; i<d_vector.dim; i++)
+		d_vector[i] = sqrt(d_vector[i]); 
         D_matrix = DiagonalMatrix(d_vector);
         U_matrix = U_matrix *D_matrix;
 
