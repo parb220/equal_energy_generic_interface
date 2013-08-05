@@ -26,40 +26,6 @@ double MinusLogPosterior_CSMINWEL::function(double *x, int n, double **args, int
 	return return_value; 
 }
 
-
-double CEquiEnergyModel::log_posterior_function(const double *x, size_t n)
-{
-        //double *old_x = new double[n];
-	//ConvertThetaToFreeParameters(target_model, old_x);
-        //ConvertQToFreeParameters(target_model, old_x+NumberFreeParametersTheta(target_model) );
-	
-	ConvertFreeParametersToTheta(target_model, (double*)x);
-	ConvertFreeParametersToQ(target_model, (double*)x+NumberFreeParametersTheta(target_model) );
-	double log_posterior = LogPosterior_StatesIntegratedOut(target_model);
-	//ConvertFreeParametersToTheta(target_model, old_x);
-        //ConvertFreeParametersToQ(target_model, old_x+NumberFreeParametersTheta(target_model) );
-	//delete [] old_x; 
-	
-	return if_bounded ? -(-log_posterior>h_bound ? -log_posterior:h_bound)/t_bound : log_posterior; 
-}
-
-double CEquiEnergyModel::log_likelihood_function(const double *x, size_t n)
-{
-	// double *old_x = new double[n];
-        // ConvertThetaToFreeParameters(target_model, old_x);
-        // ConvertQToFreeParameters(target_model, old_x+NumberFreeParametersTheta(target_model) );
-        
-        ConvertFreeParametersToTheta(target_model, (double *)x);
-        ConvertFreeParametersToQ(target_model, (double *)x+NumberFreeParametersTheta(target_model) );
-	double log_likelihood = LogLikelihood_StatesIntegratedOut(target_model);
-
-	// post old_x back to target_model 
-	// ConvertFreeParametersToTheta(target_model, old_x);
-	// ConvertFreeParametersToQ(target_model, old_x+NumberFreeParametersTheta(target_model) );
-	// delete [] old_x; 
-	return log_likelihood; 
-}
-
 // HillClimb is always one on the original model. Therefore, if_bounded will be set as false temperoraly
 // so that all calculation can be perfomed on the original model. After HillClimb is finished, if_bounded
 // will be set as its original value. 
@@ -71,10 +37,6 @@ double CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage
 	bool if_bounded_old = if_bounded; 
 	if_bounded = false;	// temperarily set if_bounded as false so all calculation is done on original model
  
-	// double *x_old = new double[current_sample.data.dim]; 
-	// ConvertThetaToFreeParameters(target_model, x_old); 
-	// ConvertQToFreeParameters(target_model, x_old+NumberFreeParametersTheta(target_model)); 
-	
 	const string COLD_START = string("Cold Start");
         const string NO_PRINT_OUT = string("Major print level = 0");
         const string DERIVATIVE_LEVEL = string("Derivative level = 0");
@@ -176,10 +138,6 @@ double CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage
 	storage.finalize(parameter.BinIndex_Start(energy_level), parameter.BinIndex_End(energy_level));  
 	storage.ClearDepositDrawHistory(parameter.BinIndex_Start(energy_level), parameter.BinIndex_End(energy_level));
 
-	// recover to the old seeting
-	// ConvertFreeParametersToTheta(target_model, x_old); 
-	// ConvertFreeParametersToQ(target_model, x_old+NumberFreeParametersTheta(target_model)); 
-	// delete [] x_old;
 	if_bounded = if_bounded_old; 
 	return max_log_posterior; 
 }

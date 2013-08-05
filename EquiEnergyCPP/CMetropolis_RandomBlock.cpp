@@ -7,7 +7,7 @@
 #include "CEquiEnergyModel.h"
 #include "CMetropolis.h"
 
-bool CMetropolis::RandomBlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDWeight &y, const CSampleIDWeight &initial_x)
+bool CMetropolis::RandomBlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDWeight &y, const CSampleIDWeight &initial_x, size_t thin)
 // Given
 // 	inital_x:	initial value, vector
 // Results:
@@ -26,24 +26,27 @@ bool CMetropolis::RandomBlockRandomWalkMetropolis(double &log_posterior_y, CSamp
 	CSampleIDWeight x=initial_x, increment; 
 	double log_previous = model->log_posterior_function(x), log_current; 	
 	bool if_new_sample = false; 
-	for (unsigned int i=0; i<n_blocks; i++)
+	for (unsigned int i_thin=0; i_thin<thin; i_thin++)
 	{
-		size_t block_size = random_block_assignments[i].size();	// size of the current block
-		increment.data.Zeros(x.data.dim); 
-		for (unsigned int j=0; j<block_size; j++)
+		for (unsigned int i=0; i<n_blocks; i++)
 		{
-			unsigned int d_index = random_block_assignments[i][j]; 
-			increment.data = increment.data + random_blocks[d_index] * random_block_scales[d_index][block_size-1] * dw_gaussian_rnd();  
-		}
-		y.data = x.data + increment.data; 
-		y.DataChanged(); 
-		log_current = model->log_posterior_function(y); 
-		if (log_current - log_previous >= log(dw_uniform_rnd() ) )
-		{
-			x = y; 
-			log_previous = log_current; 
-			if (!if_new_sample)
-				if_new_sample = true; 
+			size_t block_size = random_block_assignments[i].size();	// size of the current block
+			increment.data.Zeros(x.data.dim); 
+			for (unsigned int j=0; j<block_size; j++)
+			{
+				unsigned int d_index = random_block_assignments[i][j]; 
+				increment.data = increment.data + random_blocks[d_index] * random_block_scales[d_index][block_size-1] * dw_gaussian_rnd();  
+			}
+			y.data = x.data + increment.data; 
+			y.DataChanged(); 
+			log_current = model->log_posterior_function(y); 
+			if (log_current - log_previous >= log(dw_uniform_rnd() ) )
+			{
+				x = y; 
+				log_previous = log_current; 
+				if (!if_new_sample)
+					if_new_sample = true; 
+			}
 		}
 	}
 	log_posterior_y = log_previous; 

@@ -147,7 +147,7 @@ void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, con
 		blocks[i] = B[i]*best_scale[i]; 
 }
 
-bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDWeight &y, const CSampleIDWeight &initial_v)
+bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDWeight &y, const CSampleIDWeight &initial_v, size_t thin)
 // Given
 //	initial_v:	initial value, vector
 // Results:
@@ -168,17 +168,20 @@ bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDW
 	CSampleIDWeight x = initial_v;  
 	double log_previous = model->log_posterior_function(x), log_current; 
 	bool if_new_sample = false; 
-	for (unsigned int i=0; i<k; i++)
+	for (unsigned int i_thin=0; i_thin<thin; i_thin++)
 	{
-		y.data = x.data+blocks[i]*RandomNormalVector(b[i]); 
-		y.DataChanged(); 
-		log_current = model->log_posterior_function(y); 
-		if (log_current - log_previous >= log(dw_uniform_rnd()) )
+		for (unsigned int i=0; i<k; i++)
 		{
-			x = y; 
-			log_previous = log_current; 
-			if (!if_new_sample)
-				if_new_sample = true; 
+			y.data = x.data+blocks[i]*RandomNormalVector(b[i]); 
+			y.DataChanged(); 
+			log_current = model->log_posterior_function(y); 
+			if (log_current - log_previous >= log(dw_uniform_rnd()) )
+			{	
+				x = y; 
+				log_previous = log_current; 
+				if (!if_new_sample)
+					if_new_sample = true; 
+			}
 		}
 	}
 	

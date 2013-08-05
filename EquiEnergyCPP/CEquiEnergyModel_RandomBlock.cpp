@@ -19,7 +19,7 @@ extern "C" {
 
 using namespace std; 
 
-int CEquiEnergyModel::EE_Draw_RandomBlock(const CEESParameter &parameter, CStorageHead &storage)
+int CEquiEnergyModel::EE_Draw_RandomBlock(const CEESParameter &parameter, CStorageHead &storage, size_t MH_thin)
 {
         CSampleIDWeight x_new;
         int new_sample_code = NO_JUMP;
@@ -27,7 +27,7 @@ int CEquiEnergyModel::EE_Draw_RandomBlock(const CEESParameter &parameter, CStora
 
         if (energy_level == parameter.number_energy_level-1 || dw_uniform_rnd() > parameter.pee)
         {
-                if (metropolis->RandomBlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample))
+                if (metropolis->RandomBlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, MH_thin))
                 {
                         current_sample = x_new;
                         current_sample.id = (int)(time(NULL)-timer_when_started);
@@ -47,19 +47,10 @@ int CEquiEnergyModel::EE_Draw_RandomBlock(const CEESParameter &parameter, CStora
                                 current_sample.id = (int)(time(NULL)-timer_when_started);
                                 new_sample_code = EQUI_ENERGY_JUMP;
                         }
-                        else
-                        {
-                                if (metropolis->RandomBlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample))
-                                {
-                                        current_sample = x_new;
-                                        current_sample.id = (int)(time(NULL)-timer_when_started);
-                                        new_sample_code = METROPOLIS_JUMP;
-                                }
-                        }
                 }
 		else
                 {
-                        if (metropolis->RandomBlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample) )
+                        if (metropolis->RandomBlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, MH_thin) )
                         {
                                 current_sample = x_new;
                                 current_sample.id = (int)(time(NULL)-timer_when_started);
@@ -89,7 +80,7 @@ double CEquiEnergyModel::Simulation_Within_RandomBlock(const CEESParameter &para
         for (unsigned int i=0; i<parameter.simulation_length; i++)
         {
                 for (unsigned int j=0; j<parameter.deposit_frequency; j++)
-		if (metropolis->RandomBlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample) )
+		if (metropolis->RandomBlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 100/parameter.deposit_frequency) )
         	{
 			current_sample = x_new;
                		current_sample.id = (int)(time(NULL)-timer_when_started);
@@ -126,7 +117,7 @@ double CEquiEnergyModel::Simulation_Cross_RandomBlock(const CEESParameter &param
         {
                 for (unsigned int j=0; j<parameter.deposit_frequency; j++)
                 {
-                        int jump_code = EE_Draw_RandomBlock(parameter, storage);
+                        int jump_code = EE_Draw_RandomBlock(parameter, storage, 100/parameter.deposit_frequency);
                         if (jump_code == EQUI_ENERGY_JUMP)
                                 nEEJump++;
                         else if (jump_code == METROPOLIS_JUMP)

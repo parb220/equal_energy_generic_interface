@@ -35,102 +35,7 @@ bool CEquiEnergyModel::InitializeFromFile(const string &file_name)
 	return true;  
 }
 
-bool CEquiEnergyModel::SaveTargetModelOriginalSetting()
-{
-	if (target_model == NULL)
-		return false; 
-
-	size_t n = NumberFreeParametersTheta(target_model)+NumberFreeParametersQ(target_model);
-	original_sample.data.Resize(n); 
-	double *x = new double[n];
-	ConvertThetaToFreeParameters(target_model,x);
-	ConvertQToFreeParameters(target_model,x+NumberFreeParametersTheta(target_model) );
-
-	for (unsigned int i=0; i<original_sample.data.dim; i++)
-		original_sample.data[i] = x[i]; 
-	original_sample.DataChanged(); 
-	original_sample.id = (unsigned int)(time(NULL)-timer_when_started);
-	log_posterior_function(original_sample); 
-	return true; 
-}
-
-bool CEquiEnergyModel::RecoverTargetModelOriginalSetting()
-{
-	if (target_model == NULL)
-		return false; 
-	ConvertFreeParametersToTheta(target_model, original_sample.data.vector);
-	ConvertFreeParametersToQ(target_model, original_sample.data.vector+NumberFreeParametersTheta(target_model) );
-	return true; 
-}
-
-bool CEquiEnergyModel::InitializeFromTarget()
-{
-	if (target_model == NULL)
-		return false; 
-	// size_t n = NumberFreeParametersTheta(target_model)+NumberFreeParametersQ(target_model); 
-	// current_sample.data.Resize(n); 
-	// double *x = new double[n]; 
-	// ConvertThetaToFreeParameters(target_model,x); 
-	// ConvertQToFreeParameters(target_model,x+NumberFreeParametersTheta(target_model) ); 
-	
-	// for (unsigned int i=0; i<current_sample.data.dim; i++)
-	// 	current_sample.data[i] = x[i]; 
-	// current_sample.DataChanged(); 
-	current_sample = original_sample; 
-	current_sample.id = (unsigned int)(time(NULL)-timer_when_started);
-	// log_posterior_function(current_sample);
-	// delete []x; 
-	return true; 
-}
-
-double CEquiEnergyModel::log_posterior_function(CSampleIDWeight &x)
-{
-	if (!x.calculated)
-	{
-		// double *old_x = new double[x.data.dim]; 
-		// Save the old parameters stored in target_model to old_x
-		// ConvertThetaToFreeParameters(target_model, old_x); 
-		// ConvertQToFreeParameters(target_model, old_x+NumberFreeParametersTheta(target_model) ); 
-		// Post x to target_model
-		ConvertFreeParametersToTheta(target_model, x.data.vector); 
-		ConvertFreeParametersToQ(target_model, x.data.vector+NumberFreeParametersTheta(target_model) ); 
-		x.weight = LogPosterior_StatesIntegratedOut(target_model);
-		x.calculated = true; 
-		// Post old_x back to target_model 
-		// ConvertFreeParametersToTheta(target_model, old_x); 
-		// ConvertFreeParametersToQ(target_model, old_x+NumberFreeParametersTheta(target_model) ); 
-		// delete [] old_x; 
-	}
-	double bounded_log_posterior; 
-	if (if_bounded)
-		bounded_log_posterior = -((-x.weight > h_bound) ? (-x.weight) : h_bound)/t_bound; 
-	else 
-		bounded_log_posterior = x.weight; 
-
-	return bounded_log_posterior;  
-}
-
-double CEquiEnergyModel::log_likelihood_function(const CSampleIDWeight &x)
-{
-	// double *old_x = new double[x.data.dim]; 
-	// Save the old parameters stored in target_model to old_x
-	// ConvertThetaToFreeParameters(target_model, old_x); 
-	// ConvertQToFreeParameters(target_model, old_x+NumberFreeParametersTheta(target_model) ); 
-
-	// post x to target_model
-	ConvertFreeParametersToTheta(target_model, x.data.vector); 
-	ConvertFreeParametersToQ(target_model, x.data.vector+NumberFreeParametersTheta(target_model) ); 
-	double log_likelihood = LogLikelihood_StatesIntegratedOut(target_model); 
-
-	// post old_x back to target_model 
-	// ConvertFreeParametersToTheta(target_model, old_x); 
-	// ConvertFreeParametersToQ(target_model, old_x+NumberFreeParametersTheta(target_model) ); 
-	// delete [] old_x; 
-
-	return log_likelihood; 
-}
-
-int CEquiEnergyModel::EE_Draw(const CEESParameter &parameter, CStorageHead &storage)
+int CEquiEnergyModel::EE_Draw(const CEESParameter &parameter, CStorageHead &storage, size_t MH_thin)
 {
 	CSampleIDWeight x_new; 
 	int new_sample_code = NO_JUMP; 
@@ -138,7 +43,7 @@ int CEquiEnergyModel::EE_Draw(const CEESParameter &parameter, CStorageHead &stor
 
 	if (energy_level == parameter.number_energy_level-1 || dw_uniform_rnd() > parameter.pee)
 	{
-		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample))
+		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, MH_thin))
 		{
 			current_sample = x_new; 
 			current_sample.id = (int)(time(NULL)-timer_when_started);
@@ -148,7 +53,7 @@ int CEquiEnergyModel::EE_Draw(const CEESParameter &parameter, CStorageHead &stor
 	else 
 	{
 		// draw x_new from bin of the higher level of the same energy; 
-		int bin_id = parameter.BinIndex(-current_sample.weight, energy_level+1);
+		unsigned int bin_id = parameter.BinIndex(-current_sample.weight, energy_level+1);
 		if (storage.DrawSample(bin_id, x_new)) // if a sample is successfully draw from bin
 		{
 			// calculate log_ratio in the current and the higher levels
@@ -161,19 +66,10 @@ int CEquiEnergyModel::EE_Draw(const CEESParameter &parameter, CStorageHead &stor
 				current_sample.id = (int)(time(NULL)-timer_when_started);
 				new_sample_code = EQUI_ENERGY_JUMP; 
 			}	
-			else 
-			{
-				if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample))
-				{
-					current_sample = x_new; 
-					current_sample.id = (int)(time(NULL)-timer_when_started); 
-					new_sample_code = METROPOLIS_JUMP; 
-				}
-			}
 		}
-		else 
+		else	// when bin is empty, MH
 		{
-			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample) )
+			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, MH_thin) )
 			{
 				current_sample = x_new; 
 				current_sample.id = (int)(time(NULL)-timer_when_started); 
@@ -269,7 +165,7 @@ double CEquiEnergyModel::BurnIn(size_t burn_in_length)
 	double max_posterior = current_sample.weight, bounded_log_posterior_new; 
 	for (unsigned int i=0; i<burn_in_length; i++)
 	{
-		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample) )
+		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1) )
 		{
 			current_sample = x_new;
 			current_sample.id = (int)(time(NULL)-timer_when_started);  
@@ -298,13 +194,15 @@ double CEquiEnergyModel::Simulation_Within(const CEESParameter &parameter, CStor
 	for (unsigned int i=0; i<parameter.simulation_length; i++)
 	{
 		for (unsigned int j=0; j<parameter.deposit_frequency; j++)
-			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample) )
+		{
+			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 100/parameter.deposit_frequency) )
                 	{
                         	current_sample = x_new;
                         	current_sample.id = (int)(time(NULL)-timer_when_started);
                         	max_posterior = current_sample.weight > max_posterior ? current_sample.weight : max_posterior;
                         	nJump ++;
                 	}
+		}
 		
 		if (if_storage)
 			SaveSampleToStorage(current_sample, parameter, storage); 
@@ -337,7 +235,7 @@ double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStora
 	{
 		for (unsigned int j=0; j<parameter.deposit_frequency; j++)
 		{
-			int jump_code = EE_Draw(parameter, storage); 
+			int jump_code = EE_Draw(parameter, storage, 100/parameter.deposit_frequency); 
 			if (jump_code == EQUI_ENERGY_JUMP)
 				nEEJump++; 
 			else if (jump_code == METROPOLIS_JUMP)
@@ -361,11 +259,11 @@ double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStora
 }
 
 CEquiEnergyModel::CEquiEnergyModel() : 
-if_bounded(true), energy_level(0), h_bound(0.0), t_bound(1.0), current_sample(CSampleIDWeight()), original_sample(CSampleIDWeight()),  target_model(NULL), metropolis(NULL), timer_when_started(time(NULL))
+if_bounded(true), energy_level(0), h_bound(0.0), t_bound(1.0), current_sample(CSampleIDWeight()), metropolis(NULL), timer_when_started(time(NULL))
 {}
 
-CEquiEnergyModel::CEquiEnergyModel(bool _if_bounded, unsigned int eL, double _h, double _t, const CSampleIDWeight &_x, TStateModel *_model, CMetropolis *_metropolis, time_t _time) :
-if_bounded(_if_bounded), energy_level(eL), h_bound(_h), t_bound(_t), current_sample(_x), original_sample(CSampleIDWeight()), target_model(_model), metropolis(_metropolis), timer_when_started(_time)
+CEquiEnergyModel::CEquiEnergyModel(bool _if_bounded, unsigned int eL, double _h, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time) :
+if_bounded(_if_bounded), energy_level(eL), h_bound(_h), t_bound(_t), current_sample(_x), metropolis(_metropolis), timer_when_started(_time)
 {
 }
 
