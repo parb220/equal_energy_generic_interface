@@ -1,12 +1,20 @@
-#include "slave_computing.h"
+#include <mpi.h>
+#include <cstdlib>
+#include "CEquiEnergy_TState.h"
+#include "CEESParameter.h"
+#include "CStorageHead.h"
+#include "CSampleIDWeight.h"
+#include "mpi_parameter.h"
+#include "storage_parameter.h"
 extern "C"
 {
         #include "dw_parse_cmd.h"
 }
+#include "slave_computing.h"
 
 using namespace std;
 
-void slave_computing(int argc, char **argv, CEquiEnergyModel &model, CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode) 
+void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode) 
 {
 	int my_rank, nCPU; 
 	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);  
@@ -44,7 +52,7 @@ void slave_computing(int argc, char **argv, CEquiEnergyModel &model, CEESParamet
 			group_index = (unsigned int)(rPackage[GROUP_INDEX]); 
 			if (!GetCommunicationParameter(rPackage, N_MESSAGE, parameter))
 			{
-				cout << "GetCommunicationParameter() : Error occurred.\n"; 
+				cerr << "GetCommunicationParameter() : Error occurred.\n"; 
 				abort(); 
 			}
 			model.h_bound = parameter.h[model.energy_level]; 
@@ -58,7 +66,7 @@ void slave_computing(int argc, char **argv, CEquiEnergyModel &model, CEESParamet
 			{
 				if (!ExecutingTuningTask_BeforeSimulation(period, max_period, model, storage, parameter, group_index, 2*n_initial, mode) )
 				{
-					cout << "ExecutingTuningTask_BeforeSimulation() : Error occurred :: sample file reading or block_file writing or start_tune_point writing error.\n"; 
+					cerr << "ExecutingTuningTask_BeforeSimulation() : Error occurred :: sample file reading or block_file writing or start_tune_point writing error.\n"; 
 					abort(); 
 				}
 			}
@@ -66,7 +74,7 @@ void slave_computing(int argc, char **argv, CEquiEnergyModel &model, CEESParamet
 			{
 				if (!ExecutingTuningTask_AfterSimulation(period, max_period, model, parameter, group_index, mode) )
                                 {
-                                        cout << "ExecutingTuningTask_AfterSimulation() : Error occurred :: start_tune_point file reading or sample file reading or block_file writing error.\n";
+                                        cerr << "ExecutingTuningTask_AfterSimulation() : Error occurred :: start_tune_point file reading or sample file reading or block_file writing error.\n";
                                         abort();
                                 }
 			}
@@ -102,7 +110,7 @@ void slave_computing(int argc, char **argv, CEquiEnergyModel &model, CEESParamet
 
 			if (!simulation_flag)
 			{
-				cerr << "Error in simulation.\n"; 
+				cerr << "ExecutingSimulationTask: Error in simulation.\n"; 
 				abort(); 
 			}
 		}

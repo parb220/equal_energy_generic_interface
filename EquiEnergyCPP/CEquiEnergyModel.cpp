@@ -9,27 +9,33 @@
 
 extern "C" {
 	#include "dw_math.h"
-	#include "dw_switchio.h"
+	// #include "dw_switchio.h"
 	#include "dw_rand.h"
 }
 
 using namespace std;
 
-void CEquiEnergyModel::SaveSampleToStorage(const CSampleIDWeight &sample, const CEESParameter &parameter, CStorageHead &storage)
+void CEquiEnergyModel::SaveSampleToStorage(const CSampleIDWeight &sample, unsigned int binIndex, CStorageHead &storage)
 {
-	int binIndex = parameter.BinIndex(-sample.weight, energy_level);
         storage.DepositSample(binIndex, sample);
+}
+
+void CEquiEnergyModel::Take_Sample_Just_Drawn_From_Storage(const CSampleIDWeight &x)
+{
+	current_sample = x; 
+	current_sample.id = (int)(time(NULL)-timer_when_started);
 }
 
 bool CEquiEnergyModel::InitializeFromFile(const string &file_name)
 {
+	CSampleIDWeight x; 
 	ifstream input_file; 
 	input_file.open(file_name.c_str(), ios::binary|ios::in); 
 	if (!input_file)
 		return false; 
-	read(input_file, &(current_sample)); 
+	read(input_file, &(x)); 
 	input_file.close(); 
-	current_sample.id = (unsigned int)(time(NULL)-timer_when_started); 
+	Take_Sample_Just_Drawn_From_Storage(x); 
 	current_sample.DataChanged(); 
 	log_posterior_function(current_sample); 
 	return true;  
@@ -54,7 +60,7 @@ int CEquiEnergyModel::EE_Draw(const CEESParameter &parameter, CStorageHead &stor
 	{
 		// draw x_new from bin of the higher level of the same energy; 
 		unsigned int bin_id = parameter.BinIndex(-current_sample.weight, energy_level+1);
-		if (storage.DrawSample(bin_id, x_new)) // if a sample is successfully draw from bin
+		if (storage.DrawSample(bin_id,x_new) ) // if a sample is successfully draw from bin
 		{
 			// calculate log_ratio in the current and the higher levels
 			double log_ratio = parameter.LogRatio_Level(-x_new.weight, -current_sample.weight, energy_level); 
@@ -62,8 +68,7 @@ int CEquiEnergyModel::EE_Draw(const CEESParameter &parameter, CStorageHead &stor
 			if (log(dw_uniform_rnd()) <= log_ratio)
 			{
 				// accept the new sample
-				current_sample = x_new; 
-				current_sample.id = (int)(time(NULL)-timer_when_started);
+				Take_Sample_Just_Drawn_From_Storage(x_new); 
 				new_sample_code = EQUI_ENERGY_JUMP; 
 			}	
 		}
@@ -135,8 +140,7 @@ bool CEquiEnergyModel::InitializeWith_Kth_BestSample(unsigned int K, CStorageHea
 	}
 	if (sample.size() < K)
 		return false; 
-	current_sample = sample.back(); 
-	current_sample.id = (int)(time(NULL)-timer_when_started); 
+	Take_Sample_Just_Drawn_From_Storage(sample.back()); 
         return true;
 }
 
@@ -152,8 +156,7 @@ bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(size_t K, CStora
 	if (sample.size() < K)
 		return false; 
 	unsigned int index = dw_uniform_int(K); 
-	current_sample = sample[index]; 
-	current_sample.id = (int)(time(NULL)-timer_when_started); 
+	Take_Sample_Just_Drawn_From_Storage(sample[index]); 
 	return true; 
 }
 
@@ -205,14 +208,17 @@ double CEquiEnergyModel::Simulation_Within(const CEESParameter &parameter, CStor
 		}
 		
 		if (if_storage)
-			SaveSampleToStorage(current_sample, parameter, storage); 
+		{
+			unsigned int bin_index = parameter.BinIndex(-current_sample.weight, energy_level);
+			SaveSampleToStorage(current_sample, bin_index, storage);
+		} 
 		if (if_write_file)
 			write(output_file, &current_sample); 
 	}
 	if (if_write_file)
 		output_file.close(); 
 
-	cout << "MH Jump " << nJump << " out of " << parameter.simulation_length << " in simulation.\n"; 
+	cout << "MH Jump " << nJump << " out of " << parameter.simulation_length*parameter.deposit_frequency << " in simulation.\n"; 
 	return max_posterior;  
 }
 
@@ -245,7 +251,9 @@ double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStora
 		}	
 	
 		if (if_storage)
-			SaveSampleToStorage(current_sample, parameter, storage); 
+		{	unsigned int bin_index = parameter.BinIndex(-current_sample.weight, energy_level);
+			SaveSampleToStorage(current_sample, bin_index, storage); 
+		}
 		if (if_write_file)
 			write(output_file, &current_sample); 
 	}
@@ -253,8 +261,8 @@ double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStora
 	if (if_write_file)
 		output_file.close(); 	
 
-	cout << "EE Jump " << nEEJump << " out of " << parameter.simulation_length << " in simulation.\n"; 
-	cout << "MH Jump " << nMHJump << " out of " << parameter.simulation_length << " in simulation.\n"; 
+	cout << "EE Jump " << nEEJump << " out of " << parameter.simulation_length *parameter.deposit_frequency<< " in simulation.\n"; 
+	cout << "MH Jump " << nMHJump << " out of " << parameter.simulation_length *parameter.deposit_frequency<< " in simulation.\n"; 
 	return max_posterior; 
 }
 
@@ -267,7 +275,3 @@ if_bounded(_if_bounded), energy_level(eL), h_bound(_h), t_bound(_t), current_sam
 {
 }
 
-CEquiEnergyModel::~CEquiEnergyModel()
-{
-	delete metropolis; 
-}

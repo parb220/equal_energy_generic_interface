@@ -1,9 +1,21 @@
-#include "master_deploying.h"
+#include <cstdlib>
+#include <vector>
+#include <cmath>
+#include <mpi.h>
+#include "CEquiEnergy_TState.h"
+#include "CEESParameter.h"
+#include "CStorageHead.h"
 #include "mpi_parameter.h"
+#include "master_deploying.h"
+
+extern "C"
+{
+	#include "dw_parse_cmd.h"
+}
 
 using namespace std;
 
-void master_deploying(int argc, char **argv, CEquiEnergyModel &model, CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode)
+void master_deploying(int argc, char **argv, CEquiEnergy_TState &model, CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode)
 {	
 	// 0: master node
 	// 1:nNode-1: slave node
@@ -14,11 +26,11 @@ void master_deploying(int argc, char **argv, CEquiEnergyModel &model, CEESParame
 	
 	vector<vector<unsigned int> > nodeGroup(n_initial);
         unsigned int i=1;
-        while (i<nNode)
-        {
-                for (unsigned int j=0; j<nodeGroup.size(); j++)
-                {
-                        nodeGroup[j].push_back(i);
+	while (i<nNode)
+	{
+        	for (unsigned int j=0; j<nodeGroup.size() && i<nNode; j++)
+       	 	{
+			nodeGroup[j].push_back(i);
                         i++;
                 }
         }

@@ -167,7 +167,7 @@ bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDW
 
 	CSampleIDWeight x = initial_v;  
 	double log_previous = model->log_posterior_function(x), log_current; 
-	bool if_new_sample = false; 
+	bool if_new_sample = false;  
 	for (unsigned int i_thin=0; i_thin<thin; i_thin++)
 	{
 		for (unsigned int i=0; i<k; i++)
@@ -186,6 +186,7 @@ bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDW
 	}
 	
 	log_posterior_y = log_previous; 
+	y = x; 
 	return if_new_sample; 
 }
 

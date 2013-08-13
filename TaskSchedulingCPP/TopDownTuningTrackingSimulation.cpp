@@ -1,10 +1,15 @@
 #include <sstream>
+#include <vector>
+#include "CEquiEnergy_TState.h"
+#include "CEESParameter.h"
+#include "CStorageHead.h"
+#include "CSampleIDWeight.h"
+#include "CMetropolis.h"
 #include "storage_parameter.h"
-#include "master_deploying.h"
 
 using namespace std;
 
-double TopDownTuningSimulation(CEquiEnergyModel &model, const vector <vector<unsigned int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode, size_t period, size_t max_period)
+double TopDownTuningSimulation(CEquiEnergy_TState &model, const vector <vector<unsigned int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode, size_t period, size_t max_period)
 {
 	string block_file_name, sample_file_name; 
 	stringstream convert; 

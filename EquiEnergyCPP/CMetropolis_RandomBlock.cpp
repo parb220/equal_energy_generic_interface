@@ -50,6 +50,7 @@ bool CMetropolis::RandomBlockRandomWalkMetropolis(double &log_posterior_y, CSamp
 		}
 	}
 	log_posterior_y = log_previous; 
+	y = x; 
 	return if_new_sample; 	
 }
 

@@ -1,7 +1,15 @@
+#include <vector>
 #include <sstream>
 #include <glob.h>
-#include "master_deploying.h"
+#include <mpi.h> 
+#include <fstream>
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
+#include "CEESParameter.h"
+#include "CStorageHead.h"
 #include "storage_parameter.h"
+#include "mpi_parameter.h"
 
 using namespace std;  
 

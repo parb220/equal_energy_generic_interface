@@ -1,4 +1,9 @@
-#include "master_deploying.h"
+#include <vector>
+#include <cmath>
+#include <mpi.h>
+#include "CEESParameter.h"
+#include "CStorageHead.h"
+#include "mpi_parameter.h"
 
 using namespace std; 
 

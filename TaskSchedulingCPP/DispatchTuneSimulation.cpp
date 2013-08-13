@@ -1,6 +1,12 @@
+#include <vector>
+#include <mpi.h>
+#include <iostream>
+#include "CEESParameter.h"
+#include "CStorageHead.h"
 #include "storage_parameter.h"
 #include "mpi_parameter.h"
-#include "master_deploying.h"
+
+double DispatchSimulation(const vector<vector<unsigned int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, unsigned int level, int tag);
 
 using namespace std; 
 
@@ -9,7 +15,7 @@ double DispatchTuneSimulation(const vector<vector<unsigned int> > &nodeGroup, co
 	double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];  
 	MPI_Status status; 
 
-	double max_log_posterior = -1.0e300, received_log_posterior; 
+	double max_log_posterior,  received_log_posterior; 
 	size_t estimation_length; 
 
 	for (unsigned int level=parameter.highest_level; level>=parameter.lowest_level; level--)
@@ -33,8 +39,7 @@ double DispatchTuneSimulation(const vector<vector<unsigned int> > &nodeGroup, co
 
 		// Simulation to estimate group-specific covariance matrix
 		estimation_length = 5000; 
-		received_log_posterior = DispatchSimulation(nodeGroup, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_FIRST); 
-		max_log_posterior = max_log_posterior > received_log_posterior ? max_log_posterior : received_log_posterior; 
+		max_log_posterior = DispatchSimulation(nodeGroup, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_FIRST); 
 
 		// Tune after simulation
 		for (unsigned int i=0; i<nodeGroup.size(); i++)

@@ -3,7 +3,7 @@
 #include "CSampleIDWeight.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
-#include "CEquiEnergyModel.h"
+#include "CEquiEnergy_TState.h"
 #include "CMetropolis.h"
 
 extern "C" {
@@ -12,8 +12,8 @@ extern "C" {
 	#include "dw_csminwel.h"
 }
 
-CEquiEnergyModel* MinusLogPosterior_NPSOL::model; 
-CEquiEnergyModel* MinusLogPosterior_CSMINWEL::model; 
+CEquiEnergy_TState* MinusLogPosterior_NPSOL::model; 
+CEquiEnergy_TState* MinusLogPosterior_CSMINWEL::model; 
 
 void *MinusLogPosterior_NPSOL::function(int *mode, int *n, double *x, double *f, double *g, int *nstate)
 {
@@ -26,12 +26,18 @@ double MinusLogPosterior_CSMINWEL::function(double *x, int n, double **args, int
 	return return_value; 
 }
 
+void InitializeParameter(double *x, size_t n)
+{
+	for (unsigned int j=0; j<n; j++)
+             x[j] = dw_uniform_rnd();
+}           
+
 // HillClimb is always one on the original model. Therefore, if_bounded will be set as false temperoraly
 // so that all calculation can be perfomed on the original model. After HillClimb is finished, if_bounded
 // will be set as its original value. 
 // Samples generated during HillClimb will be saved into storage but always at the level of number_energy_level
 // (the extra level)
-double CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
+double CEquiEnergy_TState::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
 {
 	energy_level = parameter.number_energy_level; 
 	bool if_bounded_old = if_bounded; 
@@ -102,9 +108,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage
 	// test if LogPosterior_StatesIntegratedOut works
 	for (unsigned int i=0; i<nSolution; i++)
 	{
-		for (unsigned int j=0; j<n; j++)
-			// x[j]=dw_gaussian_rnd();  
-			x[j] = dw_uniform_rnd(); 
+		InitializeParameter(x, n); 
         	npoptn_((char*)COLD_START.c_str(), COLD_START.length());
 		npsol_(&n, &nclin, &ncnln, &ldA, &ldJ, &ldR, A, bl, bu, NULL, MinusLogPosterior_NPSOL::function, &inform, &iter, istate, c, cJac, clambda, &f, g, R, x, iw, &leniw, w, &lenw); 
 		if (f < 1.0e300)
@@ -142,7 +146,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage
 	return max_log_posterior; 
 }
 
-double CEquiEnergyModel::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
+double CEquiEnergy_TState::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
 {
 	energy_level = parameter.number_energy_level;
         bool if_bounded_old = if_bounded;
@@ -159,8 +163,7 @@ double CEquiEnergyModel::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &stor
 	
 	for (unsigned int iSolution=0; iSolution < nSolution; iSolution ++)
 	{
-		for (unsigned int i=0; i<n; i++)
-			x[i] = dw_uniform_rnd(); 
+		InitializeParameter(x, n); 
 		for (unsigned int i=0; i<n; i++)
 			for (unsigned int j=0; j<n; j++)
 				H[i*n+j] = IniHCsminwel; 

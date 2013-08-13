@@ -19,6 +19,25 @@ extern "C" {
 
 using namespace std; 
 
+double CEquiEnergyModel::BurnIn_RandomBlock(size_t burn_in_length)
+{
+	CSampleIDWeight x_new;
+        unsigned int nJump =0;
+        double max_posterior = current_sample.weight, bounded_log_posterior_new;
+        for (unsigned int i=0; i<burn_in_length; i++)
+	{
+		if (metropolis->RandomBlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1) )
+		{
+			current_sample = x_new;
+                        current_sample.id = (int)(time(NULL)-timer_when_started);
+                        max_posterior = current_sample.weight > max_posterior ? current_sample.weight : max_posterior;
+                        nJump ++;
+		}
+	}
+	cout << "MH Jump " << nJump << " out of " << burn_in_length << " in burning-in.\n"; 
+	return max_posterior; 
+}
+
 int CEquiEnergyModel::EE_Draw_RandomBlock(const CEESParameter &parameter, CStorageHead &storage, size_t MH_thin)
 {
         CSampleIDWeight x_new;
@@ -43,8 +62,7 @@ int CEquiEnergyModel::EE_Draw_RandomBlock(const CEESParameter &parameter, CStora
                         log_ratio += parameter.LogRatio_Level(-current_sample.weight, -x_new.weight, energy_level+1);
 			if (log(dw_uniform_rnd()) <= log_ratio)
                         {
-				current_sample = x_new;
-                                current_sample.id = (int)(time(NULL)-timer_when_started);
+				Take_Sample_Just_Drawn_From_Storage(x_new); 
                                 new_sample_code = EQUI_ENERGY_JUMP;
                         }
                 }
@@ -88,13 +106,16 @@ double CEquiEnergyModel::Simulation_Within_RandomBlock(const CEESParameter &para
                		nJump ++;
         	}
 		if (if_storage)
-       			SaveSampleToStorage(current_sample, parameter, storage);
+		{
+			unsigned int bin_index = parameter.BinIndex(-current_sample.weight,energy_level); 
+       			SaveSampleToStorage(current_sample, bin_index, storage);
+		}
        		if (if_write_file)
       			 write(output_file, &current_sample);
        }
        if (if_write_file)
        			output_file.close();
-	cout << "MH Jump " << nJump << " out of " << parameter.simulation_length << " in simulation.\n"; 
+	cout << "MH Jump " << nJump << " out of " << parameter.simulation_length *parameter.deposit_frequency<< " in simulation.\n"; 
 	return max_posterior;
 }
 
@@ -127,14 +148,17 @@ double CEquiEnergyModel::Simulation_Cross_RandomBlock(const CEESParameter &param
                 }
 
                 if (if_storage)
-                        SaveSampleToStorage(current_sample, parameter, storage);
+		{
+			unsigned int bin_index=parameter.BinIndex(-current_sample.weight,energy_level); 
+                        SaveSampleToStorage(current_sample, bin_index, storage);
+		}
                 if (if_write_file)
                         write(output_file, &current_sample);
         }
 	if (if_write_file)
                 output_file.close();
 
-        cout << "EE Jump " << nEEJump << " out of " << parameter.simulation_length << " in simulation.\n";
-        cout << "MH Jump " << nMHJump << " out of " << parameter.simulation_length << " in simulation.\n";
+        cout << "EE Jump " << nEEJump << " out of " << parameter.simulation_length *parameter.deposit_frequency<< " in simulation.\n";
+        cout << "MH Jump " << nMHJump << " out of " << parameter.simulation_length *parameter.deposit_frequency<< " in simulation.\n";
         return max_posterior;
 }

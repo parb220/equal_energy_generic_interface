@@ -1,12 +1,16 @@
-#include "slave_computing.h"
+#include <cstdlib>
+#include <sstream>
+#include "CEquiEnergy_TState.h"
+#include "CMetropolis.h"
+#include "CStorageHead.h"
+#include "CEESParameter.h"
+#include "CSampleIDWeight.h"
+#include "mpi_parameter.h"
 #include "storage_parameter.h"
 
-extern "C"
-{
-	#include "dw_parse_cmd.h"
-}
+using namespace std; 
 
-bool ExecutingSimulationTask(double &max_log_posterior, bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergyModel &model, CStorageHead &storage, const CEESParameter &parameter, unsigned int my_rank, unsigned int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag)
+bool ExecutingSimulationTask(double &max_log_posterior, bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergy_TState &model, CStorageHead &storage, const CEESParameter &parameter, unsigned int my_rank, unsigned int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag)
 {
 	// restore partial storage (previously obtained at this node) for updating
 	storage.restore(parameter.BinIndex_Start(model.energy_level), parameter.BinIndex_End(model.energy_level));
