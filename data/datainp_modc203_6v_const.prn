@@ -1,0 +1,135 @@
+//**********************************************************************************************************************
+// WARNINGS: Do NOT change any comment line bracketed by //== and ==/ or insert any character BEFORE the openning
+//             comment symbol //== on the same line of //== ???? ==//.  Any such change may cause the program to
+//             crash or, worse, to give erroneous results.
+//           Change the numbers ONLY below the comment line indicated by //== ???? ==//.  Space and tab are allowed
+//             but NOT any other characters before or between numbers.
+//           Add, if you wish, comments (words) right ABOVE the line of //== ???? ==// or on the same line of
+//             //== ????? ==// but only AFTER the closing comment symbol ==// or AFTER all the numbers below //== ???? ==//.
+//---
+// WARNING: It is the user's responsibility to make sure that the dimension matches exactly the vector or matrix.
+//             Any mismatch may cause the program to crash or, worse, to give erroneous results.
+**********************************************************************************************************************//
+
+//== ny ==//   //Number of observables for tz_kalfiltv() in kalman.c.  WARNING: Must be consistent with dataraw_*_logData_*.prn.
+6
+
+//== nlags ==//
+3
+
+//== BeginEndSample_iv ==//  //Sample range (including nlags).  Must be witin the data range BeginEndData_iv in dataraw_*_logData_*.prn.
+4
+
+1975  2  2010 4
+
+//== SelectData_iv ==//  //Base-o counting for selecting the appropriate data according to dataraw_*_logData_*.prn.  Must match n_y.  [4 19 1] (note base-0 counting):  Core PCE inflation, OutputGap(CBO), and FFR.
+6
+
+1 2 3 4 5 6 
+
+//== nz ==//   //Number of state variables in tz_kalfiltv() in kalman.c, including lagged variables (C_{h,t-1}, C_{e,t-1}, I_{t-1}, K_{t-1}, B_{t-1}, ν_{z,t-1}, ν_{q,t-1}) or regime e_{s_t} variables.  nz = nzbase + nadded in TSdsgemodel_tag.
+39
+
+//== nzbase ==//   //Number of base state variables in kalman, excluding lagged variables or regime e_{s_t} variables.  Thus nzbase <=nz.
+32
+
+//== ngensys ==//   //Total number of variables in the gensys form.  ngensys > nzbase if regime-switching coefficient is involved, otherwise, ngensys = nzbase.
+32
+
+//== nu ==//      //Number of measurement errors.
+0
+
+//== ne ==//    //Number of fundamental shocks in kalman filtering.  May > nshocks in gensys when some AR measurement errors are grouped as state equations.
+8
+
+//== nshocks_kalman ==//  //Number of fundamental shocks for the final state space form for Kalman filter.
+8
+
+//== nshocks ==//    //Number of all i.i.d. shocks (u_t) for the gensys form: number of fundamental shocks + number of coefficient regimes.
+8
+
+//== nexperrs ==//  //Number of expectational errors (eta_t)
+8
+
+//== div ==//   //Division for separating large vs small roots.  Used only for gensys_sims.
+1.000000001
+
+//== xphi_dv ==//   //Free parameters for MCMC; its dimension (depending on indx_tvmodel) will always be read.  For the vector itself, read in only if indxStartValuesForMin==1.
+21
+
+1.00
+0.4
+0.7
+0.7
+0.0
+2.0
+
+0.9
+0.1
+0.9
+0.1
+0.9
+0.9
+0.9
+0.9
+
+0.1
+0.1
+0.1
+0.1
+0.1
+0.1
+0.1
+0.1
+
+
+//===================== Model 207 ============================
+   //--- Deep parameters.
+   // 1.  ggammah         % habit persistence for household
+   // 2.  ggammae         % habit persistence for entrepreneur
+   // 3.  gOmega          % investment adjustment cost parameter (as estimated by LWZ (2009))
+   //--- Exogenous processes
+   // 4   grhoglambdaa = 0.9;    %Household patience persistence
+   // 5   grhoglambdaz = 0.1;    %Neutral tech trend growth persistence
+   // 6.  grhognuz = 0.9;        %Neutral tech level persistence
+   // 7.  grhoglambdaq = 0.1;    %Biased tech trend growth persistence
+   // 8.  grhognuq = 0.9;        %Biased tech level persistence
+   // 9.  grhogvarphi = 0.9;     %Household housing intratemporal (MRS) persistence
+   // 10. grhogpsi = 0.9;        %Household labor intratemporal (MRS) persistence
+   // 11. grhogtheta = 0.9;         %(Borrowing) collateral persistence
+   //---
+   // 12. gsigmaglambdaa = 0.1;  %Household patience shock
+   // 13. gsigmaglambdaz = 0.1;  %Neutral tech trend growth shock
+   // 14. gsigmagnuz = 0.1;      %Neutral tech level shock
+   // 15. gsigmaglambdaq = 0.1;  %Biased tech trend growth shock
+   // 16. gsigmagnuq = 0.1;      %Biased tech level shock
+   // 17. gsigmagvarphi = 0.1;   %Household housing intratemporal (MRS) shock
+   // 18. gsigmagpsi = 0.1;      %Household labor intratemporal (MRS) shock
+   // 19. gsigmagtheta = 0.1;       %(Borrowing) collateral shock
+
+
+//===================== Model 203 ============================
+   //--- Deep parameters.
+   // 1.  100*(glambdaq-1)        % glambdaq = 1.01; trend quarterly growth rate of ISTC (as estimated by LWZ (2009))
+   // 2.  100*(glambdastar-1)     % glambdastar = 1.005; trend quarterly growth rate of real per capita GDP
+   // 3.  ggammah         % habit persistence for household
+   // 4.  ggammae         % habit persistence for entrepreneur
+   // 5.  gOmega          % investment adjustment cost parameter (as estimated by LWZ (2009))
+   //--- Exogenous processes
+   // 6.  grhoglambdaa = 0.9;    %Household patience persistence
+   // 7.  grhoglambdaz = 0.1;    %Neutral tech trend growth persistence
+   // 8.  grhognuz = 0.9;        %Neutral tech level persistence
+   // 9.  grhoglambdaq = 0.1;    %Biased tech trend growth persistence
+   // 10. grhognuq = 0.9;        %Biased tech level persistence
+   // 11. grhogvarphi = 0.9;     %Household housing intratemporal (MRS) persistence
+   // 12. grhogpsi = 0.9;        %Household labor intratemporal (MRS) persistence
+   // 13. grhogtheta = 0.9;         %(Borrowing) collateral persistence
+   //---
+   // 14. gsigmaglambdaa = 0.1;  %Household patience shock
+   // 15. gsigmaglambdaz = 0.1;  %Neutral tech trend growth shock
+   // 16. gsigmagnuz = 0.1;      %Neutral tech level shock
+   // 17. gsigmaglambdaq = 0.1;  %Biased tech trend growth shock
+   // 18. gsigmagnuq = 0.1;      %Biased tech level shock
+   // 19. gsigmagvarphi = 0.1;   %Household housing intratemporal (MRS) shock
+   // 20. gsigmagpsi = 0.1;      %Household labor intratemporal (MRS) shock
+   // 21. gsigmagtheta = 0.1;       %(Borrowing) collateral shock
