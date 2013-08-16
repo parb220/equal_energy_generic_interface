@@ -34,12 +34,12 @@ private:
 protected:
         double log_posterior_function(const double *x, size_t n);
         double log_likelihood_function(const double *x, size_t n);
-	CSampleIDWeight original_sample; 
+	CSampleIDWeight original_sample;
 public: 
 	TStateModel *target_model;
-	virtual bool SaveTargetModelOriginalSetting(); 
-	virtual bool RecoverTargetModelOriginalSetting();
-	virtual bool InitializeFromTarget(); 
+	bool SaveTargetModelOriginalSetting(); 
+	bool RecoverTargetModelOriginalSetting();
+	bool InitializeFromTarget(); 
 	virtual double log_posterior_function(CSampleIDWeight &x); 
 	// x cannot be constant because x.weight will be set as the real log_posterior calculated
 	// from target_model, where the returning value is the bounded log_posterior

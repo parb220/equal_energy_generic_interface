@@ -40,7 +40,6 @@ public:
 	CSampleIDWeight current_sample; 
 	CMetropolis *metropolis; 	// pointer to CMetropolis
 	time_t timer_when_started; 
-	CSampleIDWeight original_sample; 	// to save the original setting of TStateModel
 	
 public:
 	virtual double log_posterior_function(CSampleIDWeight &x)=0;

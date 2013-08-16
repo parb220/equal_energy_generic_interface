@@ -434,7 +434,7 @@ bool CPutGetBin::DrawSample(CSampleIDWeight &sample)
 		size_t nFetchFile = filename_fetch.size(); 
 		if (nFetchFile == 0 && nPutUsed == 0 )
 		{
-			cerr << "Error in DrawSample() : files and bins are empty.\n"; 
+			// cerr << "Error in DrawSample() : files and bins are empty.\n"; 
 			return false; 
 		}
 		else if (nFetchFile == 0 ) // && nPutUsed > 0) 
