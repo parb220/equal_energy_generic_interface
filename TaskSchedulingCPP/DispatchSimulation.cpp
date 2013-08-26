@@ -1,7 +1,15 @@
+#include <vector>
 #include <sstream>
 #include <glob.h>
-#include "master_deploying.h"
+#include <mpi.h> 
+#include <fstream>
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
+#include "CEESParameter.h"
+#include "CStorageHead.h"
 #include "storage_parameter.h"
+#include "mpi_parameter.h"
 
 using namespace std;  
 
@@ -19,20 +27,12 @@ size_t glob(vector<string> &filename, const string &pattern)
         return filename.size();
 }
 
-bool ConsolidateSampleForCovarianceEstimation(const CEESParameter &parameter, unsigned int level)
+bool ConsolidateSampleForCovarianceEstimation(const string &file_pattern, const string &variance_file)
 {
-        stringstream convert;
-        convert.str(string());
-        convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << level << ".*";
-        string file_pattern = parameter.storage_dir + convert.str();
-
         vector <string> filenames_merge; 
-        convert.str(string());
 	size_t number_file = glob(filenames_merge, file_pattern); 
 	if (number_file == 0)
 		return true; 
-        convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << level;
-        string variance_file = parameter.storage_dir + convert.str();
         ofstream out_file(variance_file.c_str(), ios::out | ios::binary);
         if (!out_file)
                 return false;
@@ -55,32 +55,50 @@ bool ConsolidateSampleForCovarianceEstimation(const CEESParameter &parameter, un
         out_file.close();
         if (fail_counter < filenames_merge.size() ) 
                 return true;
+	else 
+		return false; 
 }
 
 
-void DispatchSimulation(const vector<unsigned int> &nodePool, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, unsigned int level, int message_tag)
+double DispatchSimulation(const vector<vector<unsigned int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, unsigned int level, int message_tag)
 {
+	double max_log_posterior =-1.0e300, received_log_posterior; 
 	double *sPackage = new double [N_MESSAGE]; 
-	int simulation_length_per_node = ceil((double)simulation_length/(double)nodePool.size()); 
-	sPackage[LENGTH_INDEX] = simulation_length_per_node; 
 	// burn_in_length: 0.1*simulation_length_per_node or 5000, whichever is larger
-	sPackage[BURN_INDEX] = (simulation_length_per_node*parameter.deposit_frequency)/10 >= 5000 ? (simulation_length_per_node*parameter.deposit_frequency)/10 : 5000; 
 	sPackage[FREQ_INDEX] = parameter.deposit_frequency; 
        	sPackage[LEVEL_INDEX] = level;
 	sPackage[H0_INDEX] = parameter.h0; 
 
-	for (unsigned int i=0; i<nodePool.size(); i++)
-		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, nodePool[i], message_tag, MPI_COMM_WORLD);
+	size_t nNode=0; 
+	for (unsigned int m=0; m<nodeGroup.size(); m++)
+		nNode += nodeGroup[m].size(); 
+	size_t simulation_length_per_node; 
+	for (unsigned int i=0; i<nodeGroup.size(); i++)
+	{
+		if (message_tag == TUNE_TAG_SIMULATION_FIRST)
+			simulation_length_per_node = (size_t)ceil((double)simulation_length/(double)nodeGroup[i].size()); 
+		else
+			simulation_length_per_node = (size_t)ceil((double)simulation_length/(double)nNode); 
+		for (unsigned j = 0; j<nodeGroup[i].size(); j++)
+		{
+			sPackage[LENGTH_INDEX] = simulation_length_per_node; 
+			sPackage[BURN_INDEX] = (simulation_length_per_node*parameter.deposit_frequency)/10 >= 5000 ? (simulation_length_per_node*parameter.deposit_frequency)/10 : 5000; 
+			sPackage[GROUP_INDEX] = i; 
+			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][j], message_tag, MPI_COMM_WORLD);
+		}
+	}
 	delete [] sPackage;
 
 	MPI_Status status;
 	double *rPackage = new double [N_MESSAGE];
-	double min_h0 = parameter.h0, receivedH0; 
-	for (unsigned int i=0; i<nodePool.size(); i++)
+	for (unsigned int i=0; i<nodeGroup.size(); i++)
 	{
-		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status); 
-		receivedH0 = rPackage[H0_INDEX]; 
-		min_h0 = min_h0 < receivedH0 ? min_h0 : receivedH0; 
+		for (unsigned int j=0; j<nodeGroup[i].size(); j++)
+		{
+			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status); 
+			received_log_posterior = rPackage[H0_INDEX]; 
+			max_log_posterior = max_log_posterior > received_log_posterior ? max_log_posterior : received_log_posterior; 
+		}
 	}
 	delete [] rPackage;
 
@@ -92,10 +110,40 @@ void DispatchSimulation(const vector<unsigned int> &nodePool, const CEESParamete
 	// Consolidate variance file
 	if (message_tag == TUNE_TAG_SIMULATION_FIRST || message_tag == TUNE_TAG_SIMULATION_SECOND)
 	{
-		if (!ConsolidateSampleForCovarianceEstimation(parameter, level))
+		stringstream convert; 
+		string input_file_pattern, output_file; 
+		if (message_tag == TUNE_TAG_SIMULATION_FIRST)
 		{
-			cerr << "ConsolidateSampleForCovarianceEstimation() : Error.\n";
-                	abort();
+			for (unsigned int i=0; i<nodeGroup.size(); i++)
+			{
+				convert.str(string()); 
+				convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << level << "." << i << ".*";
+				input_file_pattern = parameter.storage_dir + convert.str();
+				
+				convert.str(string());
+                        	convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << level << "." << i;
+				output_file = parameter.storage_dir + convert.str(); 
+				if (!ConsolidateSampleForCovarianceEstimation(input_file_pattern, output_file))
+                        	{
+                                	cerr << "ConsolidateSampleForCovarianceEstimation() : Error.\n";
+                                	abort();
+                        	}
+			}
+		}
+		else
+		{
+			convert.str(string());
+                        convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << level << ".*.*";
+			input_file_pattern = parameter.storage_dir + convert.str();
+			convert.str(string());
+			convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << level;
+			output_file = parameter.storage_dir + convert.str(); 
+			if (!ConsolidateSampleForCovarianceEstimation(input_file_pattern, output_file))
+                       	{
+                       		cerr << "ConsolidateSampleForCovarianceEstimation() : Error.\n";
+                       		abort();
+                       	}
 		}
 	}
+	return max_log_posterior; 
 }

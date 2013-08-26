@@ -1,4 +1,5 @@
 #include <fstream>
+#include <iomanip>
 #include <vector>
 #include <cstdlib>
 #include "CSampleIDWeight.h"
@@ -29,7 +30,7 @@ int main(int argc, char* argv[])
 	}
 
 	for (unsigned int i=0; i<sample.size(); i++)
-		oFile << sample[i]; 
+		oFile << setprecision(20) << sample[i]; 
 
 	oFile.close(); 
 }

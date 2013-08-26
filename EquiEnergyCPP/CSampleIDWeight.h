@@ -12,7 +12,7 @@ class CEquiEnergyModel;
 
 class CSampleIDWeight
 {
-protected:
+public:
 	bool calculated; 
 public:
 	TDenseVector data; 
@@ -35,7 +35,6 @@ public:
 
 	friend istream& operator>>(istream &, CSampleIDWeight &); 
 	friend ostream& operator<<(ostream &, const CSampleIDWeight &); 
-	friend class CEquiEnergyModel; 
 }; 
 
 bool LoadSampleFromFile(const string &file, vector<CSampleIDWeight> &Y); 

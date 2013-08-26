@@ -36,7 +36,7 @@ if (1)
 #include "CStorageHead.h"
 #include "CSampleIDWeight.h"
 #include "CEESParameter.h"
-#include "CEquiEnergyModel.h"
+#include "CEquiEnergy_TState.h"
 #include "CMetropolis.h"
 #include "TaskScheduling.h"
 
@@ -748,7 +748,7 @@ int main(int n_args_cl, char **args_cl)
        	parameter.SetTemperature();
 
 	// burn-in length, simulation length, and deposit frequency
-	parameter.deposit_frequency = dw_ParseInteger_String(n_args_cl, args_cl, "thin", 100);
+	parameter.deposit_frequency = dw_ParseInteger_String(n_args_cl, args_cl, "thin", 50);
         parameter.simulation_length = dw_ParseInteger_String(n_args_cl, args_cl, "ndraws", 10000);
 	parameter.simulation_length = parameter.simulation_length; 
 	
@@ -761,7 +761,7 @@ int main(int n_args_cl, char **args_cl)
         CStorageHead storage(parameter.run_id, parameter.storage_marker, number_bin, parameter.storage_dir, my_rank);
 
 	// Equi-Energy Model
-	CEquiEnergyModel model;
+	CEquiEnergy_TState model;
 	//target model; 
 	model.target_model = state_space_model;	
 	model.SaveTargetModelOriginalSetting(); 

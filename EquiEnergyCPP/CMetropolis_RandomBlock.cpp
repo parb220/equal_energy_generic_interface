@@ -7,7 +7,7 @@
 #include "CEquiEnergyModel.h"
 #include "CMetropolis.h"
 
-bool CMetropolis::RandomBlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDWeight &y, const CSampleIDWeight &initial_x)
+bool CMetropolis::RandomBlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDWeight &y, const CSampleIDWeight &initial_x, size_t thin)
 // Given
 // 	inital_x:	initial value, vector
 // Results:
@@ -26,27 +26,31 @@ bool CMetropolis::RandomBlockRandomWalkMetropolis(double &log_posterior_y, CSamp
 	CSampleIDWeight x=initial_x, increment; 
 	double log_previous = model->log_posterior_function(x), log_current; 	
 	bool if_new_sample = false; 
-	for (unsigned int i=0; i<n_blocks; i++)
+	for (unsigned int i_thin=0; i_thin<thin; i_thin++)
 	{
-		size_t block_size = random_block_assignments[i].size();	// size of the current block
-		increment.data.Zeros(x.data.dim); 
-		for (unsigned int j=0; j<block_size; j++)
+		for (unsigned int i=0; i<n_blocks; i++)
 		{
-			unsigned int d_index = random_block_assignments[i][j]; 
-			increment.data = increment.data + random_blocks[d_index] * random_block_scales[d_index][block_size-1] * dw_gaussian_rnd();  
-		}
-		y.data = x.data + increment.data; 
-		y.DataChanged(); 
-		log_current = model->log_posterior_function(y); 
-		if (log_current - log_previous >= log(dw_uniform_rnd() ) )
-		{
-			x = y; 
-			log_previous = log_current; 
-			if (!if_new_sample)
-				if_new_sample = true; 
+			size_t block_size = random_block_assignments[i].size();	// size of the current block
+			increment.data.Zeros(x.data.dim); 
+			for (unsigned int j=0; j<block_size; j++)
+			{
+				unsigned int d_index = random_block_assignments[i][j]; 
+				increment.data = increment.data + random_blocks[d_index] * random_block_scales[d_index][block_size-1] * dw_gaussian_rnd();  
+			}
+			y.data = x.data + increment.data; 
+			y.DataChanged(); 
+			log_current = model->log_posterior_function(y); 
+			if (log_current - log_previous >= log(dw_uniform_rnd() ) )
+			{
+				x = y; 
+				log_previous = log_current; 
+				if (!if_new_sample)
+					if_new_sample = true; 
+			}
 		}
 	}
 	log_posterior_y = log_previous; 
+	y = x; 
 	return if_new_sample; 	
 }
 
@@ -177,7 +181,7 @@ void CMetropolis::RandomBlockAdaptive(const CSampleIDWeight &adaptive_start_poin
 	}
 }
 
-void CMetropolis::FourPassRandomBlockAdaptive(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, size_t avg_block_size)
+bool CMetropolis::FourPassRandomBlockAdaptive_StartWithoutSampleFile(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, size_t avg_block_size, const string &block_file_name)
 // first pass: 
 // 	identity variance matrix/n blocks
 // second pass
@@ -234,7 +238,7 @@ void CMetropolis::FourPassRandomBlockAdaptive(const CSampleIDWeight &adaptive_st
                         if (BlockRandomWalkMetropolis(log_posterior_y, y, x) )
                                 x=y; 
                 }
-                Y_simulation[i]=y;
+                Y_simulation[i]=x;
         }
 	
 	// calculate variance and mean
@@ -248,10 +252,12 @@ void CMetropolis::FourPassRandomBlockAdaptive(const CSampleIDWeight &adaptive_st
 	}
 	
 	mean = (1.0/(double)n_draws)*mean; 
-        variance = (0.5/(double)n_draws)*(variance+Transpose(variance)); 
-	variance = variance - Multiply(mean,mean); 
+        variance = (1.0/(double)n_draws)*variance - Multiply(mean,mean); 
+	variance = 0.5 * (variance+Transpose(variance)); 
 
         SVD(U_matrix, d_vector, V_matrix, variance);
+	for (unsigned int i=0; i<d_vector.dim; i++)
+		d_vector[i] = sqrt(d_vector[i]); 
         D_matrix = DiagonalMatrix(d_vector);
         U_matrix = U_matrix *D_matrix;
 
@@ -278,6 +284,11 @@ void CMetropolis::FourPassRandomBlockAdaptive(const CSampleIDWeight &adaptive_st
 	blocks=vector<TDenseMatrix>(blocks_backup.size()); 
 	for (unsigned int i=0; i<blocks_backup.size(); i++) 
 		blocks[i].CopyContent(blocks_backup[i]); 
+
+	if (block_file_name.empty())
+		return true; 
+	else 
+		return Write_RandomBlocks_RandomBlockScales(block_file_name);
 }
 
 bool CMetropolis::RandomBlockAdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t avg_block_size, const string &sample_file_name, const string &block_file_name)
@@ -297,10 +308,12 @@ bool CMetropolis::RandomBlockAdaptiveAfterSimulation(const CSampleIDWeight &adap
 	}
 	
 	mean = (1.0/(double)Y.size())*mean; 
-        variance = (0.5/(double)Y.size())*(variance+Transpose(variance)); 
-	variance = variance - Multiply(mean,mean); 
+        variance = (1.0/(double)Y.size())*variance - Multiply(mean,mean); 
+	variance = 0.5 * (variance+Transpose(variance)); 
 
         SVD(U_matrix, d_vector, V_matrix, variance);
+	for (unsigned int i=0; i<d_vector.dim; i++)
+		d_vector[i] = sqrt(d_vector[i]); 
         D_matrix = DiagonalMatrix(d_vector);
         U_matrix = U_matrix *D_matrix;
 
@@ -333,7 +346,10 @@ bool CMetropolis::RandomBlockAdaptiveAfterSimulation(const CSampleIDWeight &adap
 	blocks=vector<TDenseMatrix>(blocks_backup.size()); 
 	for (unsigned int i=0; i<blocks_backup.size(); i++) 
 		blocks[i].CopyContent(blocks_backup[i]); 
-	return Write_RandomBlocks_RandomBlockScales(block_file_name); 
+	if (block_file_name.empty())
+		return true; 
+	else 
+		return Write_RandomBlocks_RandomBlockScales(block_file_name); 
 }
 
 void CMetropolis::AssignDimensionsToRandomBlocks(size_t n, size_t avg_block_size)
