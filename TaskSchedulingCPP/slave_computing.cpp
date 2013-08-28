@@ -41,10 +41,10 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
 		{
 			model.energy_level = (unsigned int)(rPackage[LEVEL_INDEX]);
-			storage.restore(parameter.BinIndex_Start(model.energy_level), parameter.BinIndex_End(model.energy_level));
+			storage.restore(model.energy_level); 
 			max_log_posterior = model.HillClimb_CSMINWEL(rPackage[LENGTH_INDEX], storage, parameter); 
-			storage.finalize(parameter.BinIndex_Start(model.energy_level), parameter.BinIndex_End(model.energy_level));
-        		storage.ClearDepositDrawHistory(parameter.BinIndex_Start(model.energy_level), parameter.BinIndex_End(model.energy_level));
+			storage.finalize(model.energy_level);
+        		storage.ClearDepositDrawHistory(model.energy_level);
 		}
 		else if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION || status.MPI_TAG == TUNE_TAG_AFTER_SIMULATION) 
 		{
@@ -55,7 +55,6 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 				cerr << "GetCommunicationParameter() : Error occurred.\n"; 
 				abort(); 
 			}
-			model.h_bound = parameter.h[model.energy_level]; 
 			model.t_bound = parameter.t[model.energy_level];
 			
 			size_t period = (size_t)dw_ParseInteger_String(argc, argv, "pr", 20);
@@ -88,7 +87,6 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 				cout << "GetCommunicationParameter() : Error occurred.\n"; 
 				abort(); 
 			}
-			model.h_bound = parameter.h[model.energy_level]; 
 			model.t_bound = parameter.t[model.energy_level];
 
 			if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST)
@@ -126,7 +124,6 @@ bool GetCommunicationParameter(const double *rPackage, size_t package_size, CEES
 	parameter.deposit_frequency = (size_t)(rPackage[FREQ_INDEX]); 
 
         parameter.h0 = rPackage[H0_INDEX];
-        parameter.SetEnergyBound();
         parameter.SetTemperature();
 	return true; 
 }

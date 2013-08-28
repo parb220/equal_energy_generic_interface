@@ -12,10 +12,10 @@ using namespace std;
 bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEquiEnergy_TState &model, CStorageHead &storage, const CEESParameter &parameter, unsigned int group_index, size_t pool_size, const CSampleIDWeight &mode)
 {
 	// start point
-	storage.RestoreForFetch(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1) );
-	if (storage.empty(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1) ) || !model.Initialize_RandomlyPickFrom_K_BestSample(pool_size, storage, parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1)) )
+	storage.RestoreForFetch(model.energy_level+1);
+	if (storage.empty(model.energy_level+1) || !model.Initialize_RandomlyPickFrom_K_BestSample(storage, pool_size, model.energy_level+1) )
 		model.current_sample = mode;
-	storage.ClearDepositDrawHistory(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1));
+	storage.ClearDepositDrawHistory(model.energy_level+1);
 
 	// save the start point
 	stringstream convert;

@@ -55,8 +55,7 @@ int CEquiEnergyModel::EE_Draw_RandomBlock(const CEESParameter &parameter, CStora
         }
 	else
         {
-		int bin_id = parameter.BinIndex(-current_sample.weight, energy_level+1);
-                if (storage.DrawSample(bin_id, x_new)) // if a sample is successfully draw from bin
+                if (storage.DrawSample(energy_level+1, storage.BinIndex(energy_level+1, -current_sample.weight), x_new)) // if a sample is successfully draw from bin
                 {
 			double log_ratio = parameter.LogRatio_Level(-x_new.weight, -current_sample.weight, energy_level);
                         log_ratio += parameter.LogRatio_Level(-current_sample.weight, -x_new.weight, energy_level+1);
@@ -106,10 +105,7 @@ double CEquiEnergyModel::Simulation_Within_RandomBlock(const CEESParameter &para
                		nJump ++;
         	}
 		if (if_storage)
-		{
-			unsigned int bin_index = parameter.BinIndex(-current_sample.weight,energy_level); 
-       			SaveSampleToStorage(current_sample, bin_index, storage);
-		}
+       			SaveSampleToStorage(storage,current_sample); 
        		if (if_write_file)
       			 write(output_file, &current_sample);
        }
@@ -148,10 +144,7 @@ double CEquiEnergyModel::Simulation_Cross_RandomBlock(const CEESParameter &param
                 }
 
                 if (if_storage)
-		{
-			unsigned int bin_index=parameter.BinIndex(-current_sample.weight,energy_level); 
-                        SaveSampleToStorage(current_sample, bin_index, storage);
-		}
+                        SaveSampleToStorage(storage, current_sample); 
                 if (if_write_file)
                         write(output_file, &current_sample);
         }

@@ -43,14 +43,14 @@ public:
 	virtual double log_posterior_function(CSampleIDWeight &x); 
 	// x cannot be constant because x.weight will be set as the real log_posterior calculated
 	// from target_model, where the returning value is the bounded log_posterior
-	// that is, return value = -(-x.weight>h_bound ? -x.weight:h_bound)/t_bound;
+	// that is, return value = if_bounded ? x.weight/t_bound : x.weight; 
 	virtual double log_likelihood_function(const CSampleIDWeight &x); 
 	// returning value is the real log_likelihood calculated from target_model
 
 	double HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter);
         double HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter);
 	CEquiEnergy_TState(); 
-	CEquiEnergy_TState(bool _if_bounded, unsigned int eL, double _h, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time, TStateModel *_model); 
+	CEquiEnergy_TState(bool _if_bounded, unsigned int eL, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time, TStateModel *_model); 
 	~CEquiEnergy_TState() {}
 friend class MinusLogPosterior_NPSOL;
 friend class MinusLogPosterior_CSMINWEL;

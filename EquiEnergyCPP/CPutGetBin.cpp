@@ -488,7 +488,7 @@ void CPutGetBin::finalize()
 
 void CPutGetBin::consolidate()
 {
-	vector < string> file_consolidate = GetFileNameForConsolidate(); 
+	vector<string> file_consolidate = GetFileNameForConsolidate(); 
 	if (file_consolidate.size() > 1)
 	{
 		vector <CSampleIDWeight> sample_consolidate; 
@@ -501,11 +501,12 @@ void CPutGetBin::consolidate()
 		}
 		size_t nComplete = sample_consolidate.size()/capacity; 
 		size_t nRemaining = sample_consolidate.size()%capacity; 
+		dataPut.resize(capacity); 
 		for (unsigned int iComplete=0; iComplete<nComplete; iComplete ++)
 		{
-			dataPut.resize(capacity); 
-			for (unsigned int j=0; j<capacity; j++)
-				dataPut[j] = sample_consolidate[j+iComplete*capacity]; 
+			copy(sample_consolidate.begin()+iComplete*capacity, sample_consolidate.begin()+(iComplete+1)*capacity, dataPut.begin()); 
+			//for (unsigned int j=0; j<capacity; j++)
+			//	dataPut[j] = sample_consolidate[j+iComplete*capacity]; 
 			nPutUsed = capacity; 
 			Dump(file_consolidate[iComplete]); 
 		}
@@ -513,8 +514,9 @@ void CPutGetBin::consolidate()
 		{
 			if (dataPut.size() < nRemaining)
 				dataPut.resize(nRemaining); 
-			for (unsigned int j=0; j<nRemaining; j++)
-				dataPut[j] = sample_consolidate[j+nComplete*capacity]; 
+			copy(sample_consolidate.begin()+nComplete*capacity, sample_consolidate.begin()+nComplete*capacity+nRemaining, dataPut.begin()); 
+			//for (unsigned int j=0; j<nRemaining; j++)
+			//	dataPut[j] = sample_consolidate[j+nComplete*capacity]; 
 			nPutUsed = nRemaining; 
 			Dump(file_consolidate[nComplete]); 
 		}
@@ -554,8 +556,9 @@ void CPutGetBin::RestoreForFetch()
 			nPutUsed = tempSample.size(); 
 			if (dataPut.size() < tempSample.size())
 				dataPut.resize(capacity); 
-			for (unsigned int j=0; j<tempSample.size(); j++)
-				dataPut[j] = tempSample[j]; 
+			copy(tempSample.begin(), tempSample.end(), dataPut.begin()); 
+			//for (unsigned int j=0; j<tempSample.size(); j++)
+			//	dataPut[j] = tempSample[j]; 
 		}
 	}
 }

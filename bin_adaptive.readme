@@ -1,0 +1,66 @@
+We will implement the following two major revisions in the version bin_adaptive.
+(1) energy levels and bins
+In the old version, given the number of temperature levels K and energy bounds of the lowest and highest temperature levels, h and H, respectivey, we cacluate the energy bounds of the other temperature levels based on the assumption that these energy bounds are geometrically distributed, i.e., 
+
+	H[i]-H[i-1] = gamma^i, H[0] = h, H[K-1] = H
+
+where gamma is determined by solving a polynomial equation
+	
+	gamma + gamma^2 + ... + gamma^{K-1} = H-h.
+
+We also calculate the temperatures of all the levels, assuming that the temperature for the lowest temperature level is 1 and the temperature difference of different levels is proportional to theri energy bound difference, i.e., 
+
+	T[i]-T[i-1] = (H[i]-H[i-1])/c, T[0]=1
+
+where c is a parameter provided by the user. Given the energy bound and the temperature of a level, its local target distribution p_i(x) is set as
+
+	p_i(x) = exp( -(-log(p(x)) > H[i] ? -log(p(x)) : H[i]) / T[i] )
+	       = exp( (log(p(x)) < - H[i] ? log(p(x)) : -H[i]) / T[i] 
+
+where p(x) is the original target distribution.
+
+Also in the old version, the samples in each temperature level are bined where the energy tthroulds for the bins are set the same as the energy bounds for the temerature levels. For instance, in the i-th temperature level, there are K bins whose thresholds are:
+       
+           H[0] < H[1] < H[2] < ...  < H[K-1] < infinity
+
+An sample will be put into the j-th bin if its energy (calculated as -log(p(x) ) >= H[j] and < H[j+1]. Binning is important because equi-energy jump is made within the same bin. That is, at the j-th level, we can jump, with a certain probability, from the existing sample x to a sample y at the (j+1)-th level as long as x and y are in the same bin.
+
+In this new version, we will change (a) how p_i(x) is calculated and (b) how energy bounds for bins are determined. 
+
+(a) p_i(x)
+We will not rely on the energy bounds. That is, each temperature level is only chacterized by its temperature T[i] but nothing elese; and, p_i(x) is only a flattened version of p(x), as:
+
+	p_i(x) = exp( log(p(x))/T[i] ) = p(x)^{1/T[i]}
+
+We still assume that T[0] is 1, and the temperatures of all the levels are geometrically distributed. So, T[K-1] will be provided by the user as a parameter, and the other temperatures will be determined by solving the following two equations: 
+
+	T[i]-T[i-1] = gamma^i, T[0] = 1, T[K-1] = T
+	gamma + gamma^2 + ... + gamma^{K-1} = T-1.
+
+(b) energy bounds for bins  
+The number of bins and the energy bounds for the bins are not necessarily the same for all energy levels. At the (i+1)-th level, the newly drawn samples are stored temporarily but are not deposited into their final designated bins. Only after all samples are drawn, will we determine the energy bounds for the bins (assuming the number of bins is given). The criterion is to maintain the success rate of equi-energy draw for the i-th level. Let the energy bounds for the the bins at the (i+1)-th level be
+
+	H_{i+1}[0] < H_{i+1}[1] < H_{i+1}[2] < ... < H_{i+1}[K-1]
+
+At the i-th level, the success rate for accepting an equi-energy draw from the (i+1)-th level is
+
+	\frac{p_i(y) p_{i+1}(x) } {p_i(x) p_{i+1}(y) }
+       = ( p(y)/p(x) ) ^{1/T[i] - 1/T[i+1]}
+
+where x is the existing sample, y is the proposed sample from the (i+1)-th level, and T[i] and T[i+1] are the temperatures of the i-th and (i+1)-th level, respectively. When p(y) corresponds to the lowest probability while p(x) to the highest probability of the same ring, this success rate is the minimal. Recall that the lowest probability corresponds to the highest energy, and highest probability corresponds to the lowest energy. To maintain that this minimum success rate no less than a pre-specified rate b, then 
+
+	 (1/T[i] - 1/T[i+1]) ( H_{i+1}[j] - H_{i+1}[j+1] ) >= log(b)
+
+where H_{i+1}[j+1] and H_{i+1}[j] is the upper and lower energy bound of the j-th bin. If H_{i+1}[0] is set as h=-maxlog(p(x)) (or the minimum energy of all the samples), then iteratively we could set H_{i+1}[j+1] as
+
+	H_{i+1}[j+1] <= H_{i+1}[j] - log(b)/(1/T[i]-1/T[i+1]).
+
+(2) Adaptive Metropolis-Hasting
+In the old version, the adaptive metropolis-hasting consists of the following five steps. 
+(a) Tune the scale of each single direction.
+(b) Tune the collective scale of all directions.
+(c) Simulate and estimate the directions.
+(d) Tune the scale of each single direction.
+(e) Tune the collective scale of all directions. 
+
+Steps (a) and (d) consume quite a bit of time and may cause over-tuning. So in this version, we will skip them, and only use (b) (c) and (e).

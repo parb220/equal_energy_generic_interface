@@ -115,14 +115,13 @@ double CEquiEnergy_TState::HillClimb_NPSOL(size_t nSolution, CStorageHead &stora
 		{
 			CSampleIDWeight sample; 
 			sample.data.Resize(n); 
-			for (unsigned int j=0; j<n; j++)
+			for (int j=0; j<n; j++)
 				sample.data[j] = x[j]; 
 			sample.DataChanged(); 
 			sample.id = (unsigned int)(time(NULL)-timer_when_started);    
 			log_posterior_function(sample); 
 
-			int binIndex = parameter.BinIndex(-sample.weight, energy_level);
-                	storage.DepositSample(binIndex, sample);
+        		SaveSampleToStorage(storage, sample);         	
 			max_log_posterior = sample.weight > max_log_posterior ? sample.weight : max_log_posterior; 
 		}
 	}
@@ -139,8 +138,8 @@ double CEquiEnergy_TState::HillClimb_NPSOL(size_t nSolution, CStorageHead &stora
 	delete [] cJac; 
 	delete [] A; 
 
-	storage.finalize(parameter.BinIndex_Start(energy_level), parameter.BinIndex_End(energy_level));  
-	storage.ClearDepositDrawHistory(parameter.BinIndex_Start(energy_level), parameter.BinIndex_End(energy_level));
+	storage.finalize(energy_level); 
+	storage.ClearDepositDrawHistory(energy_level);
 
 	if_bounded = if_bounded_old; 
 	return max_log_posterior; 
@@ -181,8 +180,7 @@ double CEquiEnergy_TState::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &st
                         sample.id = (unsigned int)(time(NULL)-timer_when_started);
                         log_posterior_function(sample);
 
-                        int binIndex = parameter.BinIndex(-sample.weight, energy_level);
-                        storage.DepositSample(binIndex, sample);
+			SaveSampleToStorage(storage, sample); 
 			max_log_posterior = sample.weight > max_log_posterior ? sample.weight : max_log_posterior; 
 		}
 	}
@@ -191,8 +189,8 @@ double CEquiEnergy_TState::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &st
 	delete []g; 
 	delete []H; 
 	
-	storage.finalize(parameter.BinIndex_Start(energy_level), parameter.BinIndex_End(energy_level));  
-        storage.ClearDepositDrawHistory(parameter.BinIndex_Start(energy_level), parameter.BinIndex_End(energy_level));
+	storage.finalize(energy_level); 
+        storage.ClearDepositDrawHistory(energy_level); 
 	if_bounded = if_bounded_old; 
 	return max_log_posterior; 
 }

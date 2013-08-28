@@ -1,3 +1,4 @@
+#include <cmath>
 #include <vector>
 #include <mpi.h>
 #include <iostream>
@@ -56,9 +57,15 @@ double DispatchTuneSimulation(const vector<vector<unsigned int> > &nodeGroup, co
                 max_log_posterior = max_log_posterior > received_log_posterior ? max_log_posterior : received_log_posterior;
 	
 		// simualtion for the not-group-specific covariance of the lower temp level
-		estimation_length = 5000;
-		received_log_posterior = DispatchSimulation(nodeGroup, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
-		max_log_posterior = max_log_posterior < received_log_posterior ? max_log_posterior : received_log_posterior;	
+		if (level > 0)
+		{
+			estimation_length = 5000;
+			received_log_posterior = DispatchSimulation(nodeGroup, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
+			max_log_posterior = max_log_posterior < received_log_posterior ? max_log_posterior : received_log_posterior;	
+
+			// binning for the lower temperature-level's jump.  
+			storage.binning(level, parameter.number_energy_level, -log(0.5)/(1.0/parameter.t[level-1]-1.0/parameter.t[level])); 
+		}
 	}
 
 	delete []sPackage; 

@@ -47,8 +47,6 @@ double DispatchHillClimbTask(const vector<vector<unsigned int> > &nodeGroup, con
 	delete [] rPackage;
  
 	// Consolidate partial storage files
-	unsigned int start_bin = parameter.BinIndex_Start(parameter.number_energy_level); 
-	unsigned int end_bin = parameter.BinIndex_End(parameter.number_energy_level); 
-	storage.consolidate(start_bin, end_bin);
+	storage.consolidate(parameter.number_energy_level);
 	return max_log_posterior; 
 }

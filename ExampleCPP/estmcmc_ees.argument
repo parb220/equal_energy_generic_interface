@@ -1,10 +1,9 @@
 lHigh:	highest energy level
 lLow:	lowest energy level
 nLevel:	number of energy levels
-H0:	lowest energy threshold (should specify)
-HK:	highest energy threshold (should specify)
+H0:	lowest energy threshold (default=0, should specify)
 T0:	lowest temperature
-cFactor:	coefficient C in determining temperatures from energy bounds
+TK: 	highest temperature (default=1000, should specify)
 RunID:	run_id (better specify on cluster, numeric value)
 TuningDone:	if tuning is finished (for which RunID must be provided)
 thin:	deposition frequency

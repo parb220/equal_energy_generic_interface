@@ -720,11 +720,10 @@ int main(int n_args_cl, char **args_cl)
 
 	// Equi-energy sampling parameters
 	CEESParameter parameter;
-        parameter.storage_marker = 10000;
-        parameter.run_id = dw_ParseInteger_String(n_args_cl, args_cl, "RunID", time(NULL));
-
 	// directory to store samples
         parameter.storage_dir = getenv("HOME")+string("/equal_energy_generic_interface/result/"); 
+        parameter.storage_marker = 10000;
+        parameter.run_id = dw_ParseInteger_String(n_args_cl, args_cl, "RunID", time(NULL));
 
 	// highest and lowest levels
 	int if_original = dw_ParseInteger_String(n_args_cl, args_cl, "Original", 0);
@@ -732,7 +731,6 @@ int main(int n_args_cl, char **args_cl)
 	{
 		parameter.number_energy_level = dw_ParseInteger_String(n_args_cl, args_cl, "nLevel", 10);
         	parameter.pee = 0.3;
-        	parameter.hk_1 = dw_ParseFloating_String(n_args_cl, args_cl, "HK", 200);
 		parameter.highest_level = dw_ParseInteger_String(n_args_cl, args_cl, "lHigh", parameter.number_energy_level-1);
        		parameter.lowest_level = dw_ParseInteger_String(n_args_cl, args_cl, "lLow", 0);
 	}
@@ -743,8 +741,7 @@ int main(int n_args_cl, char **args_cl)
 	}
        	parameter.h0 = dw_ParseFloating_String(n_args_cl, args_cl, "H0", 0);
        	parameter.t0 = dw_ParseFloating_String(n_args_cl, args_cl, "T0", 1.0);
-       	parameter.c_factor = dw_ParseFloating_String(n_args_cl, args_cl, "cFactor", 1.0);
-       	parameter.SetEnergyBound();
+	parameter.tk_1 = dw_ParseFloating_String(n_args_cl, args_cl, "TK", 1000); 
        	parameter.SetTemperature();
 
 	// burn-in length, simulation length, and deposit frequency
@@ -757,8 +754,7 @@ int main(int n_args_cl, char **args_cl)
 	parameter.size_per_block = dw_ParseInteger_String(n_args_cl, args_cl, "BlockSize", 0); 
 
 	// storage
-	int number_bin = (parameter.number_energy_level+1) * (parameter.number_energy_level+1);
-        CStorageHead storage(parameter.run_id, parameter.storage_marker, number_bin, parameter.storage_dir, my_rank);
+        CStorageHead storage(my_rank, parameter.run_id, parameter.storage_marker, parameter.storage_dir, parameter.number_energy_level);
 
 	// Equi-Energy Model
 	CEquiEnergy_TState model;

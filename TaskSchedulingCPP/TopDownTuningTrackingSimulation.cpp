@@ -19,16 +19,15 @@ double TopDownTuningSimulation(CEquiEnergy_TState &model, const vector <vector<u
 	for (unsigned int level = parameter.highest_level; level >= parameter.lowest_level; level --)
 	{
 		model.energy_level = level; 
-		model.h_bound = parameter.h[level]; 
 		model.t_bound = parameter.t[level]; 
 		size_t estimation_length; 
 
 		// storage of the previous (higher) level
-		storage.RestoreForFetch(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1) );
+		storage.RestoreForFetch(model.energy_level+1);
 		// tuning is always based on the best sample so far.
-		if (storage.empty(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1) ) || !model.InitializeWithBestSample(storage, parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1)) )
+		if (storage.empty(model.energy_level+1) || !model.InitializeWithBestSample(storage, model.energy_level+1) )
                          model.current_sample = mode;
-		storage.ClearDepositDrawHistory(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1)); 
+		storage.ClearDepositDrawHistory(model.energy_level+1); 
 	
 		// file to save block information 	
 		convert.str(string()); 
@@ -77,8 +76,8 @@ double TopDownTuningSimulation(CEquiEnergy_TState &model, const vector <vector<u
 		cout << "Tuning MH parameters (variance) based on the samples of the current level : " << level << endl; 
 		
 		// start point for adaptive
-		if (storage.empty(parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1) ) || !model.InitializeWithBestSample(storage, parameter.BinIndex_Start(model.energy_level+1), parameter.BinIndex_End(model.energy_level+1)) )
-                                model.current_sample = mode;
+		if (storage.empty(model.energy_level+1) || !model.InitializeWithBestSample(storage, model.energy_level+1) )
+			model.current_sample = mode;
 		if (!model.metropolis->AdaptiveAfterSimulation(model.current_sample, period, max_period, sample_file_name, block_file_name) )
 		{
 			cerr << "CMetroplis::AdaptiveAfterSimulation() : Error in reading " << sample_file_name << " or writing " << block_file_name << endl;
@@ -91,10 +90,14 @@ double TopDownTuningSimulation(CEquiEnergy_TState &model, const vector <vector<u
 		max_log_posterior = max_log_posterior > received_log_posterior ? max_log_posterior : received_log_posterior;
 
 		// STEP 5: simulation to estimate covariance matrix of the lower temp level
-		estimation_length = 5000; 
-		cout << "Simulating to estimate covaraince matrix of the lower temp level : " << level << endl;
-		received_log_posterior = DispatchSimulation(nodeGroup, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
-		max_log_posterior = max_log_posterior < received_log_posterior ? max_log_posterior : received_log_posterior;
+		if (level > 0)
+		{
+			estimation_length = 5000; 
+			cout << "Simulating to estimate covaraince matrix of the lower temp level : " << level << endl;
+			received_log_posterior = DispatchSimulation(nodeGroup, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
+			max_log_posterior = max_log_posterior < received_log_posterior ? max_log_posterior : received_log_posterior;
+			storage.binning(level, parameter.number_energy_level, -log(0.5)/(1.0/parameter.t[level-1]-1.0/parameter.t[level]) ); 
+		}
 	}
 	return max_log_posterior; 
 }

@@ -12,7 +12,7 @@ bool CEquiEnergy_TState::SaveTargetModelOriginalSetting()
         ConvertThetaToFreeParameters(target_model,x);
         ConvertQToFreeParameters(target_model,x+NumberFreeParametersTheta(target_model) );
 
-        for (unsigned int i=0; i<original_sample.data.dim; i++)
+        for (int i=0; i<original_sample.data.dim; i++)
                 original_sample.data[i] = x[i];
         original_sample.DataChanged();
         original_sample.id = (unsigned int)(time(NULL)-timer_when_started);
@@ -69,7 +69,7 @@ double CEquiEnergy_TState::log_posterior_function(CSampleIDWeight &x)
 	}
 		double bounded_log_posterior;
         if (if_bounded)
-                bounded_log_posterior = -((-x.weight > h_bound) ? (-x.weight) : h_bound)/t_bound;
+                bounded_log_posterior = x.weight/t_bound;
         else
                 bounded_log_posterior = x.weight;
 
@@ -110,7 +110,7 @@ double CEquiEnergy_TState::log_posterior_function(const double *x, size_t n)
 	//ConvertFreeParametersToQ(target_model, old_x+NumberFreeParametersTheta(target_model) );
 	//delete [] old_x;
 	
-	return if_bounded ? -(-log_posterior>h_bound ? -log_posterior:h_bound)/t_bound : log_posterior;
+	return if_bounded ? log_posterior/t_bound : log_posterior;
 }
 
 double CEquiEnergy_TState::log_likelihood_function(const double *x, size_t n)
@@ -134,7 +134,7 @@ double CEquiEnergy_TState::log_likelihood_function(const double *x, size_t n)
 CEquiEnergy_TState::CEquiEnergy_TState() : CEquiEnergyModel(), original_sample(CSampleIDWeight()), target_model(NULL)
 {}
 
-CEquiEnergy_TState::CEquiEnergy_TState(bool _if_bounded, unsigned int eL, double _h, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time, TStateModel *_model) : CEquiEnergyModel(_if_bounded, eL, _h, _t, _x, _metropolis, _time), original_sample(CSampleIDWeight()), target_model(_model)
+CEquiEnergy_TState::CEquiEnergy_TState(bool _if_bounded, unsigned int eL, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time, TStateModel *_model) : CEquiEnergyModel(_if_bounded, eL, _t, _x, _metropolis, _time), original_sample(CSampleIDWeight()), target_model(_model)
 {
 }
 
