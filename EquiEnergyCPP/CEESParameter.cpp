@@ -10,7 +10,7 @@ using namespace std;
 CEESParameter::CEESParameter() : 
 	storage_dir(string()), 
 	storage_marker(0), 
-	run_id(0), 
+	run_id(string()), 
 	number_energy_level(0), 
 	pee(0.0),
 	h0(0.0), 
@@ -40,7 +40,9 @@ bool CEESParameter::SaveParameterToFile(string file_name) const
 	oFile.write((char*)(storage_dir.c_str()), sizeof(char)*storage_dir_name_len); 
 
 	oFile.write((char*)(&storage_marker), sizeof(size_t)); 
-	oFile.write((char*)(&run_id), sizeof(int)); 
+	size_t run_id_len = run_id.length(); 
+	oFile.write((char*)(&run_id_len), sizeof(size_t)); 
+	oFile.write((char*)(run_id.c_str()), sizeof(char)*run_id_len); 
 	oFile.write((char*)(&number_energy_level), sizeof(size_t)); 
 	oFile.write((char*)(&pee), sizeof(double)); 
 	oFile.write((char*)(&h0), sizeof(double)); 
@@ -62,14 +64,20 @@ bool CEESParameter::LoadParameterFromFile(string file_name)
 
 	size_t name_len; 
 	iFile.read((char*)(&name_len), sizeof(size_t)); 
-	char *storage_dir_array = new char [name_len+1]; 
+	char *storage_dir_array = new char[name_len+1]; 
 	iFile.read(storage_dir_array, sizeof(char)*name_len); 
 	storage_dir = string(storage_dir_array); 
 	delete [] storage_dir_array; 
         
 	iFile.read((char*)(&storage_marker), sizeof(size_t));
-        iFile.read((char*)(&run_id), sizeof(int));
-        iFile.read((char*)(&number_energy_level), sizeof(size_t));
+	size_t run_id_len; 
+	iFile.read((char*)(&run_id_len), sizeof(size_t)); 
+	char *run_id_array = new char[run_id_len+1]; 
+	iFile.read(run_id_array, sizeof(char)*run_id_len); 
+	run_id = string(run_id_array); 
+        delete [] run_id_array; 
+
+	iFile.read((char*)(&number_energy_level), sizeof(size_t));
         iFile.read((char*)(&pee), sizeof(double));
         iFile.read((char*)(&h0), sizeof(double));
         iFile.read((char*)(&t0), sizeof(double));

@@ -723,7 +723,11 @@ int main(int n_args_cl, char **args_cl)
 	// directory to store samples
         parameter.storage_dir = getenv("HOME")+string("/equal_energy_generic_interface/result/"); 
         parameter.storage_marker = 10000;
-        parameter.run_id = dw_ParseInteger_String(n_args_cl, args_cl, "RunID", time(NULL));
+	stringstream run_id_string; 
+	run_id_string.str(string()); 
+	run_id_string << time(NULL); 
+        parameter.run_id = string(dw_ParseString_String(n_args_cl, args_cl, "RunID", run_id_string.str().c_str()));
+
 
 	// highest and lowest levels
 	int if_original = dw_ParseInteger_String(n_args_cl, args_cl, "Original", 0);

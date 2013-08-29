@@ -14,7 +14,7 @@ public:
 	// The following parameter can either be determined from reading the file or command line or by default values (specified in a header file)
 	string storage_dir;	// fold to store all relevant information
 	size_t storage_marker;		// number of samples stored in memory for retrieve 
-	unsigned int run_id; 
+	string run_id; 
 	size_t number_energy_level;	// number of energy levels
 	double pee; 	// probability of equi-energy-jump
 	double h0; 	// energy bound for the lowest energy level

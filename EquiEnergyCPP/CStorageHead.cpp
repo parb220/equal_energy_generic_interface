@@ -11,7 +11,7 @@
 
 using namespace std;
 
-CStorageHead::CStorageHead(unsigned int _node_index, unsigned int _run_id, size_t _storage_marker, string _file_location, size_t _number_level) : cluster_node(_node_index), run_id(_run_id), storage_marker(_storage_marker), filename_base(_file_location), bin(vector<vector<CPutGetBin> >(_number_level+1)), energy_lower_bound(vector<vector<double> >(_number_level+1)) 
+CStorageHead::CStorageHead(unsigned int _node_index, const string & _run_id, size_t _storage_marker, string _file_location, size_t _number_level) : cluster_node(_node_index), run_id(_run_id), storage_marker(_storage_marker), filename_base(_file_location), bin(vector<vector<CPutGetBin> >(_number_level+1)), energy_lower_bound(vector<vector<double> >(_number_level+1)) 
 {
 	stringstream str; 
 	str << run_id << "/" << run_id << ".binary/";
@@ -21,9 +21,14 @@ CStorageHead::CStorageHead(unsigned int _node_index, unsigned int _run_id, size_
 	// energy_lower_bound[i]: energy lower bounds for the i-th temperature level
 	// energy_lower_bound[i][j]: energy lower bound for the j-th bin of the i-th level
 	
+	stringstream bin_id_string; 
 	// Each level has at least one bin for depositing
 	for (unsigned int i=0; i<bin.size(); i++)
-		bin[i].push_back(CPutGetBin(0,0,storage_marker,filename_base+str.str(), cluster_node)); 
+	{
+		bin_id_string.str(string()); 
+		bin_id_string << i << ".0"; 
+		bin[i].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node)); 
+	}
 }
 
 CStorageHead::~CStorageHead()
@@ -170,6 +175,7 @@ size_t CStorageHead::binning(unsigned int level, size_t bin_number_lb, double bi
 	bin.clear(); // Get rid of bin[0] because all samples are now in sample
 	energy_lower_bound[level].clear(); 
 	unsigned int iSample=0, iBin=0; 
+	stringstream bin_id_string; 
 	while (iSample < nSample)
 	{
 		size_t sBin = iSample+sBin_initial<nSample ? sBin_initial : nSample-iSample-1; 
@@ -181,7 +187,9 @@ size_t CStorageHead::binning(unsigned int level, size_t bin_number_lb, double bi
 		// Now the bin boundary has been determined. 
 		// It is possible that sBin=1 ???????
 		energy_lower_bound[level].push_back(-sample[iSample].weight); 
-		bin[level].push_back(CPutGetBin(iBin,0,storage_marker,filename_base+str.str(), cluster_node));
+		bin_id_string.str(string()); 
+		bin_id_string << level << "." << iBin; 
+		bin[level].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));
 	
 		// If this is the last bin, then it has to include the last element of sample	
 		sBin = (iSample+sBin == nSample-1) ? sBin+1 : sBin; 

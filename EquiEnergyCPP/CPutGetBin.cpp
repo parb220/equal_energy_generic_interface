@@ -251,7 +251,7 @@ bool CPutGetBin::LoadMostWeightSample(const string &file_name, CSampleIDWeight &
 	return true; 
 }
 
-CPutGetBin::CPutGetBin(int _id, unsigned int _nDumpFile, size_t _capacity, string _grandPrefix, int _suffix ) : 
+CPutGetBin::CPutGetBin(const string & _id, unsigned int _nDumpFile, size_t _capacity, string _grandPrefix, unsigned int _suffix ) : 
 suffix(_suffix), id(_id),  nDumpFile(_nDumpFile), capacity(_capacity), 
 nPutUsed(0), nGetUsed(_capacity), filename_prefix(_grandPrefix), 
 dataPut(vector<CSampleIDWeight>(0)), dataGet(vector<CSampleIDWeight>(0)) 

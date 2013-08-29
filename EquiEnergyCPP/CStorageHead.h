@@ -13,14 +13,14 @@ class CStorageHead
 {
 protected:
 	unsigned int cluster_node;
-	unsigned int run_id; 
+	string run_id; 
 	size_t storage_marker; 
 	string filename_base; 
 	
 	vector<vector<CPutGetBin> > bin;
 	vector<vector<double> > energy_lower_bound; 
 public: 
-	CStorageHead(unsigned int _node_index=0, unsigned int _run_id=0, size_t _storage_marker=10000, string _file_location=string(), size_t _number_level=1); 
+	CStorageHead(unsigned int _node_index=0, const string & _run_id=string(), size_t _storage_marker=10000, string _file_location=string(), size_t _number_level=1); 
 	~CStorageHead(); 
 
 	bool makedir(); 
