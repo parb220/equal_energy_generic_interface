@@ -24,11 +24,11 @@ void master_deploying(int argc, char **argv, CEquiEnergy_TState &model, CEESPara
 
 	size_t n_initial = (size_t)dw_ParseInteger_String(argc, argv, "nInitial", nNode);
 	
-	vector<vector<unsigned int> > nodeGroup(n_initial);
-        unsigned int i=1;
+	vector<vector<int> > nodeGroup(n_initial);
+        int i=1;
 	while (i<nNode)
 	{
-        	for (unsigned int j=0; j<nodeGroup.size() && i<nNode; j++)
+        	for (int j=0; j<nodeGroup.size() && i<nNode; j++)
        	 	{
 			nodeGroup[j].push_back(i);
                         i++;
@@ -40,8 +40,8 @@ void master_deploying(int argc, char **argv, CEquiEnergy_TState &model, CEESPara
 	{
 		cerr << "Error in making directory for " << parameter.run_id << endl; 
 		double *sMessage= new double [N_MESSAGE];
-       		for (unsigned int i=0; i<nodeGroup.size(); i++)
-			for (unsigned int j=0; j<nodeGroup[i].size(); j++)
+       		for (int i=0; i<nodeGroup.size(); i++)
+			for (int j=0; j<nodeGroup[i].size(); j++)
                			MPI_Send(sMessage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][j], END_TAG, MPI_COMM_WORLD);
        		delete [] sMessage;
 		abort(); 
@@ -73,8 +73,8 @@ void master_deploying(int argc, char **argv, CEquiEnergy_TState &model, CEESPara
 
 	// tell all the slaves to exit by sending an empty messag with 0 simulation length 
 	double *sMessage= new double [N_MESSAGE];  
-	for (unsigned int i=0; i<nodeGroup.size(); i++)
-		for (unsigned int j=0; j<nodeGroup[i].size(); j++)
+	for (int i=0; i<nodeGroup.size(); i++)
+		for (int j=0; j<nodeGroup[i].size(); j++)
 			MPI_Send(sMessage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][j], END_TAG, MPI_COMM_WORLD);
 	delete [] sMessage; 
 }

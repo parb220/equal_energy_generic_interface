@@ -22,9 +22,9 @@ using namespace std;
 double CEquiEnergyModel::BurnIn_RandomBlock(size_t burn_in_length)
 {
 	CSampleIDWeight x_new;
-        unsigned int nJump =0;
+        int nJump =0;
         double max_posterior = current_sample.weight, bounded_log_posterior_new;
-        for (unsigned int i=0; i<burn_in_length; i++)
+        for (int i=0; i<burn_in_length; i++)
 	{
 		if (metropolis->RandomBlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1) )
 		{
@@ -83,7 +83,7 @@ int CEquiEnergyModel::EE_Draw_RandomBlock(const CEESParameter &parameter, CStora
 double CEquiEnergyModel::Simulation_Within_RandomBlock(const CEESParameter &parameter, CStorageHead &storage, bool if_storage, const string &sample_file_name)
 {
 	CSampleIDWeight x_new;
-        unsigned int nJump =0;
+        int nJump =0;
         double max_posterior = current_sample.weight, bounded_log_posterior_new;
         bool if_write_file = false;
         ofstream output_file;
@@ -94,9 +94,9 @@ double CEquiEnergyModel::Simulation_Within_RandomBlock(const CEESParameter &para
                         if_write_file = true;
         }
 
-        for (unsigned int i=0; i<parameter.simulation_length; i++)
+        for (int i=0; i<parameter.simulation_length; i++)
         {
-                for (unsigned int j=0; j<parameter.deposit_frequency; j++)
+                for (int j=0; j<parameter.deposit_frequency; j++)
 		if (metropolis->RandomBlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 100/parameter.deposit_frequency) )
         	{
 			current_sample = x_new;
@@ -119,7 +119,7 @@ double CEquiEnergyModel::Simulation_Cross_RandomBlock(const CEESParameter &param
 {
 	CSampleIDWeight x_new;
 
-        unsigned int nEEJump=0, nMHJump=0;
+        int nEEJump=0, nMHJump=0;
         bool if_write_file = false;
         ofstream output_file;
         if (!sample_file_name.empty() )
@@ -130,9 +130,9 @@ double CEquiEnergyModel::Simulation_Cross_RandomBlock(const CEESParameter &param
         }
 
         double max_posterior = current_sample.weight;
-        for (unsigned int i=0; i<parameter.simulation_length; i++)
+        for (int i=0; i<parameter.simulation_length; i++)
         {
-                for (unsigned int j=0; j<parameter.deposit_frequency; j++)
+                for (int j=0; j<parameter.deposit_frequency; j++)
                 {
                         int jump_code = EE_Draw_RandomBlock(parameter, storage, 100/parameter.deposit_frequency);
                         if (jump_code == EQUI_ENERGY_JUMP)

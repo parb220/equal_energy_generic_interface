@@ -50,7 +50,7 @@ public:
 	double HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter);
         double HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter);
 	CEquiEnergy_TState(); 
-	CEquiEnergy_TState(bool _if_bounded, unsigned int eL, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time, TStateModel *_model); 
+	CEquiEnergy_TState(bool _if_bounded, int eL, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time, TStateModel *_model); 
 	~CEquiEnergy_TState() {}
 friend class MinusLogPosterior_NPSOL;
 friend class MinusLogPosterior_CSMINWEL;

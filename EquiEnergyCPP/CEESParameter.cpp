@@ -49,7 +49,7 @@ bool CEESParameter::SaveParameterToFile(string file_name) const
 	oFile.write((char*)(&t0), sizeof(double)); 
 	oFile.write((char*)(&tk_1), sizeof(double)); 
 	
-	for (unsigned int i=0; i<=number_energy_level; i++)
+	for (int i=0; i<=number_energy_level; i++)
 	 	oFile.write((char*)(&(t[i])), sizeof(double)); 
 
 	oFile.close(); 
@@ -84,7 +84,7 @@ bool CEESParameter::LoadParameterFromFile(string file_name)
 	iFile.read((char*)(&tk_1), sizeof(double)); 
 	
 	t.resize(number_energy_level+1);
-	for (unsigned int i=0; i<=number_energy_level; i++) 
+	for (int i=0; i<=number_energy_level; i++) 
 		iFile.read((char*)(&(t[i])), sizeof(double));
 
 	iFile.close(); 
@@ -100,7 +100,7 @@ bool CEESParameter::WriteSummaryFile(string file_name) const
 	oFile << "Storage Marker:\t" << storage_marker << endl; 
 	oFile << "Number of Energy Levels:\t" << number_energy_level << endl; 
 	oFile << "Temperatures:"; 
-	for (unsigned int i=0; i<=number_energy_level; i++)
+	for (int i=0; i<=number_energy_level; i++)
 		oFile << "\t" << t[i]; 
 	oFile << endl; 
 	oFile << "Prob Equi-Jump:\t" << pee << endl;  
@@ -125,7 +125,7 @@ bool CEESParameter::SetTemperature()
 	{
 		double *coefficients = new double [number_energy_level];
         	coefficients[0] = t0-tk_1;
-        	for (unsigned int i=1; i<number_energy_level; i++)
+        	for (int i=1; i<number_energy_level; i++)
                 	coefficients[i]=1.0;
         	double *Z = new double [(number_energy_level-1)*2];
 
@@ -134,7 +134,7 @@ bool CEESParameter::SetTemperature()
 
         	double gamma;
         	bool continue_flag = true;
-        	for (unsigned int i=0; i<number_energy_level-1 && continue_flag; i++)
+        	for (int i=0; i<number_energy_level-1 && continue_flag; i++)
         	{
                 	if (Z[2*i]>0 && abs(Z[2*i+1]) <= 1.0e-6)
                 	{
@@ -149,14 +149,14 @@ bool CEESParameter::SetTemperature()
 
 		t[0] = t0; 
 		t[number_energy_level-1] = tk_1; 
-		for (unsigned int i=1; i<number_energy_level-1; i++)
+		for (int i=1; i<number_energy_level-1; i++)
 			t[i] = t[i-1]+pow(gamma, (double)i);
 		t[number_energy_level] = t[number_energy_level-1]+pow(gamma, (double)number_energy_level);  
 		return true; 
 	}
 }
 
-double CEESParameter::LogRatio_Level(double original_energy_x, double original_energy_y, unsigned int level) const
+double CEESParameter::LogRatio_Level(double original_energy_x, double original_energy_y, int level) const
 {
 	double log_prob_x_bounded = -original_energy_x/t[level];
         double log_prob_y_bounded = -original_energy_y/t[level];

@@ -10,7 +10,7 @@
 
 using namespace std; 
 
-bool ExecutingSimulationTask(double &max_log_posterior, bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergy_TState &model, CStorageHead &storage, const CEESParameter &parameter, unsigned int my_rank, unsigned int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag)
+bool ExecutingSimulationTask(double &max_log_posterior, bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergy_TState &model, CStorageHead &storage, const CEESParameter &parameter, int my_rank, int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag)
 {
 	// restore partial storage (previously obtained at this node) for updating
 	storage.restore(model.energy_level); 

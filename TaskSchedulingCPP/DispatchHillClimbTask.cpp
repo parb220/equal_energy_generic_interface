@@ -7,10 +7,10 @@
 
 using namespace std; 
 
-double DispatchHillClimbTask(const vector<vector<unsigned int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, int number_hill_climb)
+double DispatchHillClimbTask(const vector<vector<int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, int number_hill_climb)
 {
 	size_t nNode=0; 
-	for (unsigned int i=0; i<nodeGroup.size(); i++)
+	for (int i=0; i<nodeGroup.size(); i++)
 		nNode += nodeGroup[i].size(); 
 
 	size_t nFeasibleSolutionPerNode = ceil((double)number_hill_climb/(double)nNode);
@@ -23,9 +23,9 @@ double DispatchHillClimbTask(const vector<vector<unsigned int> > &nodeGroup, con
 	sPackage[LEVEL_INDEX] = parameter.number_energy_level ; 
 	sPackage[H0_INDEX] = parameter.h0; // irrelevant
 
-	for (unsigned int i=0; i<nodeGroup.size(); i++)
+	for (int i=0; i<nodeGroup.size(); i++)
 	{
-		for (unsigned int j=0; j<nodeGroup[i].size(); j++)
+		for (int j=0; j<nodeGroup[i].size(); j++)
 		{
 			sPackage[GROUP_INDEX] = i; 
 			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][j], HILL_CLIMB_TAG, MPI_COMM_WORLD);		
@@ -35,9 +35,9 @@ double DispatchHillClimbTask(const vector<vector<unsigned int> > &nodeGroup, con
 
 	MPI_Status status; 
 	double *rPackage = new double [N_MESSAGE];
-	for (unsigned int i=0; i<nodeGroup.size(); i++)
+	for (int i=0; i<nodeGroup.size(); i++)
 	{
-		for (unsigned int j=0; j<nodeGroup[i].size(); j++)
+		for (int j=0; j<nodeGroup[i].size(); j++)
 		{
 			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, HILL_CLIMB_TAG, MPI_COMM_WORLD, &status);
 			received_log_posterior = rPackage[H0_INDEX]; 

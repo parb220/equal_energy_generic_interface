@@ -24,8 +24,8 @@ public:
 	~CSampleIDWeight();
 
 	CSampleIDWeight & operator=(const CSampleIDWeight &);
-	bool PartialCopyFrom(const CSampleIDWeight &, unsigned int offset, size_t length);
-	bool PartialCopyFrom(unsigned int offset1, const CSampleIDWeight &, unsigned int offset2, size_t length);
+	bool PartialCopyFrom(const CSampleIDWeight &, int offset, size_t length);
+	bool PartialCopyFrom(int offset1, const CSampleIDWeight &, int offset2, size_t length);
 
 	size_t GetSize_Data() const; 
 	void DataChanged(); 

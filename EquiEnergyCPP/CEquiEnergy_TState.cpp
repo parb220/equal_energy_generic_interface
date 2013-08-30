@@ -15,7 +15,7 @@ bool CEquiEnergy_TState::SaveTargetModelOriginalSetting()
         for (int i=0; i<original_sample.data.dim; i++)
                 original_sample.data[i] = x[i];
         original_sample.DataChanged();
-        original_sample.id = (unsigned int)(time(NULL)-timer_when_started);
+        original_sample.id = (int)(time(NULL)-timer_when_started);
         log_posterior_function(original_sample);
         return true;
 }
@@ -39,11 +39,11 @@ bool CEquiEnergy_TState::InitializeFromTarget()
 	// ConvertThetaToFreeParameters(target_model,x);
 	// ConvertQToFreeParameters(target_model,x+NumberFreeParametersTheta(target_model) );
 	
-	// for (unsigned int i=0; i<current_sample.data.dim; i++)
+	// for (int i=0; i<current_sample.data.dim; i++)
 	// current_sample.data[i] = x[i]; 
 	// current_sample.DataChanged(); 
 	current_sample = original_sample;
-        current_sample.id = (unsigned int)(time(NULL)-timer_when_started);
+        current_sample.id = (int)(time(NULL)-timer_when_started);
 	// log_posterior_function(current_sample);
 	// delete []x;
 	return true; 
@@ -134,7 +134,7 @@ double CEquiEnergy_TState::log_likelihood_function(const double *x, size_t n)
 CEquiEnergy_TState::CEquiEnergy_TState() : CEquiEnergyModel(), original_sample(CSampleIDWeight()), target_model(NULL)
 {}
 
-CEquiEnergy_TState::CEquiEnergy_TState(bool _if_bounded, unsigned int eL, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time, TStateModel *_model) : CEquiEnergyModel(_if_bounded, eL, _t, _x, _metropolis, _time), original_sample(CSampleIDWeight()), target_model(_model)
+CEquiEnergy_TState::CEquiEnergy_TState(bool _if_bounded, int eL, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time, TStateModel *_model) : CEquiEnergyModel(_if_bounded, eL, _t, _x, _metropolis, _time), original_sample(CSampleIDWeight()), target_model(_model)
 {
 }
 

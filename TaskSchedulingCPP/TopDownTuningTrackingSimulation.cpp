@@ -9,14 +9,14 @@
 
 using namespace std;
 
-double TopDownTuningSimulation(CEquiEnergy_TState &model, const vector <vector<unsigned int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode, size_t period, size_t max_period)
+double TopDownTuningSimulation(CEquiEnergy_TState &model, const vector <vector<int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode, size_t period, size_t max_period)
 {
 	string block_file_name, sample_file_name; 
 	stringstream convert; 
 	
 	double max_log_posterior = -1.0e300, received_log_posterior; 
 
-	for (unsigned int level = parameter.highest_level; level >= parameter.lowest_level; level --)
+	for (int level = parameter.highest_level; level >= parameter.lowest_level; level --)
 	{
 		model.energy_level = level; 
 		model.t_bound = parameter.t[level]; 
@@ -97,6 +97,8 @@ double TopDownTuningSimulation(CEquiEnergy_TState &model, const vector <vector<u
 			received_log_posterior = DispatchSimulation(nodeGroup, parameter, storage, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
 			max_log_posterior = max_log_posterior < received_log_posterior ? max_log_posterior : received_log_posterior;
 			storage.binning(level, parameter.number_energy_level, -log(0.5)/(1.0/parameter.t[level-1]-1.0/parameter.t[level]) ); 
+			storage.finalize(level); 
+			storage.ClearDepositDrawHistory(level);
 		}
 	}
 	return max_log_posterior; 

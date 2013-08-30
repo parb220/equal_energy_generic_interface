@@ -38,7 +38,7 @@ CSampleIDWeight &CSampleIDWeight::operator = (const CSampleIDWeight &right)
 	return *this; 
 }
 
-bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, unsigned int offset, size_t length)
+bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, int offset, size_t length)
 {
 	if (data.dim < offset+length || right.data.dim < offset+length)
 	{
@@ -46,7 +46,7 @@ bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, unsigned int
 		return false; 
 	}
 
-	for (unsigned int i=0; i<length; i++)
+	for (int i=0; i<length; i++)
 		data[i+offset] = right.data[i+offset]; 	
 	
 	if (offset ==0 && length == data.dim && length == right.data.dim )
@@ -58,14 +58,14 @@ bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, unsigned int
 	return true; 
 }
 
-bool CSampleIDWeight::PartialCopyFrom(unsigned int offset1, const CSampleIDWeight &right, unsigned offset2, size_t length)
+bool CSampleIDWeight::PartialCopyFrom(int offset1, const CSampleIDWeight &right, int offset2, size_t length)
 {
 	if (data.dim < offset1+length || right.data.dim < offset2+length )
 	{
 		cerr << "CSampleIDWeight::PartialCopyFrom() : index exceeding dimension" << endl; 
 		return false; 
 	}
-	for (unsigned int i=0; i<length; i++)
+	for (int i=0; i<length; i++)
 		data[offset1+i] = right.data[offset2+i]; 
 
 	if (offset1 == 0 && offset2 == 0 && length == data.dim && length == right.data.dim)
@@ -83,7 +83,7 @@ istream & read (istream & input_stream, CSampleIDWeight *x)
 	input_stream.read((char*)&(dim), sizeof(int)); 
 	x->data.Resize(dim);
 	double temp_x; 
-	for (unsigned int i=0; i<dim; i++)
+	for (int i=0; i<dim; i++)
 	{
 		input_stream.read((char*)&temp_x, sizeof(double)); 
 		x->data[i] = temp_x; 
@@ -98,7 +98,7 @@ ostream& write(ostream & output_stream, const CSampleIDWeight *x)
 {
 	output_stream.write((char*)&(x->data.dim), sizeof(int)); 
 	double temp_x; 
-	for (unsigned int i=0; i<x->data.dim; i++)
+	for (int i=0; i<x->data.dim; i++)
 	{
 		temp_x = x->data[i]; 
 		output_stream.write((char*)&temp_x, sizeof(double)); 
@@ -147,7 +147,7 @@ bool LoadSampleFromFile(const string &file_name, vector<CSampleIDWeight> &Y)
 	size_t nSample = lenFile/sample.GetSize_Data(); 
 	Y.resize(nSample); 
 	input_file.seekg(0, ios::beg); 
-	for (unsigned int i=0; i<nSample; i++)	
+	for (int i=0; i<nSample; i++)	
 		read(input_file, &(Y[i])); 
 
 	input_file.close(); 
@@ -159,7 +159,7 @@ bool SaveSampleToFile(const string &file_name, const vector<CSampleIDWeight> &Y)
 	ofstream output_file(file_name.c_str(), ios::binary|ios::out);
 	if (!output_file)
 		return false; 
-	for (unsigned int i=0; i<Y.size(); i++)
+	for (int i=0; i<Y.size(); i++)
 		write(output_file, &(Y[i]) ); 
 	output_file.close(); 
 	return true;  

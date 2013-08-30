@@ -21,7 +21,7 @@ public:
 	CEquiEnergyModel* model;	// pointers to CEquiEnergyModel
 protected:
 	vector<TDenseMatrix> blocks; 	// each block is a n-by-bi matrix, consisting of the directions and scales of the i-th block, where n is the dimension of the sample, bi is the size of the i-th block. 
-	vector<vector<unsigned int> > random_block_assignments;	// random_block_assignments[i] consists of the dimensions that are assigned into the i-th random block. Each dimension is assigned to one and only one block
+	vector<vector<int> > random_block_assignments;	// random_block_assignments[i] consists of the dimensions that are assigned into the i-th random block. Each dimension is assigned to one and only one block
 	vector<TDenseVector> random_blocks;	// random_blocks[i]:  the direction when the i-th dimension is in a block by itself
 	vector<TDenseVector> random_block_scales;	// random_block_scales[i][j]: scale factor when the i-th dimension is in a block of size (j+1)
 	void AssignDimensionsToRandomBlocks(size_t n, size_t avg_block_size); 

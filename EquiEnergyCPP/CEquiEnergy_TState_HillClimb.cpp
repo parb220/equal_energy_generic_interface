@@ -28,7 +28,7 @@ double MinusLogPosterior_CSMINWEL::function(double *x, int n, double **args, int
 
 void InitializeParameter(double *x, size_t n)
 {
-	for (unsigned int j=0; j<n; j++)
+	for (int j=0; j<n; j++)
              x[j] = dw_uniform_rnd();
 }           
 
@@ -106,7 +106,7 @@ double CEquiEnergy_TState::HillClimb_NPSOL(size_t nSolution, CStorageHead &stora
         // npoptn_((char*)NO_PRINT_OUT.c_str(), NO_PRINT_OUT.length());
 
 	// test if LogPosterior_StatesIntegratedOut works
-	for (unsigned int i=0; i<nSolution; i++)
+	for (int i=0; i<nSolution; i++)
 	{
 		InitializeParameter(x, n); 
         	npoptn_((char*)COLD_START.c_str(), COLD_START.length());
@@ -118,7 +118,7 @@ double CEquiEnergy_TState::HillClimb_NPSOL(size_t nSolution, CStorageHead &stora
 			for (int j=0; j<n; j++)
 				sample.data[j] = x[j]; 
 			sample.DataChanged(); 
-			sample.id = (unsigned int)(time(NULL)-timer_when_started);    
+			sample.id = (int)(time(NULL)-timer_when_started);    
 			log_posterior_function(sample); 
 
         		SaveSampleToStorage(storage, sample);         	
@@ -160,13 +160,13 @@ double CEquiEnergy_TState::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &st
 	const double IniHCsminwel=1.0e-5; 
 	double max_log_posterior = -1.0e300; 
 	
-	for (unsigned int iSolution=0; iSolution < nSolution; iSolution ++)
+	for (int iSolution=0; iSolution < nSolution; iSolution ++)
 	{
 		InitializeParameter(x, n); 
-		for (unsigned int i=0; i<n; i++)
-			for (unsigned int j=0; j<n; j++)
+		for (int i=0; i<n; i++)
+			for (int j=0; j<n; j++)
 				H[i*n+j] = IniHCsminwel; 
-		for (unsigned int i=0; i<n; i++)
+		for (int i=0; i<n; i++)
 			g[i] = 0.0; 
 	
 		dw_csminwel(MinusLogPosterior_CSMINWEL::function, x, n, H, g, NULL, &fh, crit, &itct, nit, &fcount, &retcodeh, NULL, NULL);
@@ -174,10 +174,10 @@ double CEquiEnergy_TState::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &st
 		{
 			CSampleIDWeight sample;
                         sample.data.Resize(n);
-                        for (unsigned int i=0; i<n; i++)
+                        for (int i=0; i<n; i++)
                                 sample.data[i] = x[i];
                         sample.DataChanged();
-                        sample.id = (unsigned int)(time(NULL)-timer_when_started);
+                        sample.id = (int)(time(NULL)-timer_when_started);
                         log_posterior_function(sample);
 
 			SaveSampleToStorage(storage, sample); 

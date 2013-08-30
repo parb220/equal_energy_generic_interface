@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
 		exit(-1);
 	}
 
-	for (unsigned int i=0; i<sample.size(); i++)
+	for (int i=0; i<sample.size(); i++)
 		oFile << setprecision(20) << sample[i]; 
 
 	oFile.close(); 

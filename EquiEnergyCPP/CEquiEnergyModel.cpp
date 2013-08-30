@@ -86,19 +86,19 @@ int CEquiEnergyModel::EE_Draw(const CEESParameter &parameter, CStorageHead &stor
 }
 
 // A sample is randomly taken from a pool (with size desired_pool_size) of samples where the pool is formed by samples with higher log-posteriors. Note that samples with higher log-posterior values are stored in smaller-indexed bins. So, if the desired pool size is 10 while the size of the first bin is 100, then only the first bin will be used. In contrast, if the desired pool size is 100 while the total number of samples in the first 3 bins is barely greater than 100, then the first 3 bins will be used. 
-bool CEquiEnergyModel::Initialize(CStorageHead &storage, size_t desiredPoolSize, unsigned int level_index)
+bool CEquiEnergyModel::Initialize(CStorageHead &storage, size_t desiredPoolSize, int level_index)
 {
 	size_t N=storage.Number_Bin(level_index); 
-	unsigned int nSample_Total=0;
-	vector<unsigned int>nSample_Bin(N,0);
-	for (unsigned int bin_index=0;  bin_index<N; bin_index++)
+	int nSample_Total=0;
+	vector<int>nSample_Bin(N,0);
+	for (int bin_index=0;  bin_index<N; bin_index++)
 	{
 		nSample_Bin[bin_index] = storage.GetNumberRecrod(level_index, bin_index); 
 		nSample_Total += nSample_Bin[bin_index]; 
 	}
 
-	unsigned int nLumSum = 0, bin_index=0; 
-	unsigned int random_index = dw_uniform_int(desiredPoolSize < nSample_Total ? desiredPoolSize : nSample_Total); 
+	int nLumSum = 0, bin_index=0; 
+	int random_index = dw_uniform_int(desiredPoolSize < nSample_Total ? desiredPoolSize : nSample_Total); 
 	while (bin_index<N && !(random_index >= nLumSum && random_index < nLumSum + nSample_Bin[bin_index]) )
 	{	
 		nLumSum += nSample_Bin[bin_index]; 
@@ -117,9 +117,9 @@ bool CEquiEnergyModel::Initialize(CStorageHead &storage, size_t desiredPoolSize,
 	return false; 	
 }
 
-bool CEquiEnergyModel::InitializeWithBestSample(CStorageHead &storage, unsigned int level_index)
+bool CEquiEnergyModel::InitializeWithBestSample(CStorageHead &storage, int level_index)
 {
-        unsigned int bin_index=0; 
+        int bin_index=0; 
         while (bin_index<storage.Number_Bin(level_index) && !(storage.DrawMostWeightSample(level_index, bin_index, current_sample) ) )
 		bin_index ++; 
         if (bin_index >= storage.Number_Bin(level_index))
@@ -128,10 +128,10 @@ bool CEquiEnergyModel::InitializeWithBestSample(CStorageHead &storage, unsigned 
         return true;
 }
 
-bool CEquiEnergyModel::InitializeWith_Kth_BestSample(CStorageHead &storage, size_t K, unsigned int level_index)
+bool CEquiEnergyModel::InitializeWith_Kth_BestSample(CStorageHead &storage, size_t K, int level_index)
 {
 	vector<CSampleIDWeight> sample;
-	unsigned int bin=0;  
+	int bin=0;  
 	while (bin < storage.Number_Bin(level_index) && sample.size() < K)
 	{
 		storage.Draw_K_MostWeightSample(K, level_index, bin, sample); 
@@ -143,10 +143,10 @@ bool CEquiEnergyModel::InitializeWith_Kth_BestSample(CStorageHead &storage, size
         return true;
 }
 
-bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(CStorageHead &storage, size_t K, unsigned int level_index)
+bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(CStorageHead &storage, size_t K, int level_index)
 {
 	vector<CSampleIDWeight> sample; 
-	unsigned int bin = 0; 
+	int bin = 0; 
 	while (bin < storage.Number_Bin(level_index) && sample.size() < K)
 	{
 		storage.Draw_K_MostWeightSample(K, level_index, bin, sample); 
@@ -154,7 +154,7 @@ bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(CStorageHead &st
 	}
 	if (sample.size() < K)
 		return false; 
-	unsigned int index = dw_uniform_int(K); 
+	int index = dw_uniform_int(K); 
 	Take_Sample_Just_Drawn_From_Storage(sample[index]); 
 	return true; 
 }
@@ -163,9 +163,9 @@ bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(CStorageHead &st
 double CEquiEnergyModel::BurnIn(size_t burn_in_length)
 {
 	CSampleIDWeight x_new; 
-	unsigned int nJump =0; 
+	int nJump =0; 
 	double max_posterior = current_sample.weight, bounded_log_posterior_new; 
-	for (unsigned int i=0; i<burn_in_length; i++)
+	for (int i=0; i<burn_in_length; i++)
 	{
 		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1) )
 		{
@@ -182,7 +182,7 @@ double CEquiEnergyModel::BurnIn(size_t burn_in_length)
 double CEquiEnergyModel::Simulation_Within(const CEESParameter &parameter, CStorageHead &storage, bool if_storage, const string &sample_file_name)
 {
 	CSampleIDWeight x_new; 
-	unsigned int nJump =0; 
+	int nJump =0; 
 	double max_posterior = current_sample.weight, bounded_log_posterior_new; 
 	bool if_write_file = false; 
 	ofstream output_file; 
@@ -193,9 +193,9 @@ double CEquiEnergyModel::Simulation_Within(const CEESParameter &parameter, CStor
 			if_write_file = true; 
 	}
 
-	for (unsigned int i=0; i<parameter.simulation_length; i++)
+	for (int i=0; i<parameter.simulation_length; i++)
 	{
-		for (unsigned int j=0; j<parameter.deposit_frequency; j++)
+		for (int j=0; j<parameter.deposit_frequency; j++)
 		{
 			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 100/parameter.deposit_frequency) )
                 	{
@@ -222,7 +222,7 @@ double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStora
 {
 	CSampleIDWeight x_new;
 
-	unsigned int nEEJump=0, nMHJump=0; 
+	int nEEJump=0, nMHJump=0; 
 	bool if_write_file = false;
         ofstream output_file;
         if (!sample_file_name.empty() )
@@ -233,9 +233,9 @@ double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStora
         }
 
 	double max_posterior = current_sample.weight; 
-	for (unsigned int i=0; i<parameter.simulation_length; i++)
+	for (int i=0; i<parameter.simulation_length; i++)
 	{
-		for (unsigned int j=0; j<parameter.deposit_frequency; j++)
+		for (int j=0; j<parameter.deposit_frequency; j++)
 		{
 			int jump_code = EE_Draw(parameter, storage, 100/parameter.deposit_frequency); 
 			if (jump_code == EQUI_ENERGY_JUMP)
@@ -264,7 +264,7 @@ CEquiEnergyModel::CEquiEnergyModel() :
 if_bounded(true), energy_level(0), t_bound(1.0), current_sample(CSampleIDWeight()), metropolis(NULL), timer_when_started(time(NULL))
 {}
 
-CEquiEnergyModel::CEquiEnergyModel(bool _if_bounded, unsigned int eL, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time) :
+CEquiEnergyModel::CEquiEnergyModel(bool _if_bounded, int eL, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time) :
 if_bounded(_if_bounded), energy_level(eL), t_bound(_t), current_sample(_x), metropolis(_metropolis), timer_when_started(_time)
 {
 }

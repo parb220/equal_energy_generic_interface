@@ -29,7 +29,7 @@ public:
 // 	energy_bound: h[i]
 // 	temperature_bound: t[i]
 	bool if_bounded; 
- 	unsigned int energy_level;		
+ 	int energy_level;		
 	double t_bound; 
 
 //////////////////////////////////////////////////////////////
@@ -50,10 +50,10 @@ public:
 	int EE_Draw(const CEESParameter &, CStorageHead &storage, size_t MH_thin); 	// equi-energy draw
 public:
 	double BurnIn(size_t burn_in_length);		// returns the maximum posteior during burn-in
-	bool Initialize(CStorageHead &storage, size_t desired_pool_size, unsigned int level);	// Initialize model (setting values for current_sample) using bins indexed from start_bin through (including) end_bin. 
-	bool InitializeWithBestSample(CStorageHead &storage, unsigned int level); 		// Initialize model using the best sample in the bins indexed from start_bin to end_bin
-	bool InitializeWith_Kth_BestSample(CStorageHead &storage, size_t K, unsigned int level_index);
-	bool Initialize_RandomlyPickFrom_K_BestSample(CStorageHead &storage, size_t K, unsigned int level_index); 
+	bool Initialize(CStorageHead &storage, size_t desired_pool_size, int level);	// Initialize model (setting values for current_sample) using bins indexed from start_bin through (including) end_bin. 
+	bool InitializeWithBestSample(CStorageHead &storage, int level); 		// Initialize model using the best sample in the bins indexed from start_bin to end_bin
+	bool InitializeWith_Kth_BestSample(CStorageHead &storage, size_t K, int level_index);
+	bool Initialize_RandomlyPickFrom_K_BestSample(CStorageHead &storage, size_t K, int level_index); 
 	bool InitializeFromFile(const string &file_name); 
 
 	double Simulation_Within(const CEESParameter &, CStorageHead &storage, bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy level (no jumping across levels). Returns the maximum posterior during simulation
@@ -75,7 +75,7 @@ public:
 // Construction & Destruction functions here
 public:
 	CEquiEnergyModel(); 
-	CEquiEnergyModel(bool _if_bounded, unsigned int eL, double _t, const CSampleIDWeight & _x=CSampleIDWeight(), CMetropolis *_metropolis =NULL, time_t _time=time(NULL)); 
+	CEquiEnergyModel(bool _if_bounded, int eL, double _t, const CSampleIDWeight & _x=CSampleIDWeight(), CMetropolis *_metropolis =NULL, time_t _time=time(NULL)); 
 	virtual ~CEquiEnergyModel() {} 
 };
 

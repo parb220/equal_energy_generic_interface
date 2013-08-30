@@ -32,11 +32,11 @@ public:
 	bool SetEnergyBound();
 	bool SetTemperature();
 
-	double LogRatio_Level(double energy_x, double energy_y, unsigned int level) const; 
+	double LogRatio_Level(double energy_x, double energy_y, int level) const; 
 
 public: // parameters that are not saved, just for purpose of encapsulation
-	unsigned int highest_level; 
-	unsigned int lowest_level; 
+	int highest_level; 
+	int lowest_level; 
 	size_t deposit_frequency; 
 	size_t simulation_length; 
 	size_t burn_in_length; 

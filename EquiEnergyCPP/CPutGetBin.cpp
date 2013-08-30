@@ -29,7 +29,7 @@ vector <string> CPutGetBin::GetFileNameForFetch() const
 	vector <string> filename_fetch; 
 	if (glob_result.gl_pathc > 0)
 	{
-		for (unsigned int i=0; i<glob_result.gl_pathc; i++)
+		for (int i=0; i<glob_result.gl_pathc; i++)
 			if (NumberRecord(string(glob_result.gl_pathv[i])) >= capacity)
 				filename_fetch.push_back(string(glob_result.gl_pathv[i])); 
 	}
@@ -52,7 +52,7 @@ vector <string> CPutGetBin::GetFileNameForConsolidate() const
 	vector <string> filename_consolidate; 
 	if (glob_result.gl_pathc > 0)
 	{
-		for (unsigned int i=0; i<glob_result.gl_pathc; i++)
+		for (int i=0; i<glob_result.gl_pathc; i++)
 			if (NumberRecord(string(glob_result.gl_pathv[i])) < capacity)
 				filename_consolidate.push_back(string(glob_result.gl_pathv[i])); 
 	}
@@ -75,7 +75,7 @@ bool CPutGetBin::Dump(const string &_filename)
 		cerr << "Error in dumping samples to " << file_name << endl; 
 		return false; 
 	}
-	for (unsigned int i=0; i<nPutUsed; i++)
+	for (int i=0; i<nPutUsed; i++)
 		write(oFile, &(dataPut[i])); 
 	oFile.flush(); 
 	oFile.close();  
@@ -94,17 +94,17 @@ bool CPutGetBin::Fetch(const vector<string> &filename_fetch)
 	if (dataGet.size() < capacity)
 		dataGet.resize(capacity);  
 	
-	unsigned int select; 
-	vector < vector <unsigned int > > select_per_file(nFetchFile+1); 
+	int select; 
+	vector < vector <int > > select_per_file(nFetchFile+1); 
 	// First nFetchFile(): files
 	// Last: cache
-	for (unsigned int i=0; i<capacity; i++)
+	for (int i=0; i<capacity; i++)
 	{
 		select=dw_uniform_int(nFetchFile*capacity+nPutUsed); 
 		select_per_file[select/capacity].push_back(select%capacity); 
 	}
 	int counter =0; 
-	for (unsigned int i=0; i<nFetchFile; i++)	// Read data from file
+	for (int i=0; i<nFetchFile; i++)	// Read data from file
 	{
 		if (!select_per_file[i].empty())
 		{
@@ -117,7 +117,7 @@ bool CPutGetBin::Fetch(const vector<string> &filename_fetch)
 	}
 	if (!select_per_file[nFetchFile].empty() ) // Read data from cache
 	{
-		for (unsigned int n=0; n<select_per_file[nFetchFile].size(); n++)
+		for (int n=0; n<select_per_file[nFetchFile].size(); n++)
 		{
 			dataGet[counter] = dataPut[select_per_file[nFetchFile][n]]; 
 			counter ++;
@@ -126,7 +126,7 @@ bool CPutGetBin::Fetch(const vector<string> &filename_fetch)
 	return true; 
 }
 
-bool CPutGetBin::ReadFromOneFile(const string &file_name, int &counter, const vector <unsigned int> &index) 
+bool CPutGetBin::ReadFromOneFile(const string &file_name, int &counter, const vector <int> &index) 
 {	
 	fstream iFile; 
         iFile.open(file_name.c_str(), ios::in|ios::binary);
@@ -136,7 +136,7 @@ bool CPutGetBin::ReadFromOneFile(const string &file_name, int &counter, const ve
 	CSampleIDWeight temp_data; 
 	read(iFile, &temp_data); 
 
-        for (unsigned int n=0; n<index.size(); n++)
+        for (int n=0; n<index.size(); n++)
         {
         	iFile.seekg(temp_data.GetSize_Data()*index[n], ios_base::beg);
                 read(iFile, &(dataGet[counter]));
@@ -148,7 +148,7 @@ bool CPutGetBin::ReadFromOneFile(const string &file_name, int &counter, const ve
 
 vector <CSampleIDWeight> CPutGetBin::ReadSampleFromFile(const string &file_name) const
 {
-	unsigned int nRecord = NumberRecord(file_name); 
+	int nRecord = NumberRecord(file_name); 
 	if (nRecord <= 0)
 		return vector<CSampleIDWeight>(0);
 
@@ -158,13 +158,13 @@ vector <CSampleIDWeight> CPutGetBin::ReadSampleFromFile(const string &file_name)
         	return vector<CSampleIDWeight>(0); 
 
         vector <CSampleIDWeight> sample(nRecord); 
-        for(unsigned int n=0; n<nRecord; n++)
+        for(int n=0; n<nRecord; n++)
 		read(iFile, &(sample[n]));
         iFile.close();
 	return sample; 
 }
 
-unsigned int CPutGetBin::NumberRecord(const string &file_name) const
+int CPutGetBin::NumberRecord(const string &file_name) const
 {
 	ifstream iFile; 
 	iFile.open(file_name.c_str(), ios::in|ios::binary);
@@ -177,8 +177,8 @@ unsigned int CPutGetBin::NumberRecord(const string &file_name) const
 
 	iFile.seekg(0, ios::beg); 
 	iFile.seekg(0, ios::end); 
-	unsigned int lenFile = iFile.tellg(); 
-	unsigned int number_record = lenFile/temp.GetSize_Data(); 
+	int lenFile = iFile.tellg(); 
+	int number_record = lenFile/temp.GetSize_Data(); 
 	iFile.close(); 
 	return number_record; 
 }
@@ -229,7 +229,7 @@ bool CPutGetBin::LoadLeastWeightSample(const string &file_name, CSampleIDWeight 
 	if ( samples.empty() )
 		return false; 
 	best = samples[0]; 
-	for (unsigned int i=1; i<samples.size(); i++)
+	for (int i=1; i<samples.size(); i++)
 	{
 		if (samples[i].weight < best.weight )
 			best = samples[i]; 
@@ -243,7 +243,7 @@ bool CPutGetBin::LoadMostWeightSample(const string &file_name, CSampleIDWeight &
 	if ( samples.empty() )
 		return false; 
 	best = samples[0]; 
-	for (unsigned int i=1; i<samples.size(); i++)
+	for (int i=1; i<samples.size(); i++)
 	{
 		if (samples[i].weight > best.weight )
 			best = samples[i]; 
@@ -251,7 +251,7 @@ bool CPutGetBin::LoadMostWeightSample(const string &file_name, CSampleIDWeight &
 	return true; 
 }
 
-CPutGetBin::CPutGetBin(const string & _id, unsigned int _nDumpFile, size_t _capacity, string _grandPrefix, unsigned int _suffix ) : 
+CPutGetBin::CPutGetBin(const string & _id, int _nDumpFile, size_t _capacity, string _grandPrefix, int _suffix ) : 
 suffix(_suffix), id(_id),  nDumpFile(_nDumpFile), capacity(_capacity), 
 nPutUsed(0), nGetUsed(_capacity), filename_prefix(_grandPrefix), 
 dataPut(vector<CSampleIDWeight>(0)), dataGet(vector<CSampleIDWeight>(0)) 
@@ -312,9 +312,9 @@ size_t CPutGetBin::GetNumberFileForConsolidate() const
 }
 
 
-unsigned int CPutGetBin::DepositSample(const CSampleIDWeight &sample)
+int CPutGetBin::DepositSample(const CSampleIDWeight &sample)
 {
-	unsigned int index =  nPutUsed;
+	int index =  nPutUsed;
 	if (dataPut.size() <= nPutUsed)
 		dataPut.push_back(sample); 
 	else
@@ -339,7 +339,7 @@ bool CPutGetBin::Draw_K_MostWeightSample(size_t K, vector<CSampleIDWeight> &samp
 	if (file.empty())
 		return false; 
         
-        for (unsigned int i=0; i<file.size(); i++)
+        for (int i=0; i<file.size(); i++)
         {
                 if (!Load_K_MostWeightSample(K, file[i], sample) )
                 {
@@ -360,7 +360,7 @@ bool CPutGetBin::Draw_K_LeastWeightSample(size_t K, vector<CSampleIDWeight> &sam
 	if (file.empty())
 		return false; 	
 
-	for (unsigned int i=0; i<file.size(); i++)
+	for (int i=0; i<file.size(); i++)
 	{
 		if (!Load_K_LeastWeightSample(K, file[i], sample) )
 		{
@@ -381,7 +381,7 @@ bool CPutGetBin::DrawLeastWeightSample(CSampleIDWeight &sample)  const
 	if (file.empty())
 		return false; 	 
 
-	for (unsigned int i=0; i<file.size(); i++)
+	for (int i=0; i<file.size(); i++)
 	{
 		if (!LoadLeastWeightSample(file[i], temp_sample)) 
 		{
@@ -405,7 +405,7 @@ bool CPutGetBin::DrawMostWeightSample(CSampleIDWeight &sample)  const
 	if (file.empty())
 		return false; 
 
-        for (unsigned int i=0; i<file.size(); i++)
+        for (int i=0; i<file.size(); i++)
         {
                 if (!LoadMostWeightSample(file[i], temp_sample))
                 {
@@ -420,7 +420,7 @@ bool CPutGetBin::DrawMostWeightSample(CSampleIDWeight &sample)  const
 
 bool CPutGetBin::DrawSample(CSampleIDWeight &sample)
 {
-	unsigned int index; 
+	int index; 
 	if (nGetUsed < capacity)	// if data in the memory has not been exhaustively used 
 	{
 		index = dw_uniform_int(capacity);
@@ -493,7 +493,7 @@ void CPutGetBin::consolidate()
 	{
 		vector <CSampleIDWeight> sample_consolidate; 
 		vector <CSampleIDWeight> temp_sample; 
-		for (unsigned int i=0; i<file_consolidate.size(); i++)
+		for (int i=0; i<file_consolidate.size(); i++)
 		{
 			temp_sample = ReadSampleFromFile(file_consolidate[i]); 
 			sample_consolidate.insert(sample_consolidate.end(), temp_sample.begin(), temp_sample.end()); 
@@ -502,10 +502,10 @@ void CPutGetBin::consolidate()
 		size_t nComplete = sample_consolidate.size()/capacity; 
 		size_t nRemaining = sample_consolidate.size()%capacity; 
 		dataPut.resize(capacity); 
-		for (unsigned int iComplete=0; iComplete<nComplete; iComplete ++)
+		for (int iComplete=0; iComplete<nComplete; iComplete ++)
 		{
 			copy(sample_consolidate.begin()+iComplete*capacity, sample_consolidate.begin()+(iComplete+1)*capacity, dataPut.begin()); 
-			//for (unsigned int j=0; j<capacity; j++)
+			//for (int j=0; j<capacity; j++)
 			//	dataPut[j] = sample_consolidate[j+iComplete*capacity]; 
 			nPutUsed = capacity; 
 			Dump(file_consolidate[iComplete]); 
@@ -515,7 +515,7 @@ void CPutGetBin::consolidate()
 			if (dataPut.size() < nRemaining)
 				dataPut.resize(nRemaining); 
 			copy(sample_consolidate.begin()+nComplete*capacity, sample_consolidate.begin()+nComplete*capacity+nRemaining, dataPut.begin()); 
-			//for (unsigned int j=0; j<nRemaining; j++)
+			//for (int j=0; j<nRemaining; j++)
 			//	dataPut[j] = sample_consolidate[j+nComplete*capacity]; 
 			nPutUsed = nRemaining; 
 			Dump(file_consolidate[nComplete]); 
@@ -557,7 +557,7 @@ void CPutGetBin::RestoreForFetch()
 			if (dataPut.size() < tempSample.size())
 				dataPut.resize(capacity); 
 			copy(tempSample.begin(), tempSample.end(), dataPut.begin()); 
-			//for (unsigned int j=0; j<tempSample.size(); j++)
+			//for (int j=0; j<tempSample.size(); j++)
 			//	dataPut[j] = tempSample[j]; 
 		}
 	}
@@ -585,11 +585,12 @@ bool CPutGetBin::empty() const
 
 void CPutGetBin::DisregardHistorySamples()
 {
-	vector <string> filename_fetch = GetFileNameForFetch(); 
-	size_t nFetchFile = filename_fetch.size(); 
-		
-	for (unsigned int iFile =0; iFile<nFetchFile; iFile++)
-		remove(filename_fetch[iFile].c_str());
+	vector <string> file = GetFileNameForConsolidate();
+        vector <string> fetch_file = GetFileNameForFetch();
+	file.insert(file.end(), fetch_file.begin(), fetch_file.end());
+
+	for (int iFile =0; iFile<file.size(); iFile++)
+		remove(file[iFile].c_str());
 }
 
 void CPutGetBin::ClearDepositDrawHistory()
@@ -609,7 +610,7 @@ size_t CPutGetBin::GetTotalNumberRecord() const
         glob_t glob_result;
         glob(filename_pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
 	int nRecord=0; 
-        for (unsigned int i=0; i<glob_result.gl_pathc; i++)
+        for (int i=0; i<glob_result.gl_pathc; i++)
         	nRecord += NumberRecord(string(glob_result.gl_pathv[i]));
 	return nRecord; 
 }

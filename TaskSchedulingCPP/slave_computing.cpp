@@ -26,7 +26,7 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 	double *sPackage = new double [N_MESSAGE];    
 	
 	double max_log_posterior; 
-	unsigned int group_index; 
+	int group_index; 
 	bool if_within, if_write_file, if_storage;   
 
 	while (1)
@@ -40,7 +40,7 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 		}		
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
 		{
-			model.energy_level = (unsigned int)(rPackage[LEVEL_INDEX]);
+			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
 			storage.restore(model.energy_level); 
 			max_log_posterior = model.HillClimb_CSMINWEL(rPackage[LENGTH_INDEX], storage, parameter); 
 			storage.finalize(model.energy_level);
@@ -48,8 +48,8 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 		}
 		else if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION || status.MPI_TAG == TUNE_TAG_AFTER_SIMULATION) 
 		{
-			model.energy_level = (unsigned int)(rPackage[LEVEL_INDEX]);
-			group_index = (unsigned int)(rPackage[GROUP_INDEX]); 
+			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
+			group_index = (int)(rPackage[GROUP_INDEX]); 
 			if (!GetCommunicationParameter(rPackage, N_MESSAGE, parameter))
 			{
 				cerr << "GetCommunicationParameter() : Error occurred.\n"; 
@@ -80,8 +80,8 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 		}
 		else if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == TUNE_TAG_SIMULATION_SECOND || status.MPI_TAG == SIMULATION_TAG) 
 		{	
-			model.energy_level = (unsigned int)(rPackage[LEVEL_INDEX]);
-			group_index = (unsigned int)(rPackage[GROUP_INDEX]); 
+			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
+			group_index = (int)(rPackage[GROUP_INDEX]); 
 			if (!GetCommunicationParameter(rPackage, N_MESSAGE, parameter))
 			{
 				cout << "GetCommunicationParameter() : Error occurred.\n"; 
