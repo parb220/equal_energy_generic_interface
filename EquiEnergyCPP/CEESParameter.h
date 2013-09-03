@@ -7,6 +7,7 @@
 using namespace std; 
 
 class CSampleIDWeight; 
+bool Solve_Polynomial_Equation(vector<double> &, size_t n, double t0, double tk_1); 
 
 class CEESParameter 
 {

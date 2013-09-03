@@ -1,5 +1,4 @@
 #include <fstream>
-#include <gsl/gsl_poly.h>
 #include <cmath>
 
 #include "CSampleIDWeight.h"
@@ -115,7 +114,8 @@ bool CEESParameter::SetTemperature()
  *   *     gamma is determined by solving a polynomial equation 
  *    *     gamma+gamma^2+...+gamma^{K-1} = T[K-1]-T[0]; 
  *     *     */
-	t.resize(number_energy_level+1);  
+	return Solve_Polynomial_Equation(t, number_energy_level+1, t0, tk_1); 
+	/*t.resize(number_energy_level+1);  
 	if (number_energy_level == 1)
 	{
 		t[number_energy_level] = t[0] = t0; 
@@ -153,7 +153,7 @@ bool CEESParameter::SetTemperature()
 			t[i] = t[i-1]+pow(gamma, (double)i);
 		t[number_energy_level] = t[number_energy_level-1]+pow(gamma, (double)number_energy_level);  
 		return true; 
-	}
+	}*/
 }
 
 double CEESParameter::LogRatio_Level(double original_energy_x, double original_energy_y, int level) const

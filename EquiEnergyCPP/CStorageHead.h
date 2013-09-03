@@ -8,6 +8,7 @@ using namespace std;
 
 class CSampleIDWeight; 
 class CPutGetBin; 
+bool Solve_Polynomial_Equation(vector<double> &, size_t n, double t0, double tk_1); 
 
 class CStorageHead
 {
@@ -34,6 +35,7 @@ public:
 	void ClearDepositDrawHistory(int level); 
 
 	size_t binning(int level, size_t bin_number_lb, double bin_width_ub); 
+	size_t binning_geometric(int level, size_t bin_number); 
 
 	bool DrawLeastWeightSample(int level, int bin_id, CSampleIDWeight &) const; 
 	bool Draw_K_LeastWeightSample(size_t, int level, int bin_id, vector<CSampleIDWeight> &) const; 
