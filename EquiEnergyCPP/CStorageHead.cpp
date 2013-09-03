@@ -168,8 +168,8 @@ size_t CStorageHead::binning_geometric(int level, size_t bin_number)
                 bin_id_string << level << "." << i;
                 bin[level].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));
 	}
-	double energy_min = -sample[0].weight, energy_max=-sample[nSample-1].weight;
-	// double energy_min = 1950, energy_max =1975; 
+	// double energy_min = -sample[0].weight, energy_max=-sample[nSample-1].weight;
+	double energy_min = 1950, energy_max =1975; 
 	if (!Solve_Polynomial_Equation(energy_lower_bound[level], bin_number,energy_min,energy_max) ) 
 	{
 		cerr << "CStorageHead::binning_geometric() : polynomial equation cannot be solved.\n"; 
