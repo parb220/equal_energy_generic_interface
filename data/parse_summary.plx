@@ -24,11 +24,14 @@ $file_pattern = catfile($binary_dir, "*");
 @glob_files = glob($file_pattern); 
 foreach my $binary_file (@glob_files)
 {
-	@terms = split/\.|\//, $binary_file; 
-	$cluster_node_id = $terms[$#terms]; 
-	$file_index = $terms[$#terms-1]; 
-	$bin_index = $terms[$#terms-2]; 
-	$text_file = catfile($text_dir, $bin_index.".".$file_index.".".$cluster_node_id);  		
+	#@terms = split/\.|\//, $binary_file; 
+	#$cluster_node_id = $terms[$#terms]; 
+	#$file_index = $terms[$#terms-1]; 
+	#$bin_index = $terms[$#terms-2]; 
+	#$text_file = catfile($text_dir, $bin_index.".".$file_index.".".$cluster_node_id);  	
+	@terms = split/\//, $binary_file; 
+	$text_file = catfile($text_dir, $terms[$#terms]); 	
+	
 	$cmd = "./binary2text " . " " . $binary_file . " " . $text_file; 
 	system($cmd); sleep(1);  
 }

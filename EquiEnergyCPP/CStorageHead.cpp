@@ -138,6 +138,49 @@ void CStorageHead::ClearDepositDrawHistory(int level)
 		bin[level][j].ClearDepositDrawHistory(); 
 }
 
+size_t CStorageHead::binning_equal_size(int level, size_t bin_number)
+{
+	if (level >=(int)bin.size())
+        {
+                cerr << "CStorageHead::binning_geometric() : level index exceeds the range.\n";
+                abort();
+        }
+	if (bin[level].size() > 1)
+        {
+                cerr << "CStorageHead::binning_geometric() : it seems that binning has been done before.\n";
+                abort();
+        }	
+	size_t nSample=bin[level][0].GetTotalNumberRecord();
+        vector<CSampleIDWeight> sample;
+        if (!Draw_K_MostWeightSample(nSample, level, 0, sample) )
+        {
+                cerr << "CStorageHead::binning_geometric() : error occurred when loading all samples.\n";
+                abort();
+        }
+        DisregardHistorySamples(level);
+
+        stringstream str, bin_id_string;
+        str << run_id << "/" << run_id << ".binary/";
+        bin[level].clear();
+	
+	size_t sBin = (size_t)ceil((double)(nSample)/(double)bin_number);
+	
+	int iSample=0, iBin=0;
+	while (iSample < (int)nSample) 
+	{
+		energy_lower_bound[level].push_back(-sample[iSample].weight); 	
+		bin_id_string.str(string());
+                bin_id_string << level << "." << iBin;
+                bin[level].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));
+
+		sBin = iSample+sBin == nSample-1 ? sBin+1 : sBin;
+                for (int j=iSample; j<iSample+(int)sBin && j<(int)nSample; j++)
+                	bin[level][iBin].DepositSample(sample[j]);
+               	iSample += sBin;
+               	iBin++;
+	}
+}
+
 size_t CStorageHead::binning_geometric(int level, size_t bin_number)
 {
 	if (level >=(int)bin.size())
@@ -168,8 +211,8 @@ size_t CStorageHead::binning_geometric(int level, size_t bin_number)
                 bin_id_string << level << "." << i;
                 bin[level].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));
 	}
-	// double energy_min = -sample[0].weight, energy_max=-sample[nSample-1].weight;
-	double energy_min = 1950, energy_max =1975; 
+	double energy_min = -sample[0].weight, energy_max=-sample[nSample-1].weight;
+	// double energy_min = 1950, energy_max =1975; 
 	if (!Solve_Polynomial_Equation(energy_lower_bound[level], bin_number,energy_min,energy_max) ) 
 	{
 		cerr << "CStorageHead::binning_geometric() : polynomial equation cannot be solved.\n"; 
@@ -211,9 +254,7 @@ size_t CStorageHead::binning(int level, size_t bin_number_lb, double bin_width_u
 	stringstream str; 
 	str << run_id << "/" << run_id << ".binary/";
 	// number of bins has to be at least number of levels
-	size_t nBin = bin_number_lb > bin.size() ? bin_number_lb : bin.size(); 
-	// initial guess of the size of bins is based on nBin
-	size_t sBin_initial = (size_t)ceil((double)(nSample)/(double)(nBin));
+	size_t sBin_initial = (size_t)ceil((double)(nSample)/(double)bin_number_lb);
 	
 	bin[level].clear(); // Get rid of bin[0] because all samples are now in sample
 	energy_lower_bound[level].clear(); 
@@ -224,9 +265,8 @@ size_t CStorageHead::binning(int level, size_t bin_number_lb, double bin_width_u
 		size_t sBin = iSample+sBin_initial<nSample ? sBin_initial : nSample-iSample-1; 
 		// width of a bin = sample[iSample].weight - sample[iSample+sBin].weight
 		// bin width has to be less than or equal to bin_width_ub
-		/*while (sBin>1 && fabs(sample[iSample].weight-sample[iSample+sBin].weight) > bin_width_ub)
+		while (sBin>1 && fabs(sample[iSample].weight-sample[iSample+sBin].weight) > bin_width_ub)
 			sBin = sBin/2; 
-		*/
 	
 		// Now the bin boundary has been determined. 
 		// It is possible that sBin=1 ???????
@@ -235,10 +275,9 @@ size_t CStorageHead::binning(int level, size_t bin_number_lb, double bin_width_u
 		bin_id_string << level << "." << iBin; 
 		bin[level].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node)); 
 	
-		// If this is the last bin, then it has to include the last element of sample	
-		sBin = (iSample+sBin == nSample-1) ? sBin+1 : sBin; 
-		for (int j=iSample; j<iSample+(int)sBin; j++)
-			bin[level][iBin].DepositSample(sample[iSample]); 
+		sBin = iSample+sBin == nSample-1 ? sBin+1 : sBin; 
+		for (int j=iSample; j<iSample+(int)sBin && j<(int)nSample; j++)
+			bin[level][iBin].DepositSample(sample[j]); 
 
 		iSample += sBin; 
 		iBin++; 	
