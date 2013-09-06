@@ -34,6 +34,8 @@ public:
 	bool FourPassAdaptive_StartWithSampleFile(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, const string &sample_file_name, const string &block_file_name=string()); 
 	bool AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name=string());
 	bool AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name=string());
+	bool AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name=string());
+	bool AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name=string());
 
 	// draw one sample
 	bool BlockRandomWalkMetropolis(double &, CSampleIDWeight &, const CSampleIDWeight &x, size_t thin=1); 

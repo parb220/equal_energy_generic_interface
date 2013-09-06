@@ -551,3 +551,69 @@ bool CMetropolis::FourPassAdaptive_StartWithSampleFile(const CSampleIDWeight &ad
 		return false; 
 	return WriteBlocks(block_file_name); 
 }
+
+bool CMetropolis::AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name)
+// 	identity variance matrix / 1 blocks
+// Here file_name refers to a file that blocks are written into. 
+// Simulation will first read blocks from the file and then simulate
+{
+	CSampleIDWeight x=adaptive_start_point; 
+
+	size_t n_blocks = 1; 
+	vector<TDenseMatrix>B_matrix(n_blocks); 
+	B_matrix[0]= Identity(x.data.dim); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+
+	if (block_file_name.empty())
+		return true; 
+	else 
+	{
+		bool return_value = WriteBlocks(block_file_name); 
+		return return_value; 
+	}
+}
+
+bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name) 
+// 	variance matrix estimated from simulation with scaled columns / 1 block
+// Here filename refers to the file where samples are stored to. 
+// So we first load these samples, and then calculate mean and variance. 
+// finally blocks will be written into a file so that simulation can start from there
+{	
+	vector<CSampleIDWeight> Y; 
+	if (!LoadSampleFromFile(sample_file_name, Y) )
+		return false; 		
+
+	// Compute variance and mean
+	TDenseVector mean(Y[0].data.dim,0.0);  
+	TDenseMatrix variance(Y[0].data.dim,Y[0].data.dim,0.0), U_matrix, V_matrix, D_matrix; 
+	TDenseVector d_vector; 
+	for (int i=0; i<Y.size(); i++)
+	{
+		mean = mean + Y[i].data; 
+		variance = variance + Multiply(Y[i].data,Y[i].data);
+	}
+	
+	mean = (1.0/(double)Y.size()) * mean; 
+	variance = (1.0/(double)Y.size())*variance - Multiply(mean, mean); 
+	variance = 0.5 * (variance+Transpose(variance)); 
+ 
+	SVD(U_matrix, d_vector, V_matrix, variance); 
+	for (int i=0; i<d_vector.dim; i++)
+		d_vector[i] = sqrt(d_vector[i]); 
+	D_matrix = DiagonalMatrix(d_vector); 
+	U_matrix = U_matrix *D_matrix; 
+
+	CSampleIDWeight x=adaptive_start_point; 
+	size_t n_blocks = 1; 
+	vector<TDenseMatrix>B_matrix(n_blocks); 
+	B_matrix[0] = U_matrix; 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+
+	if (block_file_name.empty())
+		return true; 
+	else 
+	{
+		bool return_value = WriteBlocks(block_file_name); 
+		return return_value; 
+	}
+}
