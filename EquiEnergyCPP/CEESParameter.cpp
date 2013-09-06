@@ -12,13 +12,13 @@ CEESParameter::CEESParameter() :
 	run_id(string()), 
 	number_energy_level(0), 
 	pee(0.0),
-	h0(0.0), 
 	t0(0.0), 
 	tk_1(0.0), 
 	t(vector<double>(0)),
 	highest_level(0), 
 	lowest_level(0), 
-	deposit_frequency(0), 
+	thin(0),
+	THIN(0), 
 	simulation_length(0), 
 	burn_in_length(0),
 	max_energy_tuning_time(0),
@@ -44,7 +44,6 @@ bool CEESParameter::SaveParameterToFile(string file_name) const
 	oFile.write((char*)(run_id.c_str()), sizeof(char)*run_id_len); 
 	oFile.write((char*)(&number_energy_level), sizeof(size_t)); 
 	oFile.write((char*)(&pee), sizeof(double)); 
-	oFile.write((char*)(&h0), sizeof(double)); 
 	oFile.write((char*)(&t0), sizeof(double)); 
 	oFile.write((char*)(&tk_1), sizeof(double)); 
 	
@@ -78,7 +77,6 @@ bool CEESParameter::LoadParameterFromFile(string file_name)
 
 	iFile.read((char*)(&number_energy_level), sizeof(size_t));
         iFile.read((char*)(&pee), sizeof(double));
-        iFile.read((char*)(&h0), sizeof(double));
         iFile.read((char*)(&t0), sizeof(double));
 	iFile.read((char*)(&tk_1), sizeof(double)); 
 	

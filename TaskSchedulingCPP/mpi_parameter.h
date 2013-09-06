@@ -5,8 +5,8 @@ const size_t N_MESSAGE = 6;
 const int LENGTH_INDEX = 0; 
 const int LEVEL_INDEX = 1; 
 const int BURN_INDEX = 2; 
-const int FREQ_INDEX = 3;
-const int H0_INDEX = 4; 
+const int thin_INDEX = 3;
+const int THIN_INDEX = 4; 
 const int GROUP_INDEX = 5; 
 
 const int TUNE_TAG = 19; 

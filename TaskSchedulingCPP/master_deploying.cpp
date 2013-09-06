@@ -50,23 +50,22 @@ void master_deploying(int argc, char **argv, CEquiEnergy_TState &model, CEESPara
 	// Hill climb for the highest+1 level
 	// number_hill_climb: number of times of hill climbing
 	
-	double received_log_posterior; 
 	size_t number_hill_climb = (size_t) dw_ParseInteger_String(argc, argv, "HillClimb", 0); 
         if (number_hill_climb )
-		received_log_posterior = DispatchHillClimbTask(nodeGroup, parameter, storage, number_hill_climb);
+		DispatchHillClimbTask(nodeGroup, parameter, storage, number_hill_climb);
 
 	// tuning and simulation
 	int if_tuning_done = dw_ParseInteger_String(argc, argv, "TuningDone", 0);
 	if (if_tuning_done == 0)	// if tuning is not done, need to tune
 	{
-		received_log_posterior = DispatchTuneSimulation(nodeGroup, parameter, storage, parameter.simulation_length, n_initial);  
+		DispatchTuneSimulation(nodeGroup, parameter, storage, parameter.simulation_length, n_initial);  
 	}
 	else if (parameter.simulation_length > 0)
 	{
 		for (int level=parameter.highest_level; level>=parameter.lowest_level; level--)
 		{
 			cout << "Simulation at ... " << level << " ... for " << parameter.simulation_length << endl; 
-			received_log_posterior = DispatchSimulation(nodeGroup, parameter, storage, parameter.simulation_length, level, SIMULATION_TAG); 
+			DispatchSimulation(nodeGroup, parameter, storage, parameter.simulation_length, level, SIMULATION_TAG); 
 	}
 		}
 	cout << "Done simulation" << endl; 

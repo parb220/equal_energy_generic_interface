@@ -743,13 +743,13 @@ int main(int n_args_cl, char **args_cl)
 		parameter.number_energy_level = 1; 
 		parameter.highest_level = parameter.lowest_level = 0; 
 	}
-       	parameter.h0 = dw_ParseFloating_String(n_args_cl, args_cl, "H0", 0);
        	parameter.t0 = dw_ParseFloating_String(n_args_cl, args_cl, "T0", 1.0);
 	parameter.tk_1 = dw_ParseFloating_String(n_args_cl, args_cl, "TK", 1000); 
        	parameter.SetTemperature();
 
 	// burn-in length, simulation length, and deposit frequency
-	parameter.deposit_frequency = dw_ParseInteger_String(n_args_cl, args_cl, "thin", 50);
+	parameter.thin = dw_ParseInteger_String(n_args_cl, args_cl, "thin", 1);
+	parameter.THIN = dw_ParseInteger_String(n_args_cl, args_cl, "THIN", 100); 
         parameter.simulation_length = dw_ParseInteger_String(n_args_cl, args_cl, "ndraws", 10000);
 	parameter.simulation_length = parameter.simulation_length; 
 	

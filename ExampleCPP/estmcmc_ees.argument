@@ -1,13 +1,13 @@
 lHigh:	highest energy level
 lLow:	lowest energy level
 nLevel:	number of energy levels
-H0:	lowest energy threshold (default=0, should specify)
 T0:	lowest temperature
 TK: 	highest temperature (default=1000, should specify)
 RunID:	run_id (better specify on cluster, numeric value)
 TuningDone:	if tuning is finished (for which RunID must be provided)
-thin:	deposition frequency
-burnin:	burn-in length
+THIN: 	trun MH deposite frequency
+thin:	deposite frequency. Every time MH draw is called, MH has to advance THIN/thin steps so that MH will have a true THIN frequency and the equi-energy sample has a trun thin frequency 
+burnin:	burn-in length 
 ndraws:	simulation length (by default 10000)
 Original:	whether to use the original (1) or bounded (0, default) version of the target
 HillClimb:	number of times (>0) csminwel should be called for finding a legitimate starting point from an arbitrary point or burning from the mode (0, default) to initiate the entire procedure

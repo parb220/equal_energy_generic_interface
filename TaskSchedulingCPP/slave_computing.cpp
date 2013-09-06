@@ -112,7 +112,6 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 				abort(); 
 			}
 		}
-		sPackage[H0_INDEX] = max_log_posterior; 	
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD); 
 	}
 }
@@ -121,9 +120,9 @@ bool GetCommunicationParameter(const double *rPackage, size_t package_size, CEES
 {
 	parameter.simulation_length = (size_t)(rPackage[LENGTH_INDEX]); 
 	parameter.burn_in_length = (size_t)(rPackage[BURN_INDEX]); 
-	parameter.deposit_frequency = (size_t)(rPackage[FREQ_INDEX]); 
+	parameter.thin = (size_t)(rPackage[thin_INDEX]); 
+	parameter.THIN = (size_t)(rPackage[THIN_INDEX]); 
 
-        parameter.h0 = rPackage[H0_INDEX];
         parameter.SetTemperature();
 	return true; 
 }

@@ -195,9 +195,9 @@ double CEquiEnergyModel::Simulation_Within(const CEESParameter &parameter, CStor
 
 	for (int i=0; i<parameter.simulation_length; i++)
 	{
-		for (int j=0; j<parameter.deposit_frequency; j++)
+		for (int j=0; j<parameter.thin; j++)
 		{
-			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 100/parameter.deposit_frequency) )
+			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, parameter.THIN/parameter.thin) )
                 	{
                         	current_sample = x_new;
                         	current_sample.id = (int)(time(NULL)-timer_when_started);
@@ -214,7 +214,7 @@ double CEquiEnergyModel::Simulation_Within(const CEESParameter &parameter, CStor
 	if (if_write_file)
 		output_file.close(); 
 
-	cout << "MH Jump " << nJump << " out of " << parameter.simulation_length*parameter.deposit_frequency << " in simulation.\n"; 
+	cout << "MH Jump " << nJump << " out of " << parameter.simulation_length*parameter.thin << " in simulation.\n"; 
 	return max_posterior;  
 }
 
@@ -235,9 +235,9 @@ double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStora
 	double max_posterior = current_sample.weight; 
 	for (int i=0; i<parameter.simulation_length; i++)
 	{
-		for (int j=0; j<parameter.deposit_frequency; j++)
+		for (int j=0; j<parameter.thin; j++)
 		{
-			int jump_code = EE_Draw(parameter, storage, 100/parameter.deposit_frequency); 
+			int jump_code = EE_Draw(parameter, storage, parameter.THIN/parameter.thin); 
 			if (jump_code == EQUI_ENERGY_JUMP)
 				nEEJump++; 
 			else if (jump_code == METROPOLIS_JUMP)
@@ -255,8 +255,8 @@ double CEquiEnergyModel::Simulation_Cross(const CEESParameter &parameter, CStora
 	if (if_write_file)
 		output_file.close(); 	
 
-	cout << "EE Jump " << nEEJump << " out of " << parameter.simulation_length *parameter.deposit_frequency<< " in simulation.\n"; 
-	cout << "MH Jump " << nMHJump << " out of " << parameter.simulation_length *parameter.deposit_frequency<< " in simulation.\n"; 
+	cout << "EE Jump " << nEEJump << " out of " << parameter.simulation_length *parameter.thin<< " in simulation.\n"; 
+	cout << "MH Jump " << nMHJump << " out of " << parameter.simulation_length *parameter.thin<< " in simulation.\n"; 
 	return max_posterior; 
 }
 

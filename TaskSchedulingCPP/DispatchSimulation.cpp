@@ -60,14 +60,13 @@ bool ConsolidateSampleForCovarianceEstimation(const string &file_pattern, const 
 }
 
 
-double DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, int level, int message_tag)
+void DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, int level, int message_tag)
 {
-	double max_log_posterior =-1.0e300, received_log_posterior; 
 	double *sPackage = new double [N_MESSAGE]; 
 	// burn_in_length: 0.1*simulation_length_per_node or 5000, whichever is larger
-	sPackage[FREQ_INDEX] = parameter.deposit_frequency; 
+	sPackage[thin_INDEX] = parameter.thin; 
+	sPackage[THIN_INDEX] = parameter.THIN;
        	sPackage[LEVEL_INDEX] = level;
-	sPackage[H0_INDEX] = parameter.h0; 
 
 	size_t nNode=0; 
 	for (int m=0; m<nodeGroup.size(); m++)
@@ -82,7 +81,7 @@ double DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParam
 		for (int j = 0; j<nodeGroup[i].size(); j++)
 		{
 			sPackage[LENGTH_INDEX] = simulation_length_per_node; 
-			sPackage[BURN_INDEX] = (simulation_length_per_node*parameter.deposit_frequency)/10 >= 5000 ? (simulation_length_per_node*parameter.deposit_frequency)/10 : 5000; 
+			sPackage[BURN_INDEX] = (simulation_length_per_node*parameter.thin)/10 >= 5000 ? (simulation_length_per_node*parameter.thin)/10 : 5000; 
 			sPackage[GROUP_INDEX] = i; 
 			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][j], message_tag, MPI_COMM_WORLD);
 		}
@@ -94,11 +93,7 @@ double DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParam
 	for (int i=0; i<nodeGroup.size(); i++)
 	{
 		for (int j=0; j<nodeGroup[i].size(); j++)
-		{
 			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status); 
-			received_log_posterior = rPackage[H0_INDEX]; 
-			max_log_posterior = max_log_posterior > received_log_posterior ? max_log_posterior : received_log_posterior; 
-		}
 	}
 	delete [] rPackage;
 
@@ -143,5 +138,4 @@ double DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParam
                        	}
 		}
 	}
-	return max_log_posterior; 
 }
