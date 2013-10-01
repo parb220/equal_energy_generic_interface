@@ -37,7 +37,7 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 	
 	if (model.energy_level == parameter.number_energy_level-1)
 	{
-		if (!model.metropolis->AdaptiveBeforeSimulation(model.current_sample, period, max_period, block_file_name))
+		if (!model.metropolis->AdaptiveBeforeSimulation_OnePass(model.current_sample, period, max_period, block_file_name))
 		{
                 	cerr << "CMetropolis::AdaptiveBeforeSimulation() : Error in writing " << block_file_name << endl;
                        	abort();
@@ -49,7 +49,7 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 		convert.str(string());
                 convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_level+1;
                 string sample_file_name = parameter.storage_dir + convert.str();
-                if (!model.metropolis->AdaptiveAfterSimulation(model.current_sample, period, max_period, sample_file_name, block_file_name))
+                if (!model.metropolis->AdaptiveAfterSimulation_OnePass(model.current_sample, period, max_period, sample_file_name, block_file_name))
                 {
                 	cerr << "CMetroplis::AdaptiveAfterSimulation() : Error in reading " << sample_file_name << " or writing " << block_file_name << endl;
                	abort();
@@ -87,7 +87,7 @@ bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEqui
         convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_level << "." << group_index;	
 	string sample_file_name = parameter.storage_dir + convert.str();
 
-	if (!model.metropolis->AdaptiveAfterSimulation(model.current_sample, period, max_period, sample_file_name, block_file_name) )
+	if (!model.metropolis->AdaptiveAfterSimulation_OnePass(model.current_sample, period, max_period, sample_file_name, block_file_name) )
 	{
 		cerr << "CMetroplis::AdaptiveAfterSimulation() : Error in reading " << sample_file_name << " or writing " << block_file_name << endl;
 		abort();
