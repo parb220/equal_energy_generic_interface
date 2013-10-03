@@ -40,16 +40,16 @@ CSampleIDWeight &CSampleIDWeight::operator = (const CSampleIDWeight &right)
 
 bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, int offset, size_t length)
 {
-	if (data.dim < offset+length || right.data.dim < offset+length)
+	if (data.dim < offset+(int)length || right.data.dim < offset+(int)length)
 	{
 		cerr << "CSampleIDWeight::PartialCopyFrom() : index exceeding dimension" << endl; 
 		return false; 
 	}
 
-	for (int i=0; i<length; i++)
+	for (int i=0; i<(int)length; i++)
 		data[i+offset] = right.data[i+offset]; 	
 	
-	if (offset ==0 && length == data.dim && length == right.data.dim )
+	if (offset ==0 && (int)length == data.dim && (int)length == right.data.dim )
 	{
 		weight = right. weight; 
 		calculated = right.calculated; 
@@ -60,15 +60,15 @@ bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, int offset, 
 
 bool CSampleIDWeight::PartialCopyFrom(int offset1, const CSampleIDWeight &right, int offset2, size_t length)
 {
-	if (data.dim < offset1+length || right.data.dim < offset2+length )
+	if (data.dim < offset1+(int)length || right.data.dim < offset2+(int)length )
 	{
 		cerr << "CSampleIDWeight::PartialCopyFrom() : index exceeding dimension" << endl; 
 		return false; 
 	}
-	for (int i=0; i<length; i++)
+	for (int i=0; i<(int)length; i++)
 		data[offset1+i] = right.data[offset2+i]; 
 
-	if (offset1 == 0 && offset2 == 0 && length == data.dim && length == right.data.dim)
+	if (offset1 == 0 && offset2 == 0 && (int)length == data.dim && (int)length == right.data.dim)
 	{
 		weight = right.weight;
 		calculated = right.calculated; 
@@ -147,7 +147,7 @@ bool LoadSampleFromFile(const string &file_name, vector<CSampleIDWeight> &Y)
 	size_t nSample = lenFile/sample.GetSize_Data(); 
 	Y.resize(nSample); 
 	input_file.seekg(0, ios::beg); 
-	for (int i=0; i<nSample; i++)	
+	for (int i=0; i<(int)nSample; i++)	
 		read(input_file, &(Y[i])); 
 
 	input_file.close(); 
@@ -159,7 +159,7 @@ bool SaveSampleToFile(const string &file_name, const vector<CSampleIDWeight> &Y)
 	ofstream output_file(file_name.c_str(), ios::binary|ios::out);
 	if (!output_file)
 		return false; 
-	for (int i=0; i<Y.size(); i++)
+	for (int i=0; i<(int)Y.size(); i++)
 		write(output_file, &(Y[i]) ); 
 	output_file.close(); 
 	return true;  

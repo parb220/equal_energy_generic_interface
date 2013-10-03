@@ -16,7 +16,7 @@ bool Solve_Polynomial_Equation(vector<double> &t, size_t n, double t0, double tk
 	{
 		double *coefficients = new double[n-1]; 
 		coefficients[0] = t0-tk_1; 
-		for (int i=1; i<n-1; i++)
+		for (int i=1; i<(int)n-1; i++)
 			coefficients[i] = 1.0; 
 		double *Z = new double[(n-2)*2]; 
 		gsl_poly_complex_workspace *w = gsl_poly_complex_workspace_alloc(n-1); 
@@ -24,7 +24,7 @@ bool Solve_Polynomial_Equation(vector<double> &t, size_t n, double t0, double tk
 		
 		double gamma;
                 bool continue_flag = true;
-                for (int i=0; i<n-2 && continue_flag; i++)
+                for (int i=0; i<(int)n-2 && continue_flag; i++)
                 {
                         if (Z[2*i]>0 && abs(Z[2*i+1]) <= 1.0e-6)
                         {
@@ -38,7 +38,7 @@ bool Solve_Polynomial_Equation(vector<double> &t, size_t n, double t0, double tk
 			return false; 
 		t[0] = t0; 
 		t[n-2] = tk_1; 
-		for (int i=1; i<n-2; i++)
+		for (int i=1; i<(int)n-2; i++)
 			t[i] = t[i-1]+pow(gamma, (double)i); 
 		t[n-1] = t[n-2]+pow(gamma, (double)(n-1)); 
 	}
