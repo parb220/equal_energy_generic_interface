@@ -1,8 +1,8 @@
+#include <iostream>
 #include <cstdlib>
 #include <vector>
 #include <cmath>
 #include <mpi.h>
-#include "CEquiEnergy_TState.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
 #include "mpi_parameter.h"
@@ -15,7 +15,7 @@ extern "C"
 
 using namespace std;
 
-void master_deploying(int argc, char **argv, CEquiEnergy_TState &model, CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode)
+void master_deploying(int argc, char **argv, CEESParameter &parameter, CStorageHead &storage)
 {	
 	// 0: master node
 	// 1:nNode-1: slave node

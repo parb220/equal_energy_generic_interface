@@ -5,7 +5,6 @@ void DispatchHillClimbTask(const vector<vector<int> > &nodeGroup, const CEESPara
 
 void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, size_t n_initial);
 
-void TopDownTuningSimulation(CEquiEnergy_TState &model, const vector<vector<int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode, size_t period, size_t max_period);
 
 void DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, int level, int tag);
 

@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <fstream>
-#include "CEquiEnergy_TState.h"
+#include "CEquiEnergyModel.h"
 #include "CStorageHead.h"
 #include "CEESParameter.h"
 #include "CMetropolis.h"
@@ -9,7 +9,7 @@
 #include "storage_parameter.h"
 
 using namespace std; 
-bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEquiEnergy_TState &model, CStorageHead &storage, const CEESParameter &parameter, int group_index, size_t pool_size, const CSampleIDWeight &mode)
+bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, CStorageHead &storage, const CEESParameter &parameter, int group_index, size_t pool_size, const CSampleIDWeight &mode)
 {
 	// start point
 	storage.RestoreForFetch(model.energy_level+1);
@@ -59,7 +59,7 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 }
 
 
-bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEquiEnergy_TState &model, const CEESParameter &parameter, int group_index, const CSampleIDWeight &mode)
+bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, const CEESParameter &parameter, int group_index, const CSampleIDWeight &mode)
 {
 	// start point
 	stringstream convert; 
