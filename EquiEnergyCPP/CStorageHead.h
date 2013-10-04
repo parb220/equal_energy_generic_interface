@@ -47,7 +47,7 @@ public:
 	size_t GetNumberRecrod(int level, int index) const ;  
 
 	/* for reassigning samples into different bins */
-	virtual void DisregardHistorySamples(int level); 
+	void DisregardHistorySamples(int level); 
 	void RestoreForFetch(int level); 
 	bool empty(int level) const; 
 }; 
