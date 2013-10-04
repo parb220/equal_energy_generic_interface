@@ -25,7 +25,6 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 	double *rPackage = new double [N_MESSAGE]; 
 	double *sPackage = new double [N_MESSAGE];    
 	
-	double max_log_posterior; 
 	int group_index; 
 	bool if_within, if_write_file, if_storage;   
 
@@ -42,7 +41,7 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 		{
 			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
 			storage.restore(model.energy_level); 
-			max_log_posterior = model.HillClimb_CSMINWEL(rPackage[LENGTH_INDEX], storage, parameter); 
+			model.HillClimb_CSMINWEL(rPackage[LENGTH_INDEX], storage, parameter); 
 			storage.finalize(model.energy_level);
         		storage.ClearDepositDrawHistory(model.energy_level);
 		}
@@ -104,7 +103,7 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 			else 
 				if_storage = false; 	
 
-			bool simulation_flag = ExecutingSimulationTask(max_log_posterior, if_within, if_write_file, if_storage, model, storage, parameter, my_rank, group_index, 2*(size_t)nCPU, mode, status.MPI_TAG); 
+			bool simulation_flag = ExecutingSimulationTask(if_within, if_write_file, if_storage, model, storage, parameter, my_rank, group_index, 2*(size_t)nCPU, mode, status.MPI_TAG); 
 
 			if (!simulation_flag)
 			{

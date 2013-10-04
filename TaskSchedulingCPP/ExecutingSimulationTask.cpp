@@ -10,7 +10,7 @@
 
 using namespace std; 
 
-bool ExecutingSimulationTask(double &max_log_posterior, bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergyModel &model, CStorageHead &storage, const CEESParameter &parameter, int my_rank, int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag)
+bool ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergyModel &model, CStorageHead &storage, const CEESParameter &parameter, int my_rank, int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag)
 {
 	// restore partial storage (previously obtained at this node) for updating
 	storage.restore(model.energy_level); 
@@ -38,9 +38,8 @@ bool ExecutingSimulationTask(double &max_log_posterior, bool if_within, bool if_
        		abort();
        	}
 
-	double temp_log_posterior;  
 	// burn-in
-	temp_log_posterior = max_log_posterior = model.BurnIn(parameter.burn_in_length); 
+	model.BurnIn(parameter.burn_in_length); 
 
 	// whether to write dw output file
 	string sample_file_name; 
@@ -55,15 +54,14 @@ bool ExecutingSimulationTask(double &max_log_posterior, bool if_within, bool if_
 	
 	// simulation 
 	if (if_within)
-		temp_log_posterior = model.Simulation_Within(parameter, storage, if_storage, sample_file_name); 
+		model.Simulation_Within(parameter, storage, if_storage, sample_file_name); 
 	else
-		temp_log_posterior = model.Simulation_Cross(parameter, storage, if_storage, sample_file_name); 
+		model.Simulation_Cross(parameter, storage, if_storage, sample_file_name); 
 
 	// finalze and clear-up storage
 	storage.finalize(model.energy_level); 
 	storage.ClearDepositDrawHistory(model.energy_level);
 	storage.ClearDepositDrawHistory(model.energy_level+1); 
 
-	max_log_posterior = max_log_posterior > temp_log_posterior ? max_log_posterior : temp_log_posterior; 
 	return true; 
 }
