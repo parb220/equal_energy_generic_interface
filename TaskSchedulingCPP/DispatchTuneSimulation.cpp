@@ -11,7 +11,7 @@ void DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParamet
 
 using namespace std; 
 
-void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, size_t n_initial)
+void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length)
 {
 	double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];  
 	MPI_Status status; 

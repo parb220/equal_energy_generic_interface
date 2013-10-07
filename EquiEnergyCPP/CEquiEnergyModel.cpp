@@ -137,8 +137,8 @@ bool CEquiEnergyModel::InitializeWith_Kth_BestSample(CStorageHead &storage, size
 		storage.Draw_K_MostWeightSample(K, level_index, bin, sample); 
 		bin ++; 
 	}
-	if (sample.size() < K)
-		return false; 
+	// if (sample.size() < K)
+	//	return false; 
 	Take_Sample_Just_Drawn_From_Storage(sample.back()); 
         return true;
 }
@@ -152,9 +152,9 @@ bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(CStorageHead &st
 		storage.Draw_K_MostWeightSample(K, level_index, bin, sample); 
 		bin ++; 
 	}
-	if (sample.size() < K)
-		return false; 
-	int index = dw_uniform_int(K); 
+	//if (sample.size() < K)
+	//	return false; 
+	int index = dw_uniform_int(K < sample.size() ? K : sample.size()); 
 	Take_Sample_Just_Drawn_From_Storage(sample[index]); 
 	return true; 
 }
