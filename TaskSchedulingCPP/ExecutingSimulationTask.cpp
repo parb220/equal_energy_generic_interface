@@ -21,7 +21,7 @@ bool ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_
 	stringstream convert; 
 	convert << parameter.run_id << "/" << parameter.run_id << START_POINT << model.energy_level << "." << group_index;
 	string start_point_file = parameter.storage_dir + convert.str(); 
-	if (storage.empty(model.energy_level+1) || !model.Initialize(storage, initialPoolSize, model.energy_level+1) ) 
+	if (storage.empty(model.energy_level+1) || !model.Initialize_RandomlyPickFrom_K_BestSample(storage, initialPoolSize, model.energy_level+1) ) 
 		model.current_sample = mode;
 
 	// metropolis
