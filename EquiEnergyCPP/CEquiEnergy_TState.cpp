@@ -134,7 +134,7 @@ double CEquiEnergy_TState::log_likelihood_function(const double *x, size_t n)
 CEquiEnergy_TState::CEquiEnergy_TState() : CEquiEnergyModel(), original_sample(CSampleIDWeight()), target_model(NULL)
 {}
 
-CEquiEnergy_TState::CEquiEnergy_TState(bool _if_bounded, int eL, double _t, const CSampleIDWeight &_x, CMetropolis *_metropolis, time_t _time, TStateModel *_model) : CEquiEnergyModel(_if_bounded, eL, _t, _x, _metropolis, _time), original_sample(CSampleIDWeight()), target_model(_model)
+CEquiEnergy_TState::CEquiEnergy_TState(bool _if_bounded, int eL, double _t, const CSampleIDWeight &_x, time_t _time, CMetropolis *_metropolis, CEESParameter *_parameter, CStorageHead *_storage, TStateModel *_model) : CEquiEnergyModel(_if_bounded, eL, _t, _x, _time, _metropolis, _parameter, _storage), original_sample(CSampleIDWeight()), target_model(_model)
 {
 }
 

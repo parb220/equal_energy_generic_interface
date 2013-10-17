@@ -9,19 +9,19 @@
 #include "storage_parameter.h"
 
 using namespace std; 
-bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, CStorageHead &storage, const CEESParameter &parameter, int group_index, size_t pool_size, const CSampleIDWeight &mode)
+bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, int group_index, size_t pool_size, const CSampleIDWeight &mode)
 {
 	// start point
-	storage.RestoreForFetch(model.energy_level+1);
-	if (storage.empty(model.energy_level+1) || !model.Initialize_RandomlyPickFrom_K_BestSample(storage, pool_size, model.energy_level+1) )
+	model.storage->RestoreForFetch(model.energy_level+1);
+	if (model.storage->empty(model.energy_level+1) || !model.Initialize_RandomlyPickFrom_K_BestSample(pool_size, model.energy_level+1) )
 		model.current_sample = mode;
-	storage.ClearDepositDrawHistory(model.energy_level+1);
+	model.storage->ClearDepositDrawHistory(model.energy_level+1);
 
 	// save the start point
 	stringstream convert;
 	convert.str(string()); 
-	convert << parameter.run_id << "/" << parameter.run_id << START_POINT << model.energy_level << "." << group_index; 
-	string start_point_file = parameter.storage_dir + convert.str();
+	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_level << "." << group_index; 
+	string start_point_file = model.parameter->storage_dir + convert.str();
 	ofstream output_file;
 	output_file.open(start_point_file.c_str(), ios::binary|ios::out); 
 	if (!output_file)
@@ -32,10 +32,10 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 	
 	// tuning 
         convert.str(string());
-       	convert << parameter.run_id << "/" << parameter.run_id << BLOCK_1ST << model.energy_level << "." << group_index;
-	string block_file_name = parameter.storage_dir + convert.str();	
+       	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << model.energy_level << "." << group_index;
+	string block_file_name = model.parameter->storage_dir + convert.str();	
 	
-	if (model.energy_level == parameter.number_energy_level-1)
+	if (model.energy_level == model.parameter->number_energy_level-1)
 	{
 		if (!model.metropolis->AdaptiveBeforeSimulation_OnePass(model.current_sample, period, max_period, block_file_name))
 		{
@@ -47,8 +47,8 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 	{
 		// based on samples of the previous level (not group specific) to estimate covariance matrix
 		convert.str(string());
-                convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_level+1;
-                string sample_file_name = parameter.storage_dir + convert.str();
+                convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_level+1;
+                string sample_file_name = model.parameter->storage_dir + convert.str();
                 if (!model.metropolis->AdaptiveAfterSimulation_OnePass(model.current_sample, period, max_period, sample_file_name, block_file_name))
                 {
                 	cerr << "CMetroplis::AdaptiveAfterSimulation() : Error in reading " << sample_file_name << " or writing " << block_file_name << endl;
@@ -59,12 +59,12 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 }
 
 
-bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, const CEESParameter &parameter, int group_index, const CSampleIDWeight &mode)
+bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, int group_index, const CSampleIDWeight &mode)
 {
 	// start point
 	stringstream convert; 
-	convert << parameter.run_id << "/" << parameter.run_id << START_POINT << model.energy_level << "." << group_index; 
-	string start_point_file = parameter.storage_dir + convert.str(); 
+	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_level << "." << group_index; 
+	string start_point_file = model.parameter->storage_dir + convert.str(); 
 	if (!model.InitializeFromFile(start_point_file))
 		model.current_sample = mode; 
 
@@ -80,12 +80,12 @@ bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEqui
 
 	// block_file for writing
 	convert.str(string());
-       	convert << parameter.run_id << "/" << parameter.run_id << BLOCK_2ND << model.energy_level << "." << group_index; 
-        string block_file_name = parameter.storage_dir + convert.str();
+       	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_2ND << model.energy_level << "." << group_index; 
+        string block_file_name = model.parameter->storage_dir + convert.str();
 	// sample file: based on the samples of the current level (group specific)
 	convert.str(string());
-        convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_level << "." << group_index;	
-	string sample_file_name = parameter.storage_dir + convert.str();
+        convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_level << "." << group_index;	
+	string sample_file_name = model.parameter->storage_dir + convert.str();
 
 	if (!model.metropolis->AdaptiveAfterSimulation_OnePass(model.current_sample, period, max_period, sample_file_name, block_file_name) )
 	{

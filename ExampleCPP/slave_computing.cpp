@@ -14,7 +14,7 @@ extern "C"
 
 using namespace std;
 
-void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParameter &parameter, CStorageHead &storage, const CSampleIDWeight &mode) 
+void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, const CSampleIDWeight &mode) 
 {
 	int my_rank, nCPU; 
 	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);  
@@ -40,21 +40,21 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
 		{
 			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
-			storage.restore(model.energy_level); 
-			model.HillClimb_CSMINWEL(rPackage[LENGTH_INDEX], storage, parameter); 
-			storage.finalize(model.energy_level);
-        		storage.ClearDepositDrawHistory(model.energy_level);
+			model.storage->restore(model.energy_level); 
+			model.HillClimb_CSMINWEL(rPackage[LENGTH_INDEX]); 
+			model.storage->finalize(model.energy_level);
+        		model.storage->ClearDepositDrawHistory(model.energy_level);
 		}
 		else if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION || status.MPI_TAG == TUNE_TAG_AFTER_SIMULATION) 
 		{
 			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]); 
-			if (!GetCommunicationParameter(rPackage, N_MESSAGE, parameter))
+			if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
 			{
 				cerr << "GetCommunicationParameter() : Error occurred.\n"; 
 				abort(); 
 			}
-			model.t_bound = parameter.t[model.energy_level];
+			model.t_bound = model.parameter->t[model.energy_level];
 			
 			size_t period = (size_t)dw_ParseInteger_String(argc, argv, "pr", 20);
                 	size_t max_period = (size_t)dw_ParseInteger_String(argc, argv, "mpr", 16*period);
@@ -62,7 +62,7 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 
 			if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION)
 			{
-				if (!ExecutingTuningTask_BeforeSimulation(period, max_period, model, storage, parameter, group_index, 10*n_initial, mode) )
+				if (!ExecutingTuningTask_BeforeSimulation(period, max_period, model, group_index, 10*n_initial, mode) )
 				{
 					cerr << "ExecutingTuningTask_BeforeSimulation() : Error occurred :: sample file reading or block_file writing or start_tune_point writing error.\n"; 
 					abort(); 
@@ -70,7 +70,7 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 			}
 			else if (status.MPI_TAG == TUNE_TAG_AFTER_SIMULATION)
 			{
-				if (!ExecutingTuningTask_AfterSimulation(period, max_period, model, parameter, group_index, mode) )
+				if (!ExecutingTuningTask_AfterSimulation(period, max_period, model, group_index, mode) )
                                 {
                                         cerr << "ExecutingTuningTask_AfterSimulation() : Error occurred :: start_tune_point file reading or sample file reading or block_file writing error.\n";
                                         abort();
@@ -81,12 +81,12 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 		{	
 			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]); 
-			if (!GetCommunicationParameter(rPackage, N_MESSAGE, parameter))
+			if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
 			{
 				cout << "GetCommunicationParameter() : Error occurred.\n"; 
 				abort(); 
 			}
-			model.t_bound = parameter.t[model.energy_level];
+			model.t_bound = model.parameter->t[model.energy_level];
 
 			if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST)
 				if_within = true; 
@@ -103,7 +103,7 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, CEESParam
 			else 
 				if_storage = false; 	
 
-			bool simulation_flag = ExecutingSimulationTask(if_within, if_write_file, if_storage, model, storage, parameter, my_rank, group_index, 2*(size_t)nCPU, mode, status.MPI_TAG); 
+			bool simulation_flag = ExecutingSimulationTask(if_within, if_write_file, if_storage, model, my_rank, group_index, 2*(size_t)nCPU, mode, status.MPI_TAG); 
 
 			if (!simulation_flag)
 			{

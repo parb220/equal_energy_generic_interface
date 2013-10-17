@@ -7,7 +7,7 @@
 
 using namespace std; 
 
-void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, const vector<TDenseMatrix> &B, double mid, size_t period, size_t max_period)
+void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, const vector<TDenseMatrix> &B, double mid, size_t period, size_t max_period, bool if_eejump)
 // Makes block-wise random-walk Metropolis draws, adjusting the block scale until the target acceptance rate 
 // is hit.
 //
@@ -59,6 +59,8 @@ void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, con
 	int check = period; 
 	while (!done)
 	{
+		if (if_eejump && model->MakeEquiEnergyJump(x,y))
+			y = x; 
 		// draw metropolis blocks
 		for (int i=0; i<k; i++)
 		{
@@ -190,7 +192,7 @@ bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDW
 	return if_new_sample; 
 }
 
-bool CMetropolis::FourPassAdaptive_StartWithoutSampleFile(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, const string &block_file_name)
+bool CMetropolis::FourPassAdaptive_StartWithoutSampleFile(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, const string &block_file_name, bool if_eejump)
 // first pass
 // 	identity variance matrix / n blocks
 // second pass
@@ -209,7 +211,7 @@ bool CMetropolis::FourPassAdaptive_StartWithoutSampleFile(const CSampleIDWeight 
 	TDenseMatrix I_matrix = Identity(x.data.dim); 
 	for (int i=0; i<n_blocks; i++)
 		B_matrix[i] = ColumnMatrix(ColumnVector(I_matrix,i));
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
 	// blocks should now contain n matrixes, each of which is a n-by-1 matrix
 
 	// second pass
@@ -220,7 +222,7 @@ bool CMetropolis::FourPassAdaptive_StartWithoutSampleFile(const CSampleIDWeight 
 	for (int i=0; i<x.data.dim; i++)
 		for (int j=0; j<x.data.dim; j++)
 			B_matrix[0](j,i) = blocks[i](j,0);  		
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
 
 	// simulate
 	// burn-in
@@ -269,7 +271,7 @@ bool CMetropolis::FourPassAdaptive_StartWithoutSampleFile(const CSampleIDWeight 
 	B_matrix = vector<TDenseMatrix>(n_blocks); 
 	for (int i=0; i<n_blocks; i++)
 		B_matrix[i] = ColumnMatrix(ColumnVector(U_matrix,i)); 
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period);
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump);
 	// blocks should contain n_blocks matrices, each of them being a x.dim-by-1 matrix
 	
 	// forth-pass: 1 block
@@ -280,7 +282,7 @@ bool CMetropolis::FourPassAdaptive_StartWithoutSampleFile(const CSampleIDWeight 
 	for (int i=0; i<x.data.dim; i++)
 		for (int j=0; j<x.data.dim; j++)
 			B_matrix[0](j,i) = blocks[i](j,0); 
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
 	if (block_file_name.empty())
 		return false; 
 	return WriteBlocks(block_file_name); 
@@ -337,7 +339,7 @@ bool CMetropolis::WriteBlocks(const string &file_name)
 	return true;
 }
 
-bool CMetropolis::AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name)
+bool CMetropolis::AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name, bool if_eejump)
 // There are two passes before simulations
 // first pass
 // 	identity variance matrix / n blocks
@@ -354,7 +356,7 @@ bool CMetropolis::AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start
 	TDenseMatrix I_matrix = Identity(x.data.dim); 
 	for (int i=0; i<n_blocks; i++)
 		B_matrix[i] = ColumnMatrix(ColumnVector(I_matrix,i));
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
 	// blocks should now contain n matrixes, each of which is a n-by-1 matrix
 
 	// second pass
@@ -365,7 +367,7 @@ bool CMetropolis::AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start
 	for (int i=0; i<x.data.dim; i++)
 		for (int j=0; j<x.data.dim; j++)
 			B_matrix[0](j,i) = blocks[i](j,0);  		
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
 
 	if (block_file_name.empty())
 		return true; 
@@ -376,7 +378,7 @@ bool CMetropolis::AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start
 	}
 }
 
-bool CMetropolis::AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name) 
+bool CMetropolis::AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name, bool if_eejump) 
 // There are two more passes after Simulation
 // third pass 
 // 	variance matrix estimated from simulation / n blocks
@@ -416,7 +418,7 @@ bool CMetropolis::AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_
 	vector<TDenseMatrix> B_matrix(n_blocks); 
 	for (int i=0; i<n_blocks; i++)
 		B_matrix[i] = ColumnMatrix(ColumnVector(U_matrix,i)); 
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period);
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump);
 	
 	// forth-pass: 1 block
 	n_blocks = 1; 
@@ -426,7 +428,7 @@ bool CMetropolis::AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_
 	for (int i=0; i<x.data.dim; i++)
 		for (int j=0; j<x.data.dim; j++)
 			B_matrix[0](j,i) = blocks[i](j,0); 
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
 
 	if (block_file_name.empty())
 		return true; 
@@ -437,7 +439,7 @@ bool CMetropolis::AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_
 	}
 }
 
-bool CMetropolis::FourPassAdaptive_StartWithSampleFile(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, const string &sample_file_name, const string &block_file_name)
+bool CMetropolis::FourPassAdaptive_StartWithSampleFile(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, const string &sample_file_name, const string &block_file_name, bool if_eejump)
 // third pass (1)
 // 	variance matrix estimated from the given file / n blocks
 // fourth pass (1)
@@ -478,7 +480,7 @@ bool CMetropolis::FourPassAdaptive_StartWithSampleFile(const CSampleIDWeight &ad
 	vector<TDenseMatrix> B_matrix(n_blocks); 
 	for (int i=0; i<n_blocks; i++)
 		B_matrix[i] = ColumnMatrix(ColumnVector(U_matrix,i)); 
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period);
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump);
 	
 	// forth-pass (1) : 1 block
 	n_blocks = 1; 
@@ -535,7 +537,7 @@ bool CMetropolis::FourPassAdaptive_StartWithSampleFile(const CSampleIDWeight &ad
 	B_matrix = vector<TDenseMatrix>(n_blocks); 
 	for (int i=0; i<n_blocks; i++)
 		B_matrix[i] = ColumnMatrix(ColumnVector(U_matrix,i)); 
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period);
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump);
 	// blocks should contain n_blocks matrices, each of them being a x.dim-by-1 matrix
 	
 	// forth-pass(2): 1 block
@@ -546,13 +548,13 @@ bool CMetropolis::FourPassAdaptive_StartWithSampleFile(const CSampleIDWeight &ad
 	for (int i=0; i<x.data.dim; i++)
 		for (int j=0; j<x.data.dim; j++)
 			B_matrix[0](j,i) = blocks[i](j,0); 
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
 	if (block_file_name.empty())
 		return false; 
 	return WriteBlocks(block_file_name); 
 }
 
-bool CMetropolis::AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name)
+bool CMetropolis::AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name, bool if_eejump)
 // 	identity variance matrix / 1 blocks
 // Here file_name refers to a file that blocks are written into. 
 // Simulation will first read blocks from the file and then simulate
@@ -562,7 +564,7 @@ bool CMetropolis::AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adapti
 	size_t n_blocks = 1; 
 	vector<TDenseMatrix>B_matrix(n_blocks); 
 	B_matrix[0]= Identity(x.data.dim); 
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
 
 	if (block_file_name.empty())
 		return true; 
@@ -573,7 +575,7 @@ bool CMetropolis::AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adapti
 	}
 }
 
-bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name) 
+bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name, bool if_eejump) 
 // 	variance matrix estimated from simulation with scaled columns / 1 block
 // Here filename refers to the file where samples are stored to. 
 // So we first load these samples, and then calculate mean and variance. 
@@ -607,7 +609,7 @@ bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptiv
 	size_t n_blocks = 1; 
 	vector<TDenseMatrix>B_matrix(n_blocks); 
 	B_matrix[0] = U_matrix; 
-	BlockAdaptive(x, B_matrix, 0.25, period, max_period); 
+	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
 
 	if (block_file_name.empty())
 		return true; 

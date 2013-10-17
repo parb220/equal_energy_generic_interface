@@ -765,6 +765,8 @@ int main(int n_args_cl, char **args_cl)
 	//target model; 
 	model.target_model = state_space_model;	
 	model.SaveTargetModelOriginalSetting(); 
+	model.parameter = &parameter; 
+	model.storage = &storage; 
 	
 	if (if_original > 0)	// if only the original model is used, 
 		model.if_bounded = false; 
@@ -778,14 +780,15 @@ int main(int n_args_cl, char **args_cl)
 	}
 	CSampleIDWeight mode = model.current_sample; 
 	// metropolis 
-	model.metropolis = new CMetropolis(&model);  
+	CMetropolis metropolis(&model); 
+	model.metropolis = &metropolis; 
 	
 	// master dispatches while slave runs tasks
 	dw_initialize_generator(time(NULL)+my_rank*1000);
 	if (my_rank == 0)
 		master_deploying(n_args_cl, args_cl, parameter, storage); 
 	else 
-		slave_computing(n_args_cl, args_cl, model, parameter, storage, mode);
+		slave_computing(n_args_cl, args_cl, model, mode);
 
 	// end
 	model.RecoverTargetModelOriginalSetting(); 

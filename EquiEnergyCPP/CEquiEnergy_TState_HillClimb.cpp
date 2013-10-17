@@ -37,9 +37,9 @@ void InitializeParameter(double *x, size_t n)
 // will be set as its original value. 
 // Samples generated during HillClimb will be saved into storage but always at the level of number_energy_level
 // (the extra level)
-double CEquiEnergy_TState::HillClimb_NPSOL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
+double CEquiEnergy_TState::HillClimb_NPSOL(size_t nSolution )
 {
-	energy_level = parameter.number_energy_level; 
+	energy_level = parameter->number_energy_level; 
 	bool if_bounded_old = if_bounded; 
 	if_bounded = false;	// temperarily set if_bounded as false so all calculation is done on original model
  
@@ -121,7 +121,7 @@ double CEquiEnergy_TState::HillClimb_NPSOL(size_t nSolution, CStorageHead &stora
 			sample.id = (int)(time(NULL)-timer_when_started);    
 			log_posterior_function(sample); 
 
-        		SaveSampleToStorage(storage, sample);         	
+        		SaveSampleToStorage(sample);         	
 			max_log_posterior = sample.weight > max_log_posterior ? sample.weight : max_log_posterior; 
 		}
 	}
@@ -138,16 +138,16 @@ double CEquiEnergy_TState::HillClimb_NPSOL(size_t nSolution, CStorageHead &stora
 	delete [] cJac; 
 	delete [] A; 
 
-	storage.finalize(energy_level); 
-	storage.ClearDepositDrawHistory(energy_level);
+	storage->finalize(energy_level); 
+	storage->ClearDepositDrawHistory(energy_level);
 
 	if_bounded = if_bounded_old; 
 	return max_log_posterior; 
 }
 
-double CEquiEnergy_TState::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &storage, const CEESParameter &parameter)
+double CEquiEnergy_TState::HillClimb_CSMINWEL(size_t nSolution)
 {
-	energy_level = parameter.number_energy_level;
+	energy_level = parameter->number_energy_level;
         bool if_bounded_old = if_bounded;
         if_bounded = false; 
 
@@ -180,7 +180,7 @@ double CEquiEnergy_TState::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &st
                         sample.id = (int)(time(NULL)-timer_when_started);
                         log_posterior_function(sample);
 
-			SaveSampleToStorage(storage, sample); 
+			SaveSampleToStorage(sample); 
 			max_log_posterior = sample.weight > max_log_posterior ? sample.weight : max_log_posterior; 
 		}
 	}
@@ -189,8 +189,8 @@ double CEquiEnergy_TState::HillClimb_CSMINWEL(size_t nSolution, CStorageHead &st
 	delete []g; 
 	delete []H; 
 	
-	storage.finalize(energy_level); 
-        storage.ClearDepositDrawHistory(energy_level); 
+	storage->finalize(energy_level); 
+        storage->ClearDepositDrawHistory(energy_level); 
 	if_bounded = if_bounded_old; 
 	return max_log_posterior; 
 }
