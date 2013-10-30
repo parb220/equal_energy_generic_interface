@@ -1,13 +1,14 @@
 #include <vector>
 #include <cmath>
 #include <mpi.h>
+#include "CEquiEnergyModel.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
 #include "mpi_parameter.h"
 
 using namespace std; 
 
-void DispatchHillClimbTask(const vector<vector<int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, int number_hill_climb)
+void DispatchHillClimbTask(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, int number_hill_climb)
 {
 	size_t nNode=0; 
 	for (int i=0; i<nodeGroup.size(); i++)
@@ -20,7 +21,7 @@ void DispatchHillClimbTask(const vector<vector<int> > &nodeGroup, const CEESPara
 	sPackage[BURN_INDEX] = 0; // irrelevant
 	sPackage[thin_INDEX] = 0; // irrelevant
 	sPackage[THIN_INDEX] = 0; // irrelevant
-	sPackage[LEVEL_INDEX] = parameter.number_energy_level ; 
+	sPackage[LEVEL_INDEX] = model.parameter->number_energy_level ; 
 
 	for (int i=0; i<nodeGroup.size(); i++)
 	{
@@ -42,5 +43,5 @@ void DispatchHillClimbTask(const vector<vector<int> > &nodeGroup, const CEESPara
 	delete [] rPackage;
  
 	// Consolidate partial storage files
-	storage.consolidate(parameter.number_energy_level);
+	model.storage->consolidate(model.parameter->number_energy_level);
 }

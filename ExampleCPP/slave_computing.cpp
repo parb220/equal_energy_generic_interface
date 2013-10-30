@@ -62,7 +62,7 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, const CSa
 
 			if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION)
 			{
-				if (!ExecutingTuningTask_BeforeSimulation(period, max_period, model, group_index, 10*n_initial, mode) )
+				if (!ExecutingTuningTask_BeforeSimulation(period, max_period, model, group_index) )
 				{
 					cerr << "ExecutingTuningTask_BeforeSimulation() : Error occurred :: sample file reading or block_file writing or start_tune_point writing error.\n"; 
 					abort(); 
@@ -70,7 +70,7 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, const CSa
 			}
 			else if (status.MPI_TAG == TUNE_TAG_AFTER_SIMULATION)
 			{
-				if (!ExecutingTuningTask_AfterSimulation(period, max_period, model, group_index, mode) )
+				if (!ExecutingTuningTask_AfterSimulation(period, max_period, model, group_index) )
                                 {
                                         cerr << "ExecutingTuningTask_AfterSimulation() : Error occurred :: start_tune_point file reading or sample file reading or block_file writing error.\n";
                                         abort();

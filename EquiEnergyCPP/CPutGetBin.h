@@ -63,6 +63,7 @@ public:
 	bool Draw_K_LeastWeightSample(size_t, vector<CSampleIDWeight> &) const; 
 	bool Draw_K_MostWeightSample(size_t, vector<CSampleIDWeight> &) const; 
 	bool DrawSample(CSampleIDWeight &); 
+	bool DrawAllSample(vector<CSampleIDWeight> &)const; 
 
 	void finalize(); 	// save unsaved data
 	void consolidate(); 	// conslidate partial sample files into complete sample files

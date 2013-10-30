@@ -786,7 +786,7 @@ int main(int n_args_cl, char **args_cl)
 	// master dispatches while slave runs tasks
 	dw_initialize_generator(time(NULL)+my_rank*1000);
 	if (my_rank == 0)
-		master_deploying(n_args_cl, args_cl, parameter, storage); 
+		master_deploying(n_args_cl, args_cl, model, mode); 
 	else 
 		slave_computing(n_args_cl, args_cl, model, mode);
 

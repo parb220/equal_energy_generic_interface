@@ -3,8 +3,7 @@
 #include <vector>
 #include <cmath>
 #include <mpi.h>
-#include "CEESParameter.h"
-#include "CStorageHead.h"
+#include "CEquiEnergy_TState.h"
 #include "mpi_parameter.h"
 #include "master_deploying.h"
 
@@ -15,7 +14,7 @@ extern "C"
 
 using namespace std;
 
-void master_deploying(int argc, char **argv, CEESParameter &parameter, CStorageHead &storage)
+void master_deploying(int argc, char **argv, CEquiEnergy_TState &model, const CSampleIDWeight &mode)
 {	
 	// 0: master node
 	// 1:nNode-1: slave node
@@ -36,9 +35,9 @@ void master_deploying(int argc, char **argv, CEESParameter &parameter, CStorageH
         }
 
 	// make sure storage_directory is valid
-	if (!storage.makedir())
+	if (!model.storage->makedir())
 	{
-		cerr << "Error in making directory for " << parameter.run_id << endl; 
+		cerr << "Error in making directory for " << model.parameter->run_id << endl; 
 		double *sMessage= new double [N_MESSAGE];
        		for (int i=0; i<nodeGroup.size(); i++)
 			for (int j=0; j<nodeGroup[i].size(); j++)
@@ -52,18 +51,18 @@ void master_deploying(int argc, char **argv, CEESParameter &parameter, CStorageH
 	
 	size_t number_hill_climb = (size_t) dw_ParseInteger_String(argc, argv, "HillClimb", 0); 
         if (number_hill_climb )
-		DispatchHillClimbTask(nodeGroup, parameter, storage, number_hill_climb);
+		DispatchHillClimbTask(nodeGroup, model, number_hill_climb);
 
 	// tuning and simulation
 	int if_tuning_done = dw_ParseInteger_String(argc, argv, "TuningDone", 0);
 	if (if_tuning_done == 0)	// if tuning is not done, need to tune
-		DispatchTuneSimulation(nodeGroup, parameter, storage, parameter.simulation_length);  
-	else if (parameter.simulation_length > 0)
+		DispatchTuneSimulation(nodeGroup, model, mode, model.parameter->simulation_length);  
+	else if (model.parameter->simulation_length > 0)
 	{
-		for (int level=parameter.highest_level; level>=parameter.lowest_level; level--)
+		for (int level=model.parameter->highest_level; level>=model.parameter->lowest_level; level--)
 		{
-			cout << "Simulation at ... " << level << " ... for " << parameter.simulation_length << endl; 
-			DispatchSimulation(nodeGroup, parameter, storage, parameter.simulation_length, level, SIMULATION_TAG); 
+			cout << "Simulation at ... " << level << " ... for " << model.parameter->simulation_length << endl; 
+			DispatchSimulation(nodeGroup, model, model.parameter->simulation_length, level, SIMULATION_TAG); 
 	}
 		}
 	cout << "Done simulation" << endl; 

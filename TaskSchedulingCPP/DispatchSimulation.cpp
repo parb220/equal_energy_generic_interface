@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include "CEquiEnergyModel.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
 #include "storage_parameter.h"
@@ -60,12 +61,12 @@ bool ConsolidateSampleForCovarianceEstimation(const string &file_pattern, const 
 }
 
 
-void DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParameter &parameter, CStorageHead &storage, size_t simulation_length, int level, int message_tag)
+void DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, size_t simulation_length, int level, int message_tag)
 {
 	double *sPackage = new double [N_MESSAGE]; 
 	// burn_in_length: 0.1*simulation_length_per_node or 5000, whichever is larger
-	sPackage[thin_INDEX] = parameter.thin; 
-	sPackage[THIN_INDEX] = parameter.THIN;
+	sPackage[thin_INDEX] = model.parameter->thin; 
+	sPackage[THIN_INDEX] = model.parameter->THIN;
        	sPackage[LEVEL_INDEX] = level;
 
 	size_t nNode=0; 
@@ -81,7 +82,7 @@ void DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParamet
 		for (int j = 0; j<nodeGroup[i].size(); j++)
 		{
 			sPackage[LENGTH_INDEX] = simulation_length_per_node; 
-			sPackage[BURN_INDEX] = (simulation_length_per_node*parameter.thin)/10 >= 5000 ? (simulation_length_per_node*parameter.thin)/10 : 5000; 
+			sPackage[BURN_INDEX] = (simulation_length_per_node*model.parameter->thin)/10 >= 5000 ? (simulation_length_per_node*model.parameter->thin)/10 : 5000; 
 			sPackage[GROUP_INDEX] = i; 
 			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][j], message_tag, MPI_COMM_WORLD);
 		}
@@ -98,7 +99,7 @@ void DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParamet
 	delete [] rPackage;
 
 	// Consolidate partial storage files
-	storage.consolidate(level); 
+	model.storage->consolidate(level); 
 
 	// Consolidate variance file
 	if (message_tag == TUNE_TAG_SIMULATION_FIRST || message_tag == TUNE_TAG_SIMULATION_SECOND)
@@ -110,12 +111,12 @@ void DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParamet
 			for (int i=0; i<nodeGroup.size(); i++)
 			{
 				convert.str(string()); 
-				convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << level << "." << i << ".*";
-				input_file_pattern = parameter.storage_dir + convert.str();
+				convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << level << "." << i << ".*";
+				input_file_pattern = model.parameter->storage_dir + convert.str();
 				
 				convert.str(string());
-                        	convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << level << "." << i;
-				output_file = parameter.storage_dir + convert.str(); 
+                        	convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << level << "." << i;
+				output_file = model.parameter->storage_dir + convert.str(); 
 				if (!ConsolidateSampleForCovarianceEstimation(input_file_pattern, output_file))
                         	{
                                 	cerr << "ConsolidateSampleForCovarianceEstimation() : Error.\n";
@@ -126,11 +127,11 @@ void DispatchSimulation(const vector<vector<int> > &nodeGroup, const CEESParamet
 		else
 		{
 			convert.str(string());
-                        convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << level << ".*.*";
-			input_file_pattern = parameter.storage_dir + convert.str();
+                        convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << level << ".*.*";
+			input_file_pattern = model.parameter->storage_dir + convert.str();
 			convert.str(string());
-			convert << parameter.run_id << "/" << parameter.run_id << VARIANCE_SAMPLE_FILE_TAG << level;
-			output_file = parameter.storage_dir + convert.str(); 
+			convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << level;
+			output_file = model.parameter->storage_dir + convert.str(); 
 			if (!ConsolidateSampleForCovarianceEstimation(input_file_pattern, output_file))
                        	{
                        		cerr << "ConsolidateSampleForCovarianceEstimation() : Error.\n";

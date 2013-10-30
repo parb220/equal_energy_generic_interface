@@ -9,26 +9,15 @@
 #include "storage_parameter.h"
 
 using namespace std; 
-bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, int group_index, size_t pool_size, const CSampleIDWeight &mode)
+
+bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, int group_index)
 {
 	// start point
-	model.storage->RestoreForFetch(model.energy_level+1);
-	if (model.storage->empty(model.energy_level+1) || !model.Initialize_RandomlyPickFrom_K_BestSample(pool_size, model.energy_level+1) )
-		model.current_sample = mode;
-	model.storage->ClearDepositDrawHistory(model.energy_level+1);
-
-	// save the start point
-	stringstream convert;
-	convert.str(string()); 
+	stringstream convert; 
 	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_level << "." << group_index; 
-	string start_point_file = model.parameter->storage_dir + convert.str();
-	ofstream output_file;
-	output_file.open(start_point_file.c_str(), ios::binary|ios::out); 
-	if (!output_file)
+	string start_point_file = model.parameter->storage_dir + convert.str(); 
+	if (!model.InitializeFromFile(start_point_file))
 		return false; 
-	else 
-		write(output_file, &model.current_sample); 
-	output_file.close(); 
 	
 	// tuning 
         convert.str(string());
@@ -60,24 +49,14 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 }
 
 
-bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, int group_index, const CSampleIDWeight &mode)
+bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, int group_index)
 {
 	// start point
 	stringstream convert; 
 	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_level << "." << group_index; 
 	string start_point_file = model.parameter->storage_dir + convert.str(); 
 	if (!model.InitializeFromFile(start_point_file))
-		model.current_sample = mode; 
-
-	// block_file for reading : unnecessary
-	/*convert.str(string()); 
-	convert << parameter.run_id << "/" << parameter.run_id << BLOCK_1ST << model.energy_level << "." << group_index;
-	string block_file_name = parameter.storage_dir + convert.str();
-	if (!model.metropolis->ReadBlocks(block_file_name) )
-	{
-		cerr << "CMetropolis::ReadBlocks() : Error occurred while reading " << block_file_name << endl;
-                abort();
-	}*/
+		return false; 
 
 	// block_file for writing
 	convert.str(string());

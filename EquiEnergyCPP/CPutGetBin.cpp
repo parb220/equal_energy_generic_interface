@@ -1,4 +1,4 @@
-#include <fstream>
+
 #include <sstream>
 #include <cmath>
 #include <cstdio>
@@ -348,7 +348,6 @@ bool CPutGetBin::Draw_K_MostWeightSample(size_t K, vector<CSampleIDWeight> &samp
                 }
         }
         return true;
-
 }
 
 bool CPutGetBin::Draw_K_LeastWeightSample(size_t K, vector<CSampleIDWeight> &sample) const
@@ -367,6 +366,23 @@ bool CPutGetBin::Draw_K_LeastWeightSample(size_t K, vector<CSampleIDWeight> &sam
 			cerr << "Draw_K_LeastWeightSample : Error in opening " << file[i] << " for reading data.\n"; 
 			return false; 
 		}
+	}
+	return true; 
+}
+
+bool CPutGetBin::DrawAllSample(vector<CSampleIDWeight> &sample) const
+{
+	vector <string> file = GetFileNameForConsolidate();
+        vector <string> fetch_file = GetFileNameForFetch();
+        file.insert(file.end(), fetch_file.begin(), fetch_file.end());
+
+        if (file.empty())
+                return false;
+	vector<CSampleIDWeight> sample_block;  
+	for (int i=0; i<(int)file.size(); i++)
+	{
+		sample_block = ReadSampleFromFile(file[i]); 
+		sample.insert(sample.end(), sample_block.begin(), sample_block.end()); 
 	}
 	return true; 
 }
