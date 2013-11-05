@@ -56,7 +56,9 @@ public:
 	bool InitializeWithBestSample(int level); 		// Initialize model using the best sample in the bins indexed from start_bin to end_bin
 	bool InitializeWith_Kth_BestSample(size_t K, int level_index);
 	bool Initialize_RandomlyPickFrom_K_BestSample(size_t K, int level_index); 
-	bool k_means_clustering(size_t K, int level_index, vector<CSampleIDWeight> &centers) const; 
+	bool Initialize_KMeansClustering(size_t K, int level_index, vector<CSampleIDWeight> &centers) const; 
+	bool Initialize_MostDistant_WithinPercentile(size_t K, int level_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
+	bool Initialize_MostDistant_WithinPercentileBand(size_t K, int level_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
 	bool InitializeFromFile(const string &file_name); 
 
 	double Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy level (no jumping across levels). Returns the maximum posterior during simulation

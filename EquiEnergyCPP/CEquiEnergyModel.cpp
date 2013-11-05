@@ -41,21 +41,6 @@ void CEquiEnergyModel::Take_Sample_Just_Drawn_From_Storage(const CSampleIDWeight
 	current_sample.id = (int)(time(NULL)-timer_when_started);
 }
 
-bool CEquiEnergyModel::InitializeFromFile(const string &file_name)
-{
-	CSampleIDWeight x; 
-	ifstream input_file; 
-	input_file.open(file_name.c_str(), ios::binary|ios::in); 
-	if (!input_file)
-		return false; 
-	read(input_file, &(x)); 
-	input_file.close(); 
-	Take_Sample_Just_Drawn_From_Storage(x); 
-	current_sample.DataChanged(); 
-	log_posterior_function(current_sample); 
-	return true;  
-}
-
 int CEquiEnergyModel::EE_Draw(size_t MH_thin)
 {
 	CSampleIDWeight x_new; 
@@ -78,80 +63,6 @@ int CEquiEnergyModel::EE_Draw(size_t MH_thin)
 	}
 	
 	return new_sample_code; 
-}
-
-// A sample is randomly taken from a pool (with size desired_pool_size) of samples where the pool is formed by samples with higher log-posteriors. Note that samples with higher log-posterior values are stored in smaller-indexed bins. So, if the desired pool size is 10 while the size of the first bin is 100, then only the first bin will be used. In contrast, if the desired pool size is 100 while the total number of samples in the first 3 bins is barely greater than 100, then the first 3 bins will be used. 
-bool CEquiEnergyModel::Initialize(size_t desiredPoolSize, int level_index)
-{
-	size_t N=storage->Number_Bin(level_index); 
-	int nSample_Total=0;
-	vector<int>nSample_Bin(N,0);
-	for (int bin_index=0;  bin_index<N; bin_index++)
-	{
-		nSample_Bin[bin_index] = storage->GetNumberRecrod(level_index, bin_index); 
-		nSample_Total += nSample_Bin[bin_index]; 
-	}
-
-	int nLumSum = 0, bin_index=0; 
-	int random_index = dw_uniform_int(desiredPoolSize < nSample_Total ? desiredPoolSize : nSample_Total); 
-	while (bin_index<N && !(random_index >= nLumSum && random_index < nLumSum + nSample_Bin[bin_index]) )
-	{	
-		nLumSum += nSample_Bin[bin_index]; 
-		bin_index++;
-	}
-	if (random_index >= nLumSum && random_index < nLumSum + nSample_Bin[bin_index])
-	{
-		if(storage->DrawSample(level_index, bin_index, current_sample))
-		{
-			current_sample.id = (int)(time(NULL)-timer_when_started); 
-			// Because all samples stored in storage have had their log-posterior calculated and stored 
-			// together with the sample values, there is no need to recalculate log-posterior at this moment
-                	return true; 
-		}	
-	}	
-	return false; 	
-}
-
-bool CEquiEnergyModel::InitializeWithBestSample(int level_index)
-{
-        int bin_index=0; 
-        while (bin_index<storage->Number_Bin(level_index) && !(storage->DrawMostWeightSample(level_index, bin_index, current_sample) ) )
-		bin_index ++; 
-        if (bin_index >= storage->Number_Bin(level_index))
-                return false;
-	current_sample.id = (int)(time(NULL)-timer_when_started); 
-        return true;
-}
-
-bool CEquiEnergyModel::InitializeWith_Kth_BestSample(size_t K, int level_index)
-{
-	vector<CSampleIDWeight> sample;
-	int bin=0;  
-	while (bin < storage->Number_Bin(level_index) && sample.size() < K)
-	{
-		storage->Draw_K_MostWeightSample(K, level_index, bin, sample); 
-		bin ++; 
-	}
-	// if (sample.size() < K)
-	//	return false; 
-	Take_Sample_Just_Drawn_From_Storage(sample.back()); 
-        return true;
-}
-
-bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(size_t K, int level_index)
-{
-	vector<CSampleIDWeight> sample; 
-	int bin = 0; 
-	while (bin < storage->Number_Bin(level_index) && sample.size() < K)
-	{
-		storage->Draw_K_MostWeightSample(K, level_index, bin, sample); 
-		bin ++; 
-	}
-	//if (sample.size() < K)
-	//	return false; 
-	int index = dw_uniform_int(K < sample.size() ? K : sample.size()); 
-	Take_Sample_Just_Drawn_From_Storage(sample[index]); 
-	return true; 
 }
 
 

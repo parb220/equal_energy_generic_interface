@@ -17,11 +17,12 @@ bool ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_
 	// Since the samples will be drawn from the higher level
 	// the higher level needs to be restored for fetch (for partial record file)
 	model.storage->RestoreForFetch(model.energy_level+1);
+	
 	// model::current_sample
-	stringstream convert; 
-	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_level << "." << group_index;
-	string start_point_file = model.parameter->storage_dir + convert.str(); 
-	if (model.storage->empty(model.energy_level+1) || !model.Initialize_RandomlyPickFrom_K_BestSample(initialPoolSize, model.energy_level+1) ) 
+	stringstream convert;
+        convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_level << "." << group_index;
+        string start_point_file = model.parameter->storage_dir + convert.str();
+        if (!model.InitializeFromFile(start_point_file) && (model.storage->empty(model.energy_level+1) || !model.Initialize_RandomlyPickFrom_K_BestSample(initialPoolSize, model.energy_level+1) ) )
 		model.current_sample = mode;
 
 	// metropolis

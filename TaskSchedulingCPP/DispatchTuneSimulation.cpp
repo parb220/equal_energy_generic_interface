@@ -34,7 +34,7 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 		// clustering is failed) or centers of the k-clusters obained through 
 		// k-means clustering
 		model.storage->RestoreForFetch(level+1); 
-		if (model.storage->empty(level+1) || !model.k_means_clustering(nodeGroup.size(), level+1, start_points) )
+		if (model.storage->empty(level+1) || !model.Initialize_MostDistant_WithinPercentile(nodeGroup.size(), level+1, start_points, 0.20) ) // !model.Initialize_KMeansClustering(nodeGroup.size(), level+1, start_points) )
 		{
 			for (int i=0; i<(int)(nodeGroup.size()); i++)
 				start_points[i] = mode; 
