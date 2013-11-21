@@ -11,7 +11,7 @@
 
 using namespace std;
 
-CStorageHead::CStorageHead(int _node_index, const string & _run_id, size_t _storage_marker, string _file_location, size_t _number_level) : cluster_node(_node_index), run_id(_run_id), storage_marker(_storage_marker), filename_base(_file_location), bin(vector<vector<CPutGetBin> >(_number_level+1)), energy_lower_bound(vector<vector<double> >(_number_level+1)) 
+CStorageHead::CStorageHead(int size_each_data, int _node_index, const string & _run_id, size_t _storage_marker, string _file_location, size_t _number_level) : cluster_node(_node_index), run_id(_run_id), storage_marker(_storage_marker), filename_base(_file_location), bin(vector<vector<CPutGetBin> >(_number_level+1)), energy_lower_bound(vector<vector<double> >(_number_level+1)) 
 {
 	stringstream str; 
 	str << run_id << "/" << run_id << ".binary/";
@@ -27,7 +27,7 @@ CStorageHead::CStorageHead(int _node_index, const string & _run_id, size_t _stor
 	{
 		bin_id_string.str(string()); 
 		bin_id_string << i << ".0"; 
-		bin[i].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node)); 
+		bin[i].push_back(CPutGetBin(size_each_data, bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node)); 
 	}
 }
 
@@ -156,6 +156,7 @@ size_t CStorageHead::binning_equal_size(int level, size_t bin_number)
                 cerr << "CStorageHead::binning_geometric() : error occurred when loading all samples.\n";
                 abort();
         }
+	int size_each_data = (int)sample[0].GetSize_Data(); 
         DisregardHistorySamples(level);
 
         stringstream str, bin_id_string;
@@ -170,7 +171,7 @@ size_t CStorageHead::binning_equal_size(int level, size_t bin_number)
 		energy_lower_bound[level].push_back(-sample[iSample].weight); 	
 		bin_id_string.str(string());
                 bin_id_string << level << "." << iBin;
-                bin[level].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));
+                bin[level].push_back(CPutGetBin(size_each_data, bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));
 
 		sBin = iSample+sBin == (int)(sample.size())-1 ? sBin+1 : sBin;
                 for (int j=iSample; j<iSample+(int)sBin && j<(int)(sample.size()); j++)
@@ -199,6 +200,7 @@ size_t CStorageHead::binning_geometric(int level, size_t bin_number)
                 cerr << "CStorageHead::binning_geometric() : error occurred when loading all samples.\n";
                 abort();
         }
+	int size_each_data = (int)sample[0].GetSize_Data(); 
         DisregardHistorySamples(level);
 	
 	stringstream str, bin_id_string;
@@ -208,7 +210,7 @@ size_t CStorageHead::binning_geometric(int level, size_t bin_number)
 	{
 		bin_id_string.str(string());
                 bin_id_string << level << "." << i;
-                bin[level].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));
+                bin[level].push_back(CPutGetBin(size_each_data, bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));
 	}
 	double energy_min = -sample[0].weight, energy_max=-sample[sample.size()-1].weight;
 	// double energy_min = 1950, energy_max =1975; 
@@ -247,6 +249,7 @@ size_t CStorageHead::binning(int level, size_t bin_number_lb, double bin_width_u
 		cerr << "CStorageHead::binning() : error occurred when loading all samples.\n"; 
 		abort(); 
 	}
+	int size_each_data = sample[0].GetSize_Data(); 
 	DisregardHistorySamples(level); 
 
 	stringstream str; 
@@ -271,7 +274,7 @@ size_t CStorageHead::binning(int level, size_t bin_number_lb, double bin_width_u
 		energy_lower_bound[level].push_back(-sample[iSample].weight); 
 		bin_id_string.str(string()); 
 		bin_id_string << level << "." << iBin; 
-		bin[level].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node)); 
+		bin[level].push_back(CPutGetBin(size_each_data, bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node)); 
 	
 		sBin = iSample+sBin == (int)(sample.size())-1 ? sBin+1 : sBin; 
 		for (int j=iSample; j<iSample+(int)sBin && j<(int)(sample.size()); j++)

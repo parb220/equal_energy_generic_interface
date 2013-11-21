@@ -1,17 +1,56 @@
-
 #include <sstream>
 #include <cmath>
 #include <cstdio>
 #include <glob.h>
 #include <algorithm>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/file.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "dw_rand.h"
 
 #include "CSampleIDWeight.h"
 #include "CPutGetBin.h"
+
+/*! Try to get lock. Return its file descriptor or -1 if failed.
+ *
+ *  @param lockName Name of file used as lock (i.e. '/var/lock/myLock').
+ *  @return File descriptor of lock file, or -1 if failed.
+ */
+
+int tryGetLock(const string &file_name)
+{
+	string lock_file_name = file_name + "__lock__"; 
+	mode_t m = umask( 0 );
+    	int fd = open( lock_file_name.c_str(), O_RDWR|O_CREAT, 0666 );
+    	umask( m );
+    	if( fd >= 0 && flock( fd, LOCK_EX | LOCK_NB ) < 0 )
+    	{
+        	close( fd );
+        	fd = -1;
+    	}
+    	return fd;
+}
+
+/*! Release the lock obtained with tryGetLock( lockName ).
+ *
+ *  @param fd File descriptor of lock returned by tryGetLock( lockName ).
+ *  @param lockName Name of file used as lock (i.e. '/var/lock/myLock').
+ */
+void releaseLock( int fd, const string &file_name)
+{
+    	if( fd < 0 )
+        	return;
+    	close( fd );
+	string lock_file_name = file_name + "__lock__";
+    	remove( lock_file_name.c_str() );
+}
+
 string CPutGetBin::GetFileNameForDump() const
 {
 	stringstream convert;
-        convert << id << "." << nDumpFile << "." << suffix;
+        convert << id << "." << nDumpFile << "." << suffix << ".record";
         string file_name = filename_prefix + convert.str();
 	return file_name; 
 }
@@ -20,7 +59,7 @@ vector <string> CPutGetBin::GetFileNameForFetch() const
 {
 	stringstream convert;
         convert.str(string());
-        convert << id << ".*.*"; // << ".*" // all cluster node; 
+        convert << id << ".*.*.record"; // << ".*" // all cluster node; 
 
         string filename_pattern = filename_prefix + convert.str();
 
@@ -43,7 +82,7 @@ vector <string> CPutGetBin::GetFileNameForConsolidate() const
 {
 	stringstream convert;
         convert.str(string());
-        convert << id << ".*.*"; // << ".*" // all cluster node; 
+        convert << id << ".*.*.record"; // << ".*" // all cluster node; 
 
         string filename_pattern = filename_prefix + convert.str();
 
@@ -69,6 +108,8 @@ bool CPutGetBin::Dump(const string &_filename)
 		file_name = GetFileNameForDump(); 
 	else 
 		file_name = _filename; 
+
+	// Real file operation
 	fstream oFile(file_name.c_str(), ios::out | ios::binary); 
 	if (!oFile)
 	{
@@ -79,6 +120,7 @@ bool CPutGetBin::Dump(const string &_filename)
 		write(oFile, &(dataPut[i])); 
 	oFile.flush(); 
 	oFile.close();  
+
 	return true; 
 }
 
@@ -104,7 +146,7 @@ bool CPutGetBin::Fetch(const vector<string> &filename_fetch)
 		select_per_file[select/capacity].push_back(select%capacity); 
 	}
 	int counter =0; 
-	for (int i=0; i<nFetchFile; i++)	// Read data from file
+	for (int i=0; i<(int)nFetchFile; i++)	// Read data from file
 	{
 		if (!select_per_file[i].empty())
 		{
@@ -128,21 +170,31 @@ bool CPutGetBin::Fetch(const vector<string> &filename_fetch)
 
 bool CPutGetBin::ReadFromOneFile(const string &file_name, int &counter, const vector <int> &index) 
 {	
+	// lock
+	int lock_fd = -1; 
+	while ((lock_fd = tryGetLock(file_name)) < 0) 
+		sleep(1); 
+	
+	// real file operation
 	fstream iFile; 
         iFile.open(file_name.c_str(), ios::in|ios::binary);
         if (!iFile)
+	{
+		//lock
+		releaseLock(lock_fd, file_name); 
         	return false;
+	}
 	// determine the dimension of CSampleIDWeight
-	CSampleIDWeight temp_data; 
-	read(iFile, &temp_data); 
-
         for (int n=0; n<(int)index.size(); n++)
         {
-        	iFile.seekg(temp_data.GetSize_Data()*index[n], ios_base::beg);
+        	iFile.seekg(size_each_data*index[n], ios_base::beg);
                 read(iFile, &(dataGet[counter]));
                 counter ++;
         }
       	iFile.close();
+
+	// lock
+	releaseLock(lock_fd, file_name); 
 	return true; 
 }
 
@@ -152,24 +204,44 @@ vector <CSampleIDWeight> CPutGetBin::ReadSampleFromFile(const string &file_name)
 	if (nRecord <= 0)
 		return vector<CSampleIDWeight>(0);
 
+	int lock_fd = -1;
+        while ((lock_fd = tryGetLock(file_name)) < 0)
+                sleep(1);
+
 	fstream iFile;
         iFile.open(file_name.c_str(), ios::in|ios::binary);
         if (!iFile)
+	{
+		releaseLock(lock_fd, file_name); 
         	return vector<CSampleIDWeight>(0); 
+	}
 
         vector <CSampleIDWeight> sample(nRecord); 
         for(int n=0; n<nRecord; n++)
 		read(iFile, &(sample[n]));
         iFile.close();
+
+	releaseLock(lock_fd, file_name); 
 	return sample; 
 }
 
 int CPutGetBin::NumberRecord(const string &file_name) const
 {
-	ifstream iFile; 
+	struct stat file_status; 
+	stat(file_name.c_str(), &file_status); 
+	int lenFile = file_status.st_size; 
+	int number_record = lenFile/size_each_data; 
+	/*int lock_fd = -1;
+        while ((lock_fd = tryGetLock(file_name)) < 0)
+                sleep(1);
+
+	fstream iFile; 
 	iFile.open(file_name.c_str(), ios::in|ios::binary);
         if (!iFile)
+	{
+		releaseLock(lock_fd, file_name); 
 		return 0;
+	}
 	
 	// To determine size of each record
 	CSampleIDWeight temp; 
@@ -178,8 +250,9 @@ int CPutGetBin::NumberRecord(const string &file_name) const
 	iFile.seekg(0, ios::beg); 
 	iFile.seekg(0, ios::end); 
 	int lenFile = iFile.tellg(); 
-	int number_record = lenFile/temp.GetSize_Data(); 
 	iFile.close(); 
+	int number_record = lenFile/temp.GetSize_Data(); 
+	releaseLock(lock_fd, file_name); */
 	return number_record; 
 }
 
@@ -251,7 +324,8 @@ bool CPutGetBin::LoadMostWeightSample(const string &file_name, CSampleIDWeight &
 	return true; 
 }
 
-CPutGetBin::CPutGetBin(const string & _id, int _nDumpFile, size_t _capacity, string _grandPrefix, int _suffix ) : 
+CPutGetBin::CPutGetBin(int _size_each_data, const string & _id, int _nDumpFile, size_t _capacity, string _grandPrefix, int _suffix ) : 
+size_each_data(_size_each_data), 
 suffix(_suffix), id(_id),  nDumpFile(_nDumpFile), capacity(_capacity), 
 nPutUsed(0), nGetUsed(_capacity), filename_prefix(_grandPrefix), 
 dataPut(vector<CSampleIDWeight>(0)), dataGet(vector<CSampleIDWeight>(0)) 
@@ -259,6 +333,7 @@ dataPut(vector<CSampleIDWeight>(0)), dataGet(vector<CSampleIDWeight>(0))
 }
 
 CPutGetBin::CPutGetBin(const CPutGetBin &right) : 
+size_each_data(right.size_each_data), 
 suffix(right.suffix), id(right.id), nDumpFile(right.nDumpFile), capacity(right.capacity),
 nPutUsed(right.nPutUsed), nGetUsed(right.nGetUsed), filename_prefix(right.filename_prefix),
 dataPut(right.dataPut), dataGet(right.dataGet)
@@ -267,6 +342,7 @@ dataPut(right.dataPut), dataGet(right.dataGet)
  
 CPutGetBin & CPutGetBin::operator=(const CPutGetBin &right)
 {
+	size_each_data= right.size_each_data; 
 	suffix = right.suffix; 
 	id = right.id; 
 	nDumpFile = right.nDumpFile; 
@@ -294,7 +370,7 @@ size_t CPutGetBin::GetNumberFileForDump() const
 {
 	stringstream convert; 
 	convert.str(string()); 
-	convert << id << ".*." << suffix; // << "." << cluster_node; 
+	convert << id << ".*." << suffix << ".record"; // << "." << cluster_node; 
 
 	string filename_pattern = filename_prefix + convert.str(); 
 	
@@ -548,7 +624,7 @@ void CPutGetBin::restore()
         	stringstream convert;
 
         	convert.str(string());
-        	convert << id << "." << nDumpFile-1 << "." << suffix; 
+        	convert << id << "." << nDumpFile-1 << "." << suffix << ".record"; 
         	file_name = filename_prefix + convert.str();
 		dataPut = ReadSampleFromFile(file_name); 
 		nPutUsed = dataPut.size(); 
@@ -583,7 +659,7 @@ bool CPutGetBin::empty() const
 {
         stringstream convert;
         convert.str(string());
-        convert << id << ".*.*"; // << ".*" // all cluster node; 
+        convert << id << ".*.*.record"; // << ".*" // all cluster node; 
 
         string filename_pattern = filename_prefix + convert.str();
 
@@ -620,7 +696,7 @@ size_t CPutGetBin::GetTotalNumberRecord() const
 {
 	stringstream convert;
         convert.str(string());
-        convert << id << ".*.*"; 
+        convert << id << ".*.*.record"; 
 	string filename_pattern = filename_prefix + convert.str();
 
         glob_t glob_result;

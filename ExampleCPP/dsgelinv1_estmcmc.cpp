@@ -718,56 +718,51 @@ int main(int n_args_cl, char **args_cl)
         int my_rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
+	// Equi-Energy Model
+	CEquiEnergy_TState model;
+	//target model; 
+	model.target_model = state_space_model;	
+	model.SaveTargetModelOriginalSetting(); 
+	model.parameter = new CEESParameter; 
+	
 	// Equi-energy sampling parameters
-	CEESParameter parameter;
 	// directory to store samples
-        parameter.storage_dir = getenv("HOME")+string("/equal_energy_generic_interface/result/"); 
-        parameter.storage_marker = 10000;
+        model.parameter->storage_dir = getenv("HOME")+string("/equal_energy_generic_interface/result/"); 
+        model.parameter->storage_marker = 10000;
 	stringstream run_id_string; 
 	run_id_string.str(string()); 
 	run_id_string << time(NULL); 
-        parameter.run_id = string(dw_ParseString_String(n_args_cl, args_cl, "RunID", run_id_string.str().c_str()));
+        model.parameter->run_id = string(dw_ParseString_String(n_args_cl, args_cl, "RunID", run_id_string.str().c_str()));
 
 
 	// highest and lowest levels
 	int if_original = dw_ParseInteger_String(n_args_cl, args_cl, "Original", 0);
 	if (if_original == 0)	// use multiple energy levels
 	{
-		parameter.number_energy_level = dw_ParseInteger_String(n_args_cl, args_cl, "nLevel", 10);
-        	parameter.pee = 0.3;
-		parameter.highest_level = dw_ParseInteger_String(n_args_cl, args_cl, "lHigh", parameter.number_energy_level-1);
-       		parameter.lowest_level = dw_ParseInteger_String(n_args_cl, args_cl, "lLow", 0);
+		model.parameter->number_energy_level = dw_ParseInteger_String(n_args_cl, args_cl, "nLevel", 10);
+        	model.parameter->pee = 0.3;
+		model.parameter->highest_level = dw_ParseInteger_String(n_args_cl, args_cl, "lHigh", model.parameter->number_energy_level-1);
+       		model.parameter->lowest_level = dw_ParseInteger_String(n_args_cl, args_cl, "lLow", 0);
 	}
 	else // only consider one level -- the original model
 	{
-		parameter.number_energy_level = 1; 
-		parameter.highest_level = parameter.lowest_level = 0; 
+		model.parameter->number_energy_level = 1; 
+		model.parameter->highest_level = model.parameter->lowest_level = 0; 
 	}
-       	parameter.t0 = dw_ParseFloating_String(n_args_cl, args_cl, "T0", 1.0);
-	parameter.tk_1 = dw_ParseFloating_String(n_args_cl, args_cl, "TK", 1000); 
-       	parameter.SetTemperature();
+       	model.parameter->t0 = dw_ParseFloating_String(n_args_cl, args_cl, "T0", 1.0);
+	model.parameter->tk_1 = dw_ParseFloating_String(n_args_cl, args_cl, "TK", 1000); 
+       	model.parameter->SetTemperature();
 
 	// burn-in length, simulation length, and deposit frequency
-	parameter.thin = dw_ParseInteger_String(n_args_cl, args_cl, "thin", 1);
-	parameter.THIN = dw_ParseInteger_String(n_args_cl, args_cl, "THIN", 100); 
-        parameter.simulation_length = dw_ParseInteger_String(n_args_cl, args_cl, "ndraws", 10000);
-	parameter.simulation_length = parameter.simulation_length; 
+	model.parameter->thin = dw_ParseInteger_String(n_args_cl, args_cl, "thin", 1);
+	model.parameter->THIN = dw_ParseInteger_String(n_args_cl, args_cl, "THIN", 100); 
+        model.parameter->simulation_length = dw_ParseInteger_String(n_args_cl, args_cl, "ndraws", 10000);
+	model.parameter->simulation_length = model.parameter->simulation_length; 
 	
 	// Block size for random blocking
 	// 0: no random blocking
-	parameter.size_per_block = dw_ParseInteger_String(n_args_cl, args_cl, "BlockSize", 0); 
+	model.parameter->size_per_block = dw_ParseInteger_String(n_args_cl, args_cl, "BlockSize", 0); 
 
-	// storage
-        CStorageHead storage(my_rank, parameter.run_id, parameter.storage_marker, parameter.storage_dir, parameter.number_energy_level);
-
-	// Equi-Energy Model
-	CEquiEnergy_TState model;
-	//target model; 
-	model.target_model = state_space_model;	
-	model.SaveTargetModelOriginalSetting(); 
-	model.parameter = &parameter; 
-	model.storage = &storage; 
-	
 	if (if_original > 0)	// if only the original model is used, 
 		model.if_bounded = false; 
 
@@ -779,9 +774,12 @@ int main(int n_args_cl, char **args_cl)
 		abort(); 
 	}
 	CSampleIDWeight mode = model.current_sample; 
+	
+	// storage 
+	model.storage = new CStorageHead(mode.GetSize_Data(), my_rank, model.parameter->run_id, model.parameter->storage_marker, model.parameter->storage_dir, model.parameter->number_energy_level); 
+	
 	// metropolis 
-	CMetropolis metropolis(&model); 
-	model.metropolis = &metropolis; 
+	model.metropolis = new CMetropolis(&model); 
 	
 	// master dispatches while slave runs tasks
 	dw_initialize_generator(time(NULL)+my_rank*1000);

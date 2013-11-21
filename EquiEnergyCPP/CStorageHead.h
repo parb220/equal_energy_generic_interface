@@ -21,7 +21,7 @@ protected:
 	vector<vector<CPutGetBin> > bin;
 	vector<vector<double> > energy_lower_bound; 
 public: 
-	CStorageHead(int _node_index=0, const string & _run_id=string(), size_t _storage_marker=10000, string _file_location=string(), size_t _number_level=1); 
+	CStorageHead(int size_each_data, int _node_index=0, const string & _run_id=string(), size_t _storage_marker=10000, string _file_location=string(), size_t _number_level=1); 
 	~CStorageHead(); 
 
 	bool makedir(); 
