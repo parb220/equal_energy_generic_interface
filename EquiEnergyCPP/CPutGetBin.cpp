@@ -170,18 +170,19 @@ bool CPutGetBin::Fetch(const vector<string> &filename_fetch)
 
 bool CPutGetBin::ReadFromOneFile(const string &file_name, int &counter, const vector <int> &index) 
 {	
-	// lock
+	/* lock
 	int lock_fd = -1; 
 	while ((lock_fd = tryGetLock(file_name)) < 0) 
 		sleep(1); 
-	
+	*/
+
 	// real file operation
 	fstream iFile; 
         iFile.open(file_name.c_str(), ios::in|ios::binary);
         if (!iFile)
 	{
 		//lock
-		releaseLock(lock_fd, file_name); 
+		// releaseLock(lock_fd, file_name); 
         	return false;
 	}
 	// determine the dimension of CSampleIDWeight
@@ -194,7 +195,7 @@ bool CPutGetBin::ReadFromOneFile(const string &file_name, int &counter, const ve
       	iFile.close();
 
 	// lock
-	releaseLock(lock_fd, file_name); 
+	// releaseLock(lock_fd, file_name); 
 	return true; 
 }
 
@@ -204,15 +205,17 @@ vector <CSampleIDWeight> CPutGetBin::ReadSampleFromFile(const string &file_name)
 	if (nRecord <= 0)
 		return vector<CSampleIDWeight>(0);
 
+	/*
 	int lock_fd = -1;
         while ((lock_fd = tryGetLock(file_name)) < 0)
                 sleep(1);
+	*/
 
 	fstream iFile;
         iFile.open(file_name.c_str(), ios::in|ios::binary);
         if (!iFile)
 	{
-		releaseLock(lock_fd, file_name); 
+		// releaseLock(lock_fd, file_name); 
         	return vector<CSampleIDWeight>(0); 
 	}
 
@@ -221,7 +224,7 @@ vector <CSampleIDWeight> CPutGetBin::ReadSampleFromFile(const string &file_name)
 		read(iFile, &(sample[n]));
         iFile.close();
 
-	releaseLock(lock_fd, file_name); 
+	// releaseLock(lock_fd, file_name); 
 	return sample; 
 }
 
