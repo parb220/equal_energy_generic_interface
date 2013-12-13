@@ -39,6 +39,7 @@ if (1)
 #include "CEquiEnergy_TState.h"
 #include "CMetropolis.h"
 #include "TaskScheduling.h"
+#include "mpi_parameter.h"
 
 extern "C" 
 {
@@ -756,8 +757,8 @@ int main(int n_args_cl, char **args_cl)
 	// burn-in length, simulation length, and deposit frequency
 	model.parameter->thin = dw_ParseInteger_String(n_args_cl, args_cl, "thin", 1);
 	model.parameter->THIN = dw_ParseInteger_String(n_args_cl, args_cl, "THIN", 100); 
-        model.parameter->simulation_length = dw_ParseInteger_String(n_args_cl, args_cl, "ndraws", 10000);
-	model.parameter->simulation_length = model.parameter->simulation_length; 
+        model.parameter->simulation_length = dw_ParseInteger_String(n_args_cl, args_cl, "ndraws", SIMULATION_LENGTH);
+	model.parameter->burn_in_length = dw_ParseInteger_String(n_args_cl, args_cl, "nburnin", BURN_IN_LENGTH); 
 	
 	// Block size for random blocking
 	// 0: no random blocking

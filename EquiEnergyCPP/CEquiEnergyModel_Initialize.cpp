@@ -55,6 +55,7 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(size_t K, int lev
 			}
 		}
 	}
+	samples.clear(); 
 	return true; 
 }
 
@@ -110,6 +111,7 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentileBand(size_t K, int
 		}
 		begin_index = end_index; 
 	}
+	samples.clear(); 
 	return true; 
 }
 
@@ -156,6 +158,7 @@ bool CEquiEnergyModel::Initialize_KMeansClustering(size_t K, int level_index, ve
 		}
 		return true; 
 	}
+	samples.clear(); 
 	return false; 
 }
 

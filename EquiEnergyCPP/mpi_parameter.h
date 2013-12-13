@@ -9,6 +9,9 @@ const int thin_INDEX = 3;
 const int THIN_INDEX = 4; 
 const int GROUP_INDEX = 5; 
 
+const int BURN_IN_LENGTH = 5000; 
+const int SIMULATION_LENGTH = 50000; 
+
 const int TUNE_TAG = 19; 
 const int TUNE_TAG_DIAG = 20;
 const int TUNE_TAG_VARIANCE = 21;  

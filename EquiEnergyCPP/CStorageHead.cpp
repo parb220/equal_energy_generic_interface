@@ -179,6 +179,7 @@ size_t CStorageHead::binning_equal_size(int level, size_t bin_number)
                	iSample += sBin;
                	iBin++;
 	}
+	sample.clear(); 
 	return bin[level].size(); 
 }
 

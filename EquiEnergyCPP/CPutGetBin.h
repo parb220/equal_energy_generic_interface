@@ -39,7 +39,7 @@ public:
 	CPutGetBin(int _size_each_data, const string & _id=string(), int _nDumpFile=0, size_t _capacity=0, string _grandPrefix=string(), int _suffix=0); 
 	CPutGetBin(const CPutGetBin &); 
 	CPutGetBin & operator=(const CPutGetBin &); 
-	~CPutGetBin();
+	~CPutGetBin() ; 
 
 	void SetBinID(string _id, int _suffix=0) { id = _id; suffix=_suffix; }
 	const string & GetBinID() const { return id; }

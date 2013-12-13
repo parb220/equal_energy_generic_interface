@@ -82,7 +82,7 @@ void DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel 
 		for (int j = 0; j<nodeGroup[i].size(); j++)
 		{
 			sPackage[LENGTH_INDEX] = simulation_length_per_node; 
-			sPackage[BURN_INDEX] = (simulation_length_per_node*model.parameter->thin)/10 >= 5000 ? (simulation_length_per_node*model.parameter->thin)/10 : 5000; 
+			sPackage[BURN_INDEX] = model.parameter->burn_in_length; //(simulation_length_per_node*model.parameter->thin)/10 >= BURN_IN_LENGTH ? (simulation_length_per_node*model.parameter->thin)/10 : BURN_IN_LENGTH; 
 			sPackage[GROUP_INDEX] = i; 
 			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][j], message_tag, MPI_COMM_WORLD);
 		}

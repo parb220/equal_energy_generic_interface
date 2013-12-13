@@ -360,6 +360,8 @@ CPutGetBin & CPutGetBin::operator=(const CPutGetBin &right)
 
 CPutGetBin::~CPutGetBin()
 {
+	dataPut.clear();
+	dataGet.clear();
 }
 
 size_t CPutGetBin::GetNumberFileForFetch() const
