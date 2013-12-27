@@ -68,12 +68,6 @@ public:
 // 	make a equi-energy jump
 	bool MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleIDWeight &y_initial) const; 
 
-///////////////////////////////////////////////////////////////////////////////////////////// Random Block (not debugged yet)
-	int EE_Draw_RandomBlock(size_t MH_thin); 	// equi-energy draw using random blocks
-	double BurnIn_RandomBlock(size_t); 	// burn-in using random blocks
-	double Simulation_Within_RandomBlock(bool if_storage, const string &sample_file_name=string());  
-	double Simulation_Cross_RandomBlock(bool if_storage, const string &sample_file_name=string()); 
-
 ///////////////////////////////////////////////////////////////////////////////////////////
 // IO 
 public:

@@ -20,11 +20,8 @@ class CMetropolis
 public: 
 	CEquiEnergyModel* model;	// pointers to CEquiEnergyModel
 protected:
-	vector<TDenseMatrix> blocks; 	// each block is a n-by-bi matrix, consisting of the directions and scales of the i-th block, where n is the dimension of the sample, bi is the size of the i-th block. 
-	vector<vector<int> > random_block_assignments;	// random_block_assignments[i] consists of the dimensions that are assigned into the i-th random block. Each dimension is assigned to one and only one block
-	vector<TDenseVector> random_blocks;	// random_blocks[i]:  the direction when the i-th dimension is in a block by itself
-	vector<TDenseVector> random_block_scales;	// random_block_scales[i][j]: scale factor when the i-th dimension is in a block of size (j+1)
-	void AssignDimensionsToRandomBlocks(size_t n, size_t avg_block_size); 
+	vector<TIndex> block_scheme; 	// assignments of the dimensions into the blocks. block_scheme[i] contains the dimensions assgined to the i-th block, which could be continuous or discontinues (general case)
+	vector<TDenseMatrix> blocks; 	// directions and scales of the block. blocks[i] is n-by-bi,  where n is the dimension of the sample, bi is the size of the i-th block. 
 
 public:
 	
@@ -34,29 +31,21 @@ public:
 	bool FourPassAdaptive_StartWithSampleFile(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, const string &sample_file_name, const string &block_file_name=string(), bool if_eejump=false); 
 	bool AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name=string(), bool if_eejump=false);
 	bool AdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name=string(), bool if_eejump=false);
-	bool AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name=string(), bool if_eejump=false);
-	bool AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name=string(), bool if_eejump=false);
+	bool AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name=string(), bool if_eejump=false, const string &block_scheme_file_name=string());
+	bool AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name=string(), bool if_eejump=false, const string &block_scheme_file_name=string());
 
 	// draw one sample
 	bool BlockRandomWalkMetropolis(double &, CSampleIDWeight &, const CSampleIDWeight &x, size_t thin=1); 
 
-	// Random block learning
-	void RandomBlockAdaptive(const CSampleIDWeight &adaptive_start_point, double target_ratio, size_t period, size_t max_period); 
-	bool FourPassRandomBlockAdaptive_StartWithoutSampleFile(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t n_draws, size_t burn_in, size_t thin, size_t avg_block_size, const string &block_file_name=string()); 
-	bool RandomBlockAdaptiveAfterSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, size_t avg_block_size, const string &sample_file_name, const string &block_file_name=string()); 
-	// Draw one sample using random blocks
-	bool RandomBlockRandomWalkMetropolis(double &, CSampleIDWeight &, const CSampleIDWeight &x, size_t thin=1); 
-
-	// IO: blocks, random_blocks, random_block_scales
+	// IO: blocks
 	bool WriteBlocks(const string &file_name); 
-	bool ReadBlocks(const string &file_name); 
-	bool Write_RandomBlocks_RandomBlockScales(const string &file_name); 
-	bool Read_RandomBlocks_RandomBlockScales(const string &file_name); 
+	bool ReadBlocks(const string &file_name);
 
 public: 
 	// Constructions destructions
 	CMetropolis(CEquiEnergyModel* _model=NULL) : model(_model) {} 
 	~CMetropolis() {}
-	
 }; 
+
+vector<TIndex>ReadBlockScheme(const string &file_name); 
 #endif

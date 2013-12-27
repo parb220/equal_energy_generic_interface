@@ -554,16 +554,34 @@ bool CMetropolis::FourPassAdaptive_StartWithSampleFile(const CSampleIDWeight &ad
 	return WriteBlocks(block_file_name); 
 }
 
-bool CMetropolis::AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name, bool if_eejump)
-// 	identity variance matrix / 1 blocks
-// Here file_name refers to a file that blocks are written into. 
+bool CMetropolis::AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name, bool if_eejump, const string &block_scheme_file_name)
+// block_scheme contains the assignment of the dimensions into the blocks. 
+//
+// If there is only one block, then B_matrix only contains one identity matrix.
+// If there are k blocks, the B_matrix contains k matrices. Each matrix is a n-by-bi matrix  where the each 
+//                column corresponds to a dimension that has been assigned to the i-th block. Let e_j be a 
+//                vector whose j-th element is 1 and all other elements are 0's. 
+//                Then B_matrix[i] = [e_1(i), e_2(i), ...,], with 1(i) indicates the 1st dimension assigned to 
+//                the i-th block. 
+// Here block_file_name refers to the file that blocks are written into. 
+// block_scheme_file_name refers to the file that contains the assignment of the dimensions into the blocks.
 // Simulation will first read blocks from the file and then simulate
 {
 	CSampleIDWeight x=adaptive_start_point; 
 
-	size_t n_blocks = 1; 
-	vector<TDenseMatrix>B_matrix(n_blocks); 
-	B_matrix[0]= Identity(x.data.dim); 
+	block_scheme = ReadBlockScheme(block_scheme_file_name); 
+	if (block_scheme.empty())
+		block_scheme.push_back(TIndex(0,x.data.dim-1)); 
+
+	vector<TDenseMatrix> B_matrix(block_scheme.size()); 
+	for (int i=0; i<(int)(block_scheme.size()); i++)
+	{
+		// B_matrix[i] = [e_{block_scheme[i](0)}, e_{block_scheme[i](1)}, ...]
+		// block_scheme[i]: TIndex containing the dimensions of the i-th block
+		B_matrix[i]=Zeros(x.data.dim, block_scheme[i].size); 
+		B_matrix[i].Insert(block_scheme[i], block_scheme[i], Identity(block_scheme[i].size)); 	
+	}
+	
 	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
 
 	if (block_file_name.empty())
@@ -575,7 +593,7 @@ bool CMetropolis::AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adapti
 	}
 }
 
-bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name, bool if_eejump) 
+bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name, bool if_eejump, const string &block_scheme_file) 
 // 	variance matrix estimated from simulation with scaled columns / 1 block
 // Here filename refers to the file where samples are stored to. 
 // So we first load these samples, and then calculate mean and variance. 
@@ -584,31 +602,39 @@ bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptiv
 	vector<CSampleIDWeight> Y; 
 	if (!LoadSampleFromFile(sample_file_name, Y) )
 		return false; 		
-
-	// Compute variance and mean
-	TDenseVector mean(Y[0].data.dim,0.0);  
-	TDenseMatrix variance(Y[0].data.dim,Y[0].data.dim,0.0), U_matrix, V_matrix, D_matrix; 
-	TDenseVector d_vector; 
-	for (int i=0; i<Y.size(); i++)
-	{
-		mean = mean + Y[i].data; 
-		variance = variance + Multiply(Y[i].data,Y[i].data);
-	}
 	
-	mean = (1.0/(double)Y.size()) * mean; 
-	variance = (1.0/(double)Y.size())*variance - Multiply(mean, mean); 
-	variance = 0.5 * (variance+Transpose(variance)); 
- 
-	SVD(U_matrix, d_vector, V_matrix, variance); 
-	for (int i=0; i<d_vector.dim; i++)
-		d_vector[i] = sqrt(d_vector[i]); 
-	D_matrix = DiagonalMatrix(d_vector); 
-	U_matrix = U_matrix *D_matrix; 
+	block_scheme = ReadBlockScheme(block_scheme_file); 
+	if (block_scheme.empty())
+		block_scheme.push_back(TIndex(0, Y[0].data.dim-1)); 
 
+	vector<TDenseMatrix>B_matrix(block_scheme.size()); 
+	TDenseVector mean, d_vector; 
+	TDenseMatrix variance, U_matrix, V_matrix, D_matrix; 
+	for (int i_block=0; i_block<(int)block_scheme.size(); i_block++)
+	{
+		// Compute variance and mean
+		mean = Zeros(block_scheme[i_block].size);
+		variance = Zeros(block_scheme[i_block].size, block_scheme[i_block].size); 
+		for (int i=0; i<(int)Y.size(); i++)
+		{
+			mean = mean + Y[i].data.SubVector(block_scheme[i_block]);  
+			variance = variance + Multiply(Y[i].data.SubVector(block_scheme[i_block]),Y[i].data.SubVector(block_scheme[i_block]));
+		}
+	
+		mean = (1.0/(double)Y.size()) * mean; 
+		variance = (1.0/(double)Y.size())*variance - Multiply(mean, mean); 
+		variance = 0.5 * (variance+Transpose(variance)); 
+ 
+		SVD(U_matrix, d_vector, V_matrix, variance); 
+		for (int i=0; i<d_vector.dim; i++)
+			d_vector[i] = sqrt(d_vector[i]); 
+		D_matrix = DiagonalMatrix(d_vector); 
+		U_matrix = U_matrix *D_matrix; 
+
+		B_matrix[i_block]=Zeros(Y[0].data.dim, block_scheme[i_block].size); 
+		B_matrix[i_block].Insert(block_scheme[i_block], block_scheme[i_block], U_matrix); 
+	}
 	CSampleIDWeight x=adaptive_start_point; 
-	size_t n_blocks = 1; 
-	vector<TDenseMatrix>B_matrix(n_blocks); 
-	B_matrix[0] = U_matrix; 
 	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
 
 	if (block_file_name.empty())
@@ -618,4 +644,35 @@ bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptiv
 		bool return_value = WriteBlocks(block_file_name); 
 		return return_value; 
 	}
+}
+
+vector<TIndex> ReadBlockScheme(const string &file_name)
+{
+	// Block scheme file is in binary format
+	// number of blocks
+	// number of indices, indices
+	ifstream input; 
+	input.open(file_name.c_str(), ios::in|ios::binary); 
+	if (!input.is_open())
+		return vector<TIndex>(0);  
+	// number of blocks
+	int n_blocks; 
+	input.read((char*)&(n_blocks), sizeof(int)); 
+	vector<TIndex>block_scheme(n_blocks);
+	
+	for (int i_block=0; i_block<n_blocks; i_block++)
+	{
+		// number of indices, and then indices
+		int n_indices; 
+		input.read((char*)&(n_indices), sizeof(int)); 
+		block_scheme[i_block].resize(n_indices); 
+		int index; 
+		for (int i_index=0; i_index<n_indices; i_index++)
+		{
+			input.read((char*)&(index), sizeof(int)); 
+			block_scheme[i_block][i_index] = index; 
+		}
+	} 
+	input.close(); 
+	return block_scheme; 
 }
