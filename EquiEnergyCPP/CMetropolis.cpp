@@ -579,7 +579,7 @@ bool CMetropolis::AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adapti
 		// B_matrix[i] = [e_{block_scheme[i](0)}, e_{block_scheme[i](1)}, ...]
 		// block_scheme[i]: TIndex containing the dimensions of the i-th block
 		B_matrix[i]=Zeros(x.data.dim, block_scheme[i].size); 
-		B_matrix[i].Insert(block_scheme[i], block_scheme[i], Identity(block_scheme[i].size)); 	
+		B_matrix[i].Insert(block_scheme[i], TIndex(0,block_scheme[i].size-1), Identity(block_scheme[i].size)); 	
 	}
 	
 	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
@@ -632,7 +632,7 @@ bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptiv
 		U_matrix = U_matrix *D_matrix; 
 
 		B_matrix[i_block]=Zeros(Y[0].data.dim, block_scheme[i_block].size); 
-		B_matrix[i_block].Insert(block_scheme[i_block], block_scheme[i_block], U_matrix); 
+		B_matrix[i_block].Insert(block_scheme[i_block], TIndex(0,block_scheme[i_block].size-1), U_matrix); 
 	}
 	CSampleIDWeight x=adaptive_start_point; 
 	BlockAdaptive(x, B_matrix, 0.25, period, max_period, if_eejump); 
@@ -665,12 +665,11 @@ vector<TIndex> ReadBlockScheme(const string &file_name)
 		// number of indices, and then indices
 		int n_indices; 
 		input.read((char*)&(n_indices), sizeof(int)); 
-		block_scheme[i_block].resize(n_indices); 
 		int index; 
 		for (int i_index=0; i_index<n_indices; i_index++)
 		{
 			input.read((char*)&(index), sizeof(int)); 
-			block_scheme[i_block][i_index] = index; 
+			block_scheme[i_block] += index; 
 		}
 	} 
 	input.close(); 

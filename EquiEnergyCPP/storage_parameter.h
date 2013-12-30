@@ -14,5 +14,6 @@ const string SUMMARY_FILE_TAG = string(".summary");
 const string SCALE_1 = string(".scale_1."); 
 const string SCALE_N = string(".scale_n."); 
 const string RANDOM_BLOCK_SCALE = string(".random.block.scale."); 
+const string BLOCK_SCHEME = string(".block_scheme"); 
 
 #endif
