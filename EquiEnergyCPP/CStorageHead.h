@@ -33,6 +33,7 @@ public:
 	void consolidate(int level); 
 	void restore(int level);
 	void ClearDepositDrawHistory(int level); 
+	void ClearSample(int level); 
 
 	size_t binning(int level, size_t bin_number_lb, double bin_width_ub); 
 	size_t binning_geometric(int level, size_t bin_number); 

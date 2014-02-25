@@ -138,6 +138,17 @@ void CStorageHead::ClearDepositDrawHistory(int level)
 		bin[level][j].ClearDepositDrawHistory(); 
 }
 
+void CStorageHead::ClearSample(int level)
+{
+	if (level >= (int)bin.size())
+	{
+		cerr << "CStorageHead::ClearSample() : level index exceeds the range.\n"; 
+		abort(); 
+	}
+	for (int j=0; j<(int)bin[level].size(); j++)
+		bin[level][j].DisregardHistorySamples(); 
+}
+
 size_t CStorageHead::binning_equal_size(int level, size_t bin_number)
 {
 	if (level >=(int)bin.size())

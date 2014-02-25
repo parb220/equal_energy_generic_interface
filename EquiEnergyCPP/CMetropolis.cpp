@@ -582,7 +582,8 @@ bool CMetropolis::AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adapti
 		B_matrix[i].Insert(block_scheme[i], TIndex(0,block_scheme[i].size-1), Identity(block_scheme[i].size)); 	
 	}
 
-	double accP=1.0- exp(log(1.0-0.25)/(double)block_scheme.size());
+	// double accP=1.0- exp(log(1.0-0.25)/(double)block_scheme.size());
+	double accP = 0.234;
 	BlockAdaptive(x, B_matrix, accP, period, max_period, if_eejump); 
 
 	if (block_file_name.empty())
@@ -637,7 +638,8 @@ bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptiv
 	}
 	CSampleIDWeight x=adaptive_start_point; 
 
-	double accP=1.0- exp(log(1.0-0.25)/(double)block_scheme.size());
+	// double accP=1.0- exp(log(1.0-0.25)/(double)block_scheme.size());
+	double accP = 0.234; 
 	BlockAdaptive(x, B_matrix, accP, period, max_period, if_eejump); 
 
 	if (block_file_name.empty())

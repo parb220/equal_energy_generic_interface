@@ -12,7 +12,7 @@
 using namespace std; 
 void DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, size_t simulation_length, int level, int tag);
 
-void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length)
+void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
 {
 	double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];  
 	MPI_Status status; 
@@ -96,6 +96,10 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 			model.storage->finalize(level); 
 			model.storage->ClearDepositDrawHistory(level);
 		}
+
+		// to save space, remove level+1 samples
+		if (save_space_flag && level+1 <= model.parameter->highest_level)
+			model.storage->ClearSample(level);  
 	}
 
 	delete []sPackage; 
