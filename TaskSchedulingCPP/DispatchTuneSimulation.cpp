@@ -98,8 +98,8 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 		}
 
 		// to save space, remove level+1 samples
-		if (save_space_flag && level+1 <= model.parameter->highest_level)
-			model.storage->ClearSample(level);  
+		if (save_space_flag && level+2 <= model.parameter->highest_level)
+			model.storage->ClearSample(level+2);  
 	}
 
 	delete []sPackage; 
