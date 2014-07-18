@@ -14,8 +14,30 @@ const int METROPOLIS_JUMP = 1;
 const int EQUI_ENERGY_JUMP = -1; 
 const int NO_JUMP = 0; 
 
+class CSampleIDWeight;
+class CStorageHead;
+class CEESParameter;
 class CMetropolis; 
 class CEquiEnergyModel; 
+class MinusLogPosterior_NPSOL;
+class TDenseVector;
+class TDenseMatrix;
+
+// class MinusLogPosterior_CSMINWEL;
+
+class MinusLogPosterior_NPSOL
+{
+public:
+        static CEquiEnergyModel *model;
+        static void *function(int *mode, int *n, double *x, double *f, double *g, int *nstate);
+};
+
+/*class MinusLogPosterior_CSMINWEL
+{
+public:
+        static CEquiEnergyModel *model;
+        static double function(double *x, int n, double **args, int *dims);
+};*/
 
 class CEquiEnergyModel
 {
@@ -47,18 +69,20 @@ public:
 	CStorageHead *storage; 		// pointer to CStorageHead
 	virtual double log_posterior_function(CSampleIDWeight &x)=0;
         virtual double log_likelihood_function(const CSampleIDWeight &x)=0;
+	virtual double log_posterior_function(const double *x, int n)=0; 
+        virtual double log_likelihood_function(const double *x, int n)=0; 
 
 	// Draw samples
-	int EE_Draw(size_t MH_thin); 	// equi-energy draw
+	int EE_Draw(int MH_thin); 	// equi-energy draw
 public:
-	double BurnIn(size_t burn_in_length);		// returns the maximum posteior during burn-in
-	bool Initialize(size_t desired_pool_size, int level);	// Initialize model (setting values for current_sample) using bins indexed from start_bin through (including) end_bin. 
+	double BurnIn(int burn_in_length);		// returns the maximum posteior during burn-in
+	bool Initialize(int desired_pool_size, int level);	// Initialize model (setting values for current_sample) using bins indexed from start_bin through (including) end_bin. 
 	bool InitializeWithBestSample(int level); 		// Initialize model using the best sample in the bins indexed from start_bin to end_bin
-	bool InitializeWith_Kth_BestSample(size_t K, int level_index);
-	bool Initialize_RandomlyPickFrom_K_BestSample(size_t K, int level_index); 
-	bool Initialize_KMeansClustering(size_t K, int level_index, vector<CSampleIDWeight> &centers) const; 
-	bool Initialize_MostDistant_WithinPercentile(size_t K, int level_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
-	bool Initialize_MostDistant_WithinPercentileBand(size_t K, int level_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
+	bool InitializeWith_Kth_BestSample(int K, int level_index);
+	bool Initialize_RandomlyPickFrom_K_BestSample(int K, int level_index); 
+	bool Initialize_KMeansClustering(int K, int level_index, vector<CSampleIDWeight> &centers) const; 
+	bool Initialize_MostDistant_WithinPercentile(int K, int level_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
+	bool Initialize_MostDistant_WithinPercentileBand(int K, int level_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
 	bool InitializeFromFile(const string &file_name); 
 
 	double Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy level (no jumping across levels). Returns the maximum posterior during simulation
@@ -80,6 +104,16 @@ public:
 	CEquiEnergyModel(); 
 	CEquiEnergyModel(bool _if_bounded, int eL, double _t, const CSampleIDWeight & _x=CSampleIDWeight(), time_t _time=time(NULL), CMetropolis *_metropolis =NULL, CEESParameter *_parameter=NULL, CStorageHead *_storage = NULL); 
 	virtual ~CEquiEnergyModel() {} 
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// HillClimb
+public: 
+	virtual double HillClimb_NPSOL(int nSolution, std::vector<TDenseVector> &, std::vector<TDenseMatrix> &); 
+	// virtual double HillClimb_CSMINWEL(int nSolution); 
+	virtual bool DrawParametersFromPrior(double *x) const = 0; 
+
+friend class MinusLogPosterior_NPSOL; 
+// friend class MinusLogPosterior_CSMINWEL; 
 };
 
 #endif

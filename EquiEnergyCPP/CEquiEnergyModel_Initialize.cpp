@@ -6,7 +6,7 @@
 #include "dataanalysis.h"
 #include "CEquiEnergyModel.h"
 
-bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(size_t K, int level_index, vector<CSampleIDWeight > &starters, double percentile) const
+bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(int K, int level_index, vector<CSampleIDWeight > &starters, double percentile) const
 {
         if (starters.size() != K)
                 starters.resize(K);
@@ -59,7 +59,7 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(size_t K, int lev
 	return true; 
 }
 
-bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentileBand(size_t K, int level_index, vector<CSampleIDWeight > &starters, double percentile) const
+bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentileBand(int K, int level_index, vector<CSampleIDWeight > &starters, double percentile) const
 {
         if (starters.size() != K)
                 starters.resize(K);
@@ -116,7 +116,7 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentileBand(size_t K, int
 }
 
 
-bool CEquiEnergyModel::Initialize_KMeansClustering(size_t K, int level_index, vector<CSampleIDWeight> & centers) const
+bool CEquiEnergyModel::Initialize_KMeansClustering(int K, int level_index, vector<CSampleIDWeight> & centers) const
 {
 	if (centers.size() != K)
 		centers.resize(K); 
@@ -178,9 +178,9 @@ bool CEquiEnergyModel::InitializeFromFile(const string &file_name)
 }
 
 // A sample is randomly taken from a pool (with size desired_pool_size) of samples where the pool is formed by samples with higher log-posteriors. Note that samples with higher log-posterior values are stored in smaller-indexed bins. So, if the desired pool size is 10 while the size of the first bin is 100, then only the first bin will be used. In contrast, if the desired pool size is 100 while the total number of samples in the first 3 bins is barely greater than 100, then the first 3 bins will be used. 
-bool CEquiEnergyModel::Initialize(size_t desiredPoolSize, int level_index)
+bool CEquiEnergyModel::Initialize(int desiredPoolSize, int level_index)
 {
-        size_t N=storage->Number_Bin(level_index);
+        int N=storage->Number_Bin(level_index);
         int nSample_Total=0;
         vector<int>nSample_Bin(N,0);
         for (int bin_index=0;  bin_index<N; bin_index++)
@@ -220,7 +220,7 @@ bool CEquiEnergyModel::InitializeWithBestSample(int level_index)
         return true;
 }
 
-bool CEquiEnergyModel::InitializeWith_Kth_BestSample(size_t K, int level_index)
+bool CEquiEnergyModel::InitializeWith_Kth_BestSample(int K, int level_index)
 {
         vector<CSampleIDWeight> sample;
         int bin=0;
@@ -233,7 +233,7 @@ bool CEquiEnergyModel::InitializeWith_Kth_BestSample(size_t K, int level_index)
         return true;
 }
 
-bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(size_t K, int level_index)
+bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(int K, int level_index)
 {
         vector<CSampleIDWeight> sample;
         int bin = 0;

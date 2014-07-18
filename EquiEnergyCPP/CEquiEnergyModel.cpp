@@ -4,6 +4,10 @@
 #include <functional>
 #include <ctime>
 #include <fstream>
+#include "CSampleIDWeight.h"
+#include "CEESParameter.h"
+#include "CStorageHead.h"
+#include "dw_dense_matrix.hpp"
 #include "CEquiEnergyModel.h"
 #include "CMetropolis.h"
 
@@ -41,7 +45,7 @@ void CEquiEnergyModel::Take_Sample_Just_Drawn_From_Storage(const CSampleIDWeight
 	current_sample.id = (int)(time(NULL)-timer_when_started);
 }
 
-int CEquiEnergyModel::EE_Draw(size_t MH_thin)
+int CEquiEnergyModel::EE_Draw(int MH_thin)
 {
 	CSampleIDWeight x_new; 
 	int new_sample_code = NO_JUMP; 
@@ -66,7 +70,7 @@ int CEquiEnergyModel::EE_Draw(size_t MH_thin)
 }
 
 
-double CEquiEnergyModel::BurnIn(size_t burn_in_length)
+double CEquiEnergyModel::BurnIn(int burn_in_length)
 {
 	CSampleIDWeight x_new; 
 	int nJump =0; 

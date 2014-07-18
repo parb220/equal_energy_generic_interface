@@ -1,4 +1,10 @@
+#include "dw_dense_matrix.hpp"
 #include "CEquiEnergy_TState.h"
+extern "C"
+{
+	#include "dw_switch.h"
+}
+
 using namespace std; 
 
 bool CEquiEnergy_TState::SaveTargetModelOriginalSetting()
@@ -6,7 +12,7 @@ bool CEquiEnergy_TState::SaveTargetModelOriginalSetting()
         if (target_model == NULL)
                 return false;
 
-        size_t n = NumberFreeParametersTheta(target_model)+NumberFreeParametersQ(target_model);
+        int n = NumberFreeParametersTheta(target_model)+NumberFreeParametersQ(target_model);
         original_sample.data.Resize(n);
         double *x = new double[n];
         ConvertThetaToFreeParameters(target_model,x);
@@ -96,7 +102,7 @@ double CEquiEnergy_TState::log_likelihood_function(const CSampleIDWeight &x)
 	return log_likelihood;
 }
 
-double CEquiEnergy_TState::log_posterior_function(const double *x, size_t n)
+double CEquiEnergy_TState::log_posterior_function(const double *x, int n)
 {
 	//double *old_x = new double[n];
 	//ConvertThetaToFreeParameters(target_model, old_x);
@@ -113,7 +119,7 @@ double CEquiEnergy_TState::log_posterior_function(const double *x, size_t n)
 	return if_bounded ? log_posterior/t_bound : log_posterior;
 }
 
-double CEquiEnergy_TState::log_likelihood_function(const double *x, size_t n)
+double CEquiEnergy_TState::log_likelihood_function(const double *x, int n)
 {
 	// double *old_x = new double[n];
 	// ConvertThetaToFreeParameters(target_model, old_x);
@@ -128,6 +134,15 @@ double CEquiEnergy_TState::log_likelihood_function(const double *x, size_t n)
 	// ConvertFreeParametersToQ(target_model, old_x+NumberFreeParametersTheta(target_model) );
 	// delete [] old_x;
 	return log_likelihood;
+}
+
+bool CEquiEnergy_TState::DrawParametersFromPrior(double *x) const
+{
+	// ONLY TEMPORARY SOLUTION
+	TDenseVector Vector_x(NumberFreeParametersTheta(target_model)+NumberFreeParametersQ(target_model),0.0); 
+	Vector_x.RandomUniform(); 
+	memcpy(x, Vector_x.vector, sizeof(double)*Vector_x.dim); 
+	return true; 
 }
 
 

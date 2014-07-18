@@ -1,11 +1,16 @@
 #include <mpi.h>
+#include <sstream>
 #include <cstdlib>
+#include <fstream>
+#include "dw_dense_matrix.hpp"
 #include "CEquiEnergy_TState.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
 #include "CSampleIDWeight.h"
 #include "mpi_parameter.h"
 #include "storage_parameter.h"
+#include "ReadWriteGaussianMixtureModelParameters.hpp"
+
 extern "C"
 {
         #include "dw_parse_cmd.h"
@@ -39,11 +44,26 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, const CSa
 		}		
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
 		{
-			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
-			model.storage->restore(model.energy_level); 
-			model.HillClimb_CSMINWEL(rPackage[LENGTH_INDEX]); 
-			model.storage->finalize(model.energy_level);
-        		model.storage->ClearDepositDrawHistory(model.energy_level);
+			std::vector<TDenseVector> gm_mean; 
+			std::vector<TDenseMatrix> gm_covariance_sqrt;  
+			model.HillClimb_NPSOL(rPackage[LENGTH_INDEX], gm_mean, gm_covariance_sqrt);
+			// Save gm_mean and gm_covariance_sqrt into files 
+			stringstream convert;
+			convert.str(string()); 
+			convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE << "." << my_rank; 
+			string gm_file = model.parameter->storage_dir + convert.str();  
+			if (!WriteGaussianMixtureModelParameters(gm_file, gm_mean, gm_covariance_sqrt))
+			{
+				cerr << "Error occurred while writing Gaussian mixture model parameters to " << gm_file << endl;
+                                abort();
+			}
+		}
+		else if (status.MPI_TAG == GAUSSIAN_MIXTURE_MODEL_SIMULATION)
+		{
+			// model.energy_level = (int)(rPackage[LEVEL_INDEX]);
+			// model.storage->restore(model.energy_level);
+			// model.storage->finalize(model.energy_level);
+        		// model.storage->ClearDepositDrawHistory(model.energy_level);
 		}
 		else if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION || status.MPI_TAG == TUNE_TAG_AFTER_SIMULATION) 
 		{

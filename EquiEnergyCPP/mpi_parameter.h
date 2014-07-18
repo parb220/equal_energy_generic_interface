@@ -42,6 +42,7 @@ const int NP_SOL_TAG = 61;
 const int SIMULATION_TAG_MULTIPLE_BLOCK = 62; 
 
 const int HILL_CLIMB_TAG = 70; 
+const int GAUSSIAN_MIXTURE_MODEL_SIMULATION = 71; 
  
 const int END_TAG = 0;  
 #endif
