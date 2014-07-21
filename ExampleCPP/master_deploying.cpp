@@ -51,7 +51,10 @@ void master_deploying(int argc, char **argv, CEquiEnergy_TState &model, const CS
 	
 	size_t number_hill_climb = (size_t) dw_ParseInteger_String(argc, argv, "HillClimb", 0); 
         if (number_hill_climb )
+	{
 		DispatchHillClimbTask(nodeGroup, model, number_hill_climb);
+		DispatchGMMSimulationTask(nodeGroup, model, 1000*number_hill_climb); 
+	}
 
 	// tuning and simulation
 	int if_tuning_done = dw_ParseInteger_String(argc, argv, "TuningDone", 0);

@@ -111,6 +111,7 @@ public:
 	virtual double HillClimb_NPSOL(int nSolution, std::vector<TDenseVector> &, std::vector<TDenseMatrix> &); 
 	// virtual double HillClimb_CSMINWEL(int nSolution); 
 	virtual bool DrawParametersFromPrior(double *x) const = 0; 
+	double GMM_Simulation(int simulation_length, const std::vector<TDenseVector> &gm_mean, const std::vector<TDenseMatrix> &gm_covariance_sqrt);
 
 friend class MinusLogPosterior_NPSOL; 
 // friend class MinusLogPosterior_CSMINWEL; 

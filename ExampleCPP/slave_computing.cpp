@@ -58,12 +58,31 @@ void slave_computing(int argc, char **argv, CEquiEnergy_TState &model, const CSa
                                 abort();
 			}
 		}
-		else if (status.MPI_TAG == GAUSSIAN_MIXTURE_MODEL_SIMULATION)
+		else if (status.MPI_TAG == GMM_SIMULATION_TAG)
 		{
-			// model.energy_level = (int)(rPackage[LEVEL_INDEX]);
-			// model.storage->restore(model.energy_level);
-			// model.storage->finalize(model.energy_level);
-        		// model.storage->ClearDepositDrawHistory(model.energy_level);
+			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
+			model.storage->restore(model.energy_level);
+			group_index = (int)(rPackage[GROUP_INDEX]);
+                        if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
+                        {
+                                cout << "GetCommunicationParameter() : Error occurred.\n";
+                                abort();
+                        }
+
+			std::vector<TDenseVector> gm_mean;
+                        std::vector<TDenseMatrix> gm_covariance_sqrt;
+			stringstream convert;
+                        convert.str(string());
+                        convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE; 
+			string gm_file = model.parameter->storage_dir + convert.str(); 
+			if (!ReadGaussianMixtureModelParameters(gm_file, gm_mean, gm_covariance_sqrt) )
+			{
+				cerr << "Error occurred while reading Gaussian mixture model parameters from " << gm_file << endl; 
+				abort(); 
+			}
+			model.GMM_Simulation(rPackage[LENGTH_INDEX], gm_mean, gm_covariance_sqrt); 
+			model.storage->finalize(model.energy_level);
+        		model.storage->ClearDepositDrawHistory(model.energy_level);
 		}
 		else if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION || status.MPI_TAG == TUNE_TAG_AFTER_SIMULATION) 
 		{

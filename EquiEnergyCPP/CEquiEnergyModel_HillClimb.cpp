@@ -1,7 +1,6 @@
 #include <cmath>
 #include "prcsn.h"
 #include "dw_rand.h"
-#include "dw_dense_matrix.hpp"
 #include "CSampleIDWeight.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
@@ -97,7 +96,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, std::vector<TDenseVector
 	double f; 	// value of objective f(x) at the final iterate
 	double *g = new double[n]; // objective gradient	   
 
-	double max_log_posterior = MINUS_INFINITY; 
+	int nAccpt = 0; 
 
 	gm_mean.clear(); 
 	gm_covariance_sqrt.clear(); 
@@ -122,7 +121,8 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, std::vector<TDenseVector
 				log_posterior_function(sample); 
 
         			SaveSampleToStorage(sample);  */       	
-				max_log_posterior = -f > max_log_posterior ? -f : max_log_posterior; 
+				// max_log_posterior = -f > max_log_posterior ? -f : max_log_posterior; 
+				nAccpt ++; 
 
 				// Mean 
 				TDenseVector peak(n,0.0); 
@@ -177,7 +177,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, std::vector<TDenseVector
 	// storage->ClearDepositDrawHistory(energy_level);
 
 	if_bounded = if_bounded_old; 
-	return max_log_posterior; 
+	return (double)nAccpt/(double)nSolution; 
 }
 
 /*double CEquiEnergy_TState::HillClimb_CSMINWEL(size_t nSolution)
