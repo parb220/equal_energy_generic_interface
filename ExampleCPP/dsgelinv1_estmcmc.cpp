@@ -716,8 +716,9 @@ int main(int n_args_cl, char **args_cl)
 
 	// Initialize MPI //
 	MPI_Init(&n_args_cl, &args_cl);
-        int my_rank;
+        int my_rank, nNode; 
         MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &nNode); 
 
 	// Equi-Energy Model
 	CEquiEnergy_TState model;
@@ -784,10 +785,31 @@ int main(int n_args_cl, char **args_cl)
 	
 	// master dispatches while slave runs tasks
 	dw_initialize_generator(time(NULL)+my_rank*1000);
+	int n_initial = dw_ParseInteger_String(n_args_cl, args_cl, "nInitial", nNode);
 	if (my_rank == 0)
-		master_deploying(n_args_cl, args_cl, model, mode); 
+	{
+		// make sure storage_directory is valid
+		if (!model.storage->makedir())
+		{
+			cerr << "Error in making directory for " << model.parameter->run_id << endl;
+		 	double *sMessage= new double [N_MESSAGE];
+			for (int i=1; i<nNode; i++)
+				MPI_Send(sMessage, N_MESSAGE, MPI_DOUBLE, i, END_TAG, MPI_COMM_WORLD); 
+		 	delete [] sMessage;
+		 	abort();
+		}
+		int number_hill_climb = dw_ParseInteger_String(n_args_cl, args_cl, "HillClimb", 0);
+		master_deploying(nNode, number_hill_climb, n_initial, model, mode); 
+	}
 	else 
-		slave_computing(n_args_cl, args_cl, model, mode);
+	{
+		int period = dw_ParseInteger_String(n_args_cl, args_cl, "pr", 20);
+		int max_period = dw_ParseInteger_String(n_args_cl, args_cl, "mpr", 16*period); 
+		int optimization_iteration = dw_ParseInteger_String(n_args_cl, args_cl, "optimizationN", 10); 
+		int perturbation_iteration = dw_ParseInteger_String(n_args_cl, args_cl, "perturbationN", 10); 
+		double perturbation_scale = dw_ParseFloating_String(n_args_cl, args_cl, "perturbationS", 1.0); 
+		slave_computing(period, max_period, n_initial, model, mode, optimization_iteration, perturbation_iteration, perturbation_scale);
+	}
 
 	// end
 	model.RecoverTargetModelOriginalSetting(); 

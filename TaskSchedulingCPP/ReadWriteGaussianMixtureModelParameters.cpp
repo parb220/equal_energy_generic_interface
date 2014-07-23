@@ -42,13 +42,13 @@ bool ReadGaussianMixtureModelParameters(const string &file_name, vector<TDenseVe
         {
         	iFile.read((char *)&dim, sizeof(int));
         	TDenseVector peak(dim,0.0);
-        	iFile.read((char *)peak.vector,sizeof(int)*dim);
+        	iFile.read((char *)peak.vector,sizeof(double)*dim);
         	
 		iFile.read((char *)&rows, sizeof(int));
         	iFile.read((char *)&cols, sizeof(int));
 		iFile.read((char *)&column_major, sizeof(bool));
         	TDenseMatrix covariance_sqrt(rows,cols,0.0);
-        	iFile.read((char *)covariance_sqrt.matrix, sizeof(int)*rows*cols);
+        	iFile.read((char *)covariance_sqrt.matrix, sizeof(double)*rows*cols);
 		covariance_sqrt.column_major = column_major; 
         	
 		gm_mean.push_back(peak);
@@ -56,5 +56,4 @@ bool ReadGaussianMixtureModelParameters(const string &file_name, vector<TDenseVe
         }
         iFile.close();
 	return true; 
-
 }

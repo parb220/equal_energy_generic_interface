@@ -20,14 +20,17 @@ double CEquiEnergyModel::GMM_Simulation(int simulation_length, const std::vector
 	TDenseVector x(dim,0.0);  
 	for (int i=0; i<simulation_length; i++)
 	{
-		n = dw_uniform_int(N); 
-		x = gmm_covariance_sqrt[n]*x.RandomNormal()+gmm_mean[n];
-		log_posterior = log_posterior_function(x.vector, x.dim); 
-		if (log_posterior > MINUS_INFINITY)
+		for (int j=0; j<parameter->thin; j++)
 		{
-			CSampleIDWeight sample(x, (int)(time(NULL)-timer_when_started), log_posterior, true); 
- 			SaveSampleToStorage(sample);
-			nAccpt ++; 
+			n = dw_uniform_int(N); 
+			x = gmm_covariance_sqrt[n]*x.RandomNormal()+gmm_mean[n];
+			log_posterior = log_posterior_function(x.vector, x.dim); 
+			if (log_posterior > MINUS_INFINITY)
+			{
+				CSampleIDWeight sample(x, (int)(time(NULL)-timer_when_started), log_posterior, true); 
+ 				SaveSampleToStorage(sample);
+				nAccpt ++; 
+			}
 		} 
 	}
 

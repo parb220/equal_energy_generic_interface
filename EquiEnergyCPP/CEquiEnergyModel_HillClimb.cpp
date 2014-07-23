@@ -33,7 +33,7 @@ void *MinusLogPosterior_NPSOL::function(int *mode, int *n, double *x, double *f,
 // will be set as its original value. 
 // Samples generated during HillClimb will be saved into storage but always at the level of number_energy_level
 // (the extra level)
-double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, std::vector<TDenseVector> &gm_mean, std::vector<TDenseMatrix> &gm_covariance_sqrt)
+double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, std::vector<TDenseVector> &gm_mean, std::vector<TDenseMatrix> &gm_covariance_sqrt, int optimization_iteration, int perturbation_iteration, double perturbation_scale)
 {
 	// energy_level = parameter->number_energy_level; 
 	bool if_bounded_old = if_bounded; 
@@ -99,39 +99,57 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, std::vector<TDenseVector
 	int nAccpt = 0; 
 
 	gm_mean.clear(); 
-	gm_covariance_sqrt.clear(); 
+	gm_covariance_sqrt.clear();
+ 
+	double log_posterior_before_perturbation, log_posterior_after_perturbation, log_posterior_optimal; 
+	TDenseVector peak(n,0.0), perturbation(n,0.0), x_plus_perturbation(n,0.0);  
+	TDenseMatrix hessian_cholesky(n,n,0.0); 
 	try {
 		for (int i=0; i<nSolution; i++)
 		{
 			if (!DrawParametersFromPrior(x)) 
 				throw dw_exception("CEquiEnergyModel::HillClimb_NPSOL : DrawSampleFromPrior() error occurred");
-			npoptn_((char*)DERIVATIVE_LEVEL.c_str(), DERIVATIVE_LEVEL.length());
-        		npoptn_((char*)NO_PRINT_OUT.c_str(), NO_PRINT_OUT.length());
-        		npoptn_((char*)COLD_START.c_str(), COLD_START.length());
-			npoptn_((char*)HESSIAN.c_str(), HESSIAN.length()); 
-			npsol_(&n, &nclin, &ncnln, &ldA, &ldJ, &ldR, A, bl, bu, NULL, MinusLogPosterior_NPSOL::function, &inform, &iter, istate, c, cJac, clambda, &f, g, R, x, iw, &leniw, w, &lenw); 
-			if (f < PLUS_INFINITY)
+
+			log_posterior_before_perturbation = log_posterior_function(x, n);
+			for (int ii=0; ii<optimization_iteration; ii++)
 			{
-				/*CSampleIDWeight sample; 
-				sample.data.Resize(n); 
-				for (int j=0; j<n; j++)
-					sample.data[j] = x[j]; 
-				sample.DataChanged(); 
-				sample.id = (int)(time(NULL)-timer_when_started);    
-				log_posterior_function(sample); 
-
-        			SaveSampleToStorage(sample);  */       	
-				// max_log_posterior = -f > max_log_posterior ? -f : max_log_posterior; 
+				perturbation.RandomNormal(); 
+				// Perturbation
+				for (int jj=0; jj<perturbation_iteration; jj++)
+				{
+					memcpy(x_plus_perturbation.vector, x, sizeof(double)*n); 
+					x_plus_perturbation += perturbation_scale * perturbation; 
+					log_posterior_after_perturbation = log_posterior_function(x_plus_perturbation.vector, n);
+					if (log_posterior_after_perturbation > log_posterior_before_perturbation)
+					{
+						memcpy(x, x_plus_perturbation.vector, sizeof(double)*n);
+						log_posterior_before_perturbation = log_posterior_after_perturbation; 
+					}	
+					perturbation = perturbation*0.5; 	
+				}
+				
+				// Optimization
+				npoptn_((char*)DERIVATIVE_LEVEL.c_str(), DERIVATIVE_LEVEL.length());
+                       	 	npoptn_((char*)NO_PRINT_OUT.c_str(), NO_PRINT_OUT.length());
+                        	npoptn_((char*)COLD_START.c_str(), COLD_START.length());
+                        	npoptn_((char*)HESSIAN.c_str(), HESSIAN.length()); 
+                        	npsol_(&n, &nclin, &ncnln, &ldA, &ldJ, &ldR, A, bl, bu, NULL, MinusLogPosterior_NPSOL::function, &inform, &iter, istate, c, cJac, clambda, &f, g, R, x, iw, &leniw, w, &lenw);
+				
+				if (ii==0 || -f > log_posterior_optimal)
+				{
+					log_posterior_optimal = -f; 
+					memcpy(peak.vector, x, sizeof(double)*n);
+                        		memcpy(hessian_cholesky.matrix, R, sizeof(double)*n*n); 
+                        		hessian_cholesky.column_major = true;
+				}
+			}
+			// Accept the optimal solution
+			if (log_posterior_optimal > MINUS_INFINITY)
+			{
 				nAccpt ++; 
-
 				// Mean 
-				TDenseVector peak(n,0.0); 
-				memcpy(peak.vector, x, sizeof(double)*n);
 				gm_mean.push_back(peak);  
 				// Hessian (inverse of covariance matrix)
-				TDenseMatrix hessian_cholesky(n,n,0.0); 
-				memcpy(hessian_cholesky.matrix, R, sizeof(double)*n*n); 
-				hessian_cholesky.column_major = true; 
 				TDenseMatrix hessian = Transpose(hessian_cholesky)*hessian_cholesky; 
 				hessian = 0.5*(hessian+Transpose(hessian)); 
 				TDenseMatrix eigenVector; 
