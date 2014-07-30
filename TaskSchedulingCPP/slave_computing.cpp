@@ -9,7 +9,6 @@
 #include "CSampleIDWeight.h"
 #include "mpi_parameter.h"
 #include "storage_parameter.h"
-#include "ReadWriteGaussianMixtureModelParameters.hpp"
 
 #include "slave_computing.h"
 
@@ -36,15 +35,13 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		}		
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
 		{
-			std::vector<TDenseVector> gm_mean; 
-			std::vector<TDenseMatrix> gm_covariance_sqrt;  
-			model.HillClimb_NPSOL(rPackage[LENGTH_INDEX], gm_mean, gm_covariance_sqrt, optimizationN, perturbationN, perturbationS);
+			model.HillClimb_NPSOL(rPackage[LENGTH_INDEX], optimizationN, perturbationN, perturbationS);
 			// Save gm_mean and gm_covariance_sqrt into files 
 			stringstream convert;
 			convert.str(string()); 
 			convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE << "." << my_rank; 
 			string gm_file = model.parameter->storage_dir + convert.str();  
-			if (!WriteGaussianMixtureModelParameters(gm_file, gm_mean, gm_covariance_sqrt))
+			if (!model.WriteGaussianMixtureModelParameters(gm_file))
 			{
 				cerr << "Error occurred while writing Gaussian mixture model parameters to " << gm_file << endl;
                                 abort();
@@ -53,7 +50,6 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		else if (status.MPI_TAG == GMM_SIMULATION_TAG)
 		{
 			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
-			model.storage->restore(model.energy_level);
 			group_index = (int)(rPackage[GROUP_INDEX]);
                         if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
                         {
@@ -67,12 +63,13 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
                         convert.str(string());
                         convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE; 
 			string gm_file = model.parameter->storage_dir + convert.str(); 
-			if (!ReadGaussianMixtureModelParameters(gm_file, gm_mean, gm_covariance_sqrt) )
+			if (!model.ReadGaussianMixtureModelParameters(gm_file) )
 			{
 				cerr << "Error occurred while reading Gaussian mixture model parameters from " << gm_file << endl; 
 				abort(); 
 			}
-			model.GMM_Simulation(rPackage[LENGTH_INDEX], gm_mean, gm_covariance_sqrt); 
+			model.GMM_Simulation(rPackage[LENGTH_INDEX]); 
+			model.storage->ClearStatus(model.energy_level); 
 			model.storage->finalize(model.energy_level);
         		model.storage->ClearDepositDrawHistory(model.energy_level);
 		}

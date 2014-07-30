@@ -33,6 +33,7 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 		// start points are either mode (when higher level is empty or k-means
 		// clustering is failed) or centers of the k-clusters obained through 
 		// k-means clustering
+		model.storage->ClearStatus(level+1); 
 		model.storage->RestoreForFetch(level+1); 
 		if (model.storage->empty(level+1) || !model.Initialize_MostDistant_WithinPercentile(nodeGroup.size(), level+1, start_points, 0.20) ) // !model.Initialize_KMeansClustering(nodeGroup.size(), level+1, start_points) )
 		{
@@ -92,13 +93,14 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 
 			// binning for the lower temperature-level's jump.  
 			// storage.binning(level, parameter.number_energy_level, -log(0.5)/(1.0/parameter.t[level-1]-1.0/parameter.t[level])); 
+			model.storage->ClearStatus(level); 
 			model.storage->binning_equal_size(level, model.parameter->number_energy_level); 
 			model.storage->finalize(level); 
 			model.storage->ClearDepositDrawHistory(level);
 		}
 
 		// to save space, remove level+1 samples
-		if (save_space_flag && level+2 <= model.parameter->highest_level)
+		if (save_space_flag && level+2 < model.parameter->highest_level-1 )
 			model.storage->ClearSample(level+2);  
 	}
 

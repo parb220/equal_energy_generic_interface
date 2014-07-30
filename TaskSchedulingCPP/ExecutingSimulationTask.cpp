@@ -13,6 +13,8 @@ using namespace std;
 bool ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergyModel &model, int my_rank, int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag)
 {
 	// restore partial storage (previously obtained at this node) for updating
+	model.storage->ClearStatus(model.energy_level); 
+	model.storage->ClearStatus(model.energy_level+1); 
 	model.storage->restore(model.energy_level); 
 	// Since the samples will be drawn from the higher level
 	// the higher level needs to be restored for fetch (for partial record file)
@@ -60,6 +62,7 @@ bool ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_
 		model.Simulation_Cross(if_storage, sample_file_name); 
 
 	// finalze and clear-up storage
+	model.storage->ClearStatus(model.energy_level); 
 	model.storage->finalize(model.energy_level); 
 	model.storage->ClearDepositDrawHistory(model.energy_level);
 	model.storage->ClearDepositDrawHistory(model.energy_level+1); 

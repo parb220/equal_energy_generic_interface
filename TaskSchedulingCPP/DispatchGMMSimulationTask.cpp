@@ -1,14 +1,12 @@
 #include <vector>
 #include <cmath>
 #include <mpi.h>
-#include <glob.h>
 #include <sstream>
 #include "CEquiEnergyModel.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
 #include "mpi_parameter.h"
 #include "storage_parameter.h"
-#include "ReadWriteGaussianMixtureModelParameters.hpp"
 
 using namespace std; 
 
@@ -47,8 +45,9 @@ void DispatchGMMSimulationTask(const vector<vector<int> > &nodeGroup, CEquiEnerg
 	delete [] rPackage;
  
 	// Consolidate partial storage files
+	model.storage->ClearStatus(model.parameter->number_energy_level);  
+	model.storage->consolidate(model.parameter->number_energy_level);
 	model.storage->binning_equal_size(model.parameter->number_energy_level, model.parameter->number_energy_level);
 	model.storage->finalize(model.parameter->number_energy_level); 
 	model.storage->ClearDepositDrawHistory(model.parameter->number_energy_level); 
-	// model.storage->consolidate(model.parameter->number_energy_level);
 }

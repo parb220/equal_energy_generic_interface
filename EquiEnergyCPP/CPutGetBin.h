@@ -10,6 +10,10 @@ using namespace std;
 
 class CPutGetBin					 
 {
+private: 
+	bool check_file_fetch_consolidate; 
+	std::vector<string> filename_fetch; 
+	std::vector<string> filename_consolidate; 
 protected:
 	int size_each_data;  
 	int suffix;  
@@ -23,15 +27,14 @@ protected:
 	vector <CSampleIDWeight> dataGet; 	// data for get 
 
 	string GetFileNameForDump() const; 
-	vector <string > GetFileNameForFetch() const; 
-	vector <string > GetFileNameForConsolidate() const; 
+	void GetFileNameForFetchConsolidate(); 
 	bool Dump(const string & =string()); 			// dump the current materials to file;
-	bool Fetch(const vector<string> &); 
+	bool Fetch(); 
  	bool ReadFromOneFile(const string &, int &, const vector<int> &index);
 	vector <CSampleIDWeight> ReadSampleFromFile(const string & ) const;  
 
 	int NumberRecord(const string &) const; 
-	bool LoadLeastWeightSample(const string &, CSampleIDWeight &) const; 
+	bool LoadLeastWeightSample(const string &, CSampleIDWeight &) const ; 
 	bool LoadMostWeightSample(const string &, CSampleIDWeight &) const; 
 	bool Load_K_LeastWeightSample(size_t, const string &, vector<CSampleIDWeight> &) const; 
 	bool Load_K_MostWeightSample(size_t, const string &, vector<CSampleIDWeight> &) const; 
@@ -50,21 +53,21 @@ public:
 	void SetCapacity (size_t _capacity) { capacity = _capacity; }
 	int GetCapacity() const { return capacity; }
 	
-	size_t GetNumberFileForFetch() const; 
+	size_t GetNumberFileForFetch() ; 
 	size_t GetNumberFileForDump() const; 
-	size_t GetNumberFileForConsolidate() const; 
+	size_t GetNumberFileForConsolidate() ; 
 	
 	void SetFileNamePrefix(const string &_grandPrefix) { filename_prefix = _grandPrefix; } 
 	string GetFileNamePrefix() const { return filename_prefix;}	
 
 	int DepositSample(const CSampleIDWeight &); 
 
-	bool DrawLeastWeightSample(CSampleIDWeight &) const;  
-	bool DrawMostWeightSample(CSampleIDWeight &) const; 
-	bool Draw_K_LeastWeightSample(size_t, vector<CSampleIDWeight> &) const; 
-	bool Draw_K_MostWeightSample(size_t, vector<CSampleIDWeight> &) const; 
+	bool DrawLeastWeightSample(CSampleIDWeight &);  
+	bool DrawMostWeightSample(CSampleIDWeight &); 
+	bool Draw_K_LeastWeightSample(size_t, vector<CSampleIDWeight> &); 
+	bool Draw_K_MostWeightSample(size_t, vector<CSampleIDWeight> &); 
 	bool DrawSample(CSampleIDWeight &); 
-	bool DrawAllSample(vector<CSampleIDWeight> &)const; 
+	bool DrawAllSample(vector<CSampleIDWeight> &); 
 
 	void finalize(); 	// save unsaved data
 	void consolidate(); 	// conslidate partial sample files into complete sample files
@@ -78,6 +81,13 @@ public:
 
 	/* to get the number of records in this bin */
 	size_t GetTotalNumberRecord() const; 
+	
+	/* Reset check_file_fetch_consolidate etc */
+	void ClearStatus() { 
+		check_file_fetch_consolidate = false; 
+		filename_fetch.clear(); 
+		filename_consolidate.clear(); 
+	}; 
 }; 
 
 #endif

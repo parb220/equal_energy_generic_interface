@@ -19,10 +19,21 @@ extern "C" {
 
 using namespace std;
 
-bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleIDWeight &y_initial) const
+bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleIDWeight &y_initial)
 {
+	if (energy_level == parameter->number_energy_level-1 && dw_uniform_rnd() <= parameter->pee && storage->DrawSample(energy_level+1, storage->BinIndex(energy_level+1,-y_initial.weight), y_end)  )
+	{
+		/*double log_ratio = GMM_LogRatio(y_initial, y_end); 
+		if (log_ratio > MINUS_INFINITY)
+		{
+			log_ratio += parameter->LogRatio_Level(-y_end.weight, -y_initial.weight, energy_level); 
+			if (log(dw_uniform_rnd()) <= log_ratio)
+				return true; 
+		}*/
+		return true; 
+	}
 	// draw x_new from bin of the higher level of the same energy; 
-	if (energy_level<parameter->number_energy_level-1 && dw_uniform_rnd() > parameter->pee && storage->DrawSample(energy_level+1, storage->BinIndex(energy_level+1,-y_initial.weight), y_end) ) // if a sample is successfully draw from bin
+	else if (energy_level<parameter->number_energy_level-1 && dw_uniform_rnd() <= parameter->pee && storage->DrawSample(energy_level+1, storage->BinIndex(energy_level+1,-y_initial.weight), y_end) ) // if a sample is successfully draw from bin
 	{
 		// calculate log_ratio in the current and the higher levels
 		double log_ratio = parameter->LogRatio_Level(-y_end.weight, -y_initial.weight, energy_level); 
@@ -171,10 +182,14 @@ double CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_
 }
 
 CEquiEnergyModel::CEquiEnergyModel() : 
+gmm_mean(vector<TDenseVector>(0)), gmm_covariance_sqrt(vector<TDenseMatrix>(0)), 
+gmm_covariance_sqrt_log_determinant(vector<double>(0)), gmm_covariance_sqrt_inverse(vector<TDenseMatrix>(0)), 
 if_bounded(true), energy_level(0), t_bound(1.0), current_sample(CSampleIDWeight()), timer_when_started(time(NULL)), metropolis(NULL), parameter(NULL), storage(NULL)
 {}
 
 CEquiEnergyModel::CEquiEnergyModel(bool _if_bounded, int eL, double _t, const CSampleIDWeight &_x, time_t _time, CMetropolis *_metropolis, CEESParameter *_parameter, CStorageHead *_storage) :
+gmm_mean(vector<TDenseVector>(0)), gmm_covariance_sqrt(vector<TDenseMatrix>(0)), 
+gmm_covariance_sqrt_log_determinant(vector<double>(0)), gmm_covariance_sqrt_inverse(vector<TDenseMatrix>(0)),
 if_bounded(_if_bounded), energy_level(eL), t_bound(_t), current_sample(_x), timer_when_started(_time), metropolis(_metropolis), parameter(_parameter), storage(_storage) 
 {
 }

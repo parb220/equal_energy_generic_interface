@@ -8,7 +8,6 @@
 #include "CStorageHead.h"
 #include "mpi_parameter.h"
 #include "storage_parameter.h"
-#include "ReadWriteGaussianMixtureModelParameters.hpp"
 
 using namespace std; 
 
@@ -61,25 +60,23 @@ void DispatchHillClimbTask(const vector<vector<int> > &nodeGroup, CEquiEnergyMod
 		rename(glob_result.gl_pathv[0], filename.c_str()); 
 	else 
 	{
-		std::vector<TDenseVector> gm_mean, gm_mean_per_file;
-		std::vector<TDenseMatrix> gm_covariance_sqrt, gm_covariance_sqrt_per_file;
+		model.ClearGaussianMixtureModelParameters(); 
 		for (int i=0; i<(int)glob_result.gl_pathc; i++)
 		{
-			if( !ReadGaussianMixtureModelParameters(string(glob_result.gl_pathv[i]), gm_mean_per_file, gm_covariance_sqrt_per_file) )
+			if( !model.AggregateGaussianMixtureModelParameters(string(glob_result.gl_pathv[i])) )
 			{
 				cerr << "Error occurred while reading Gaussian mixture model parameters from " << glob_result.gl_pathv[i] << endl; 
 				abort(); 
 			}
-			gm_mean.insert(gm_mean.begin(), gm_mean_per_file.begin(), gm_mean_per_file.end()); 
-			gm_covariance_sqrt.insert(gm_covariance_sqrt.begin(), gm_covariance_sqrt_per_file.begin(), gm_covariance_sqrt_per_file.end()); 
 			remove(glob_result.gl_pathv[i]);
 		}
-		if (!WriteGaussianMixtureModelParameters(filename, gm_mean, gm_covariance_sqrt))
+		if (!model.WriteGaussianMixtureModelParameters(filename))
 		{
 			cerr << "Error occurred while writing Gaussian mixture model parameters to " << filename << endl;
                		abort();
 		}
 	}
+	globfree(&glob_result);
 
 	// Consolidate partial storage files
 	// model.storage->consolidate(model.parameter->number_energy_level);

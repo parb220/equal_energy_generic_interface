@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <cstdlib>
 #include <cmath>
+#include <algorithm>
 
 #include "CSampleIDWeight.h"
 #include "CPutGetBin.h"
@@ -149,24 +150,31 @@ void CStorageHead::ClearSample(int level)
 		bin[level][j].DisregardHistorySamples(); 
 }
 
+bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSampleIDWeight &j)
+{
+	return -i.weight < -j.weight; 
+}
+
 size_t CStorageHead::binning_equal_size(int level, size_t bin_number)
 {
 	if (level >=(int)bin.size())
         {
-                cerr << "CStorageHead::binning_geometric() : level index exceeds the range.\n";
+                cerr << "CStorageHead::binning_equal_size() : level index exceeds the range.\n";
                 abort();
         }
 	if (bin[level].size() > 1)
         {
-                cerr << "CStorageHead::binning_geometric() : it seems that binning has been done before.\n";
+                cerr << "CStorageHead::binning_equal_size() : it seems that binning has been done before.\n";
                 abort();
         }	
         vector<CSampleIDWeight> sample;
         if (!DrawAllSample(level, sample) )
         {
-                cerr << "CStorageHead::binning_geometric() : error occurred when loading all samples.\n";
+                cerr << "CStorageHead::binning_equal_size() : error occurred when loading all samples.\n";
                 abort();
         }
+	sort(sample.begin(), sample.end(), compare_CSampleIDWeight_BasedOnEnergy); 
+	// ascending energy (equivalently, descending on weight)
 	int size_each_data = (int)sample[0].GetSize_Data(); 
         DisregardHistorySamples(level);
 
@@ -194,111 +202,7 @@ size_t CStorageHead::binning_equal_size(int level, size_t bin_number)
 	return bin[level].size(); 
 }
 
-size_t CStorageHead::binning_geometric(int level, size_t bin_number)
-{
-	if (level >=(int)bin.size())
-	{
-		cerr << "CStorageHead::binning_geometric() : level index exceeds the range.\n"; 
-		abort(); 
-	}
-	if (bin[level].size() > 1)
-	{
-		cerr << "CStorageHead::binning_geometric() : it seems that binning has been done before.\n";
-		abort(); 
-	}
-        vector<CSampleIDWeight> sample;
-        if (!DrawAllSample(level, sample) )
-        {
-                cerr << "CStorageHead::binning_geometric() : error occurred when loading all samples.\n";
-                abort();
-        }
-	int size_each_data = (int)sample[0].GetSize_Data(); 
-        DisregardHistorySamples(level);
-	
-	stringstream str, bin_id_string;
-        str << run_id << "/" << run_id << ".binary/";
-	bin[level].clear();
-	for (int i=0; i<(int)bin_number; i++)
-	{
-		bin_id_string.str(string());
-                bin_id_string << level << "." << i;
-                bin[level].push_back(CPutGetBin(size_each_data, bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));
-	}
-	double energy_min = -sample[0].weight, energy_max=-sample[sample.size()-1].weight;
-	// double energy_min = 1950, energy_max =1975; 
-	if (!Solve_Polynomial_Equation(energy_lower_bound[level], bin_number,energy_min,energy_max) ) 
-	{
-		cerr << "CStorageHead::binning_geometric() : polynomial equation cannot be solved.\n"; 
-		abort(); 
-	}
-	for(int i=0; i<(int)(sample.size()); i++)
-		DepositSample(level, BinIndex(level,-sample[i].weight), sample[i]); 
-	return bin_number; 
-}
-
-size_t CStorageHead::binning(int level, size_t bin_number_lb, double bin_width_ub)
-{
-	// (1) Before binning is carried out, bin[level] has only one bin containing all
-	// samples that have been drawn so far. 
-	if (level >= (int) bin.size())
-	{
-		cerr << "CStorageHead::binning() : level index exceeds the range.\n"; 
-		abort(); 
-	}
-	if (bin_width_ub <= 0)
-	{
-		cerr << "CStorageHead::binning() : upper-bound for the bin width has to be positive.\n"; 
-		abort(); 
-	}
-	if (bin[level].size() > 1)
-	{
-		cerr << "CStorageHead::binning() : it seems that binning has been done before.\n"; 
-		abort(); 
-	}
-	vector<CSampleIDWeight> sample; 
-	if (!DrawAllSample(level, sample) )
-	{
-		cerr << "CStorageHead::binning() : error occurred when loading all samples.\n"; 
-		abort(); 
-	}
-	int size_each_data = sample[0].GetSize_Data(); 
-	DisregardHistorySamples(level); 
-
-	stringstream str; 
-	str << run_id << "/" << run_id << ".binary/";
-	// number of bins has to be at least number of levels
-	size_t sBin_initial = (size_t)ceil((double)(sample.size())/(double)bin_number_lb);
-	
-	bin[level].clear(); // Get rid of bin[0] because all samples are now in sample
-	energy_lower_bound[level].clear(); 
-	int iSample=0, iBin=0; 
-	stringstream bin_id_string; 
-	while (iSample < (int)(sample.size()))
-	{
-		size_t sBin = iSample+sBin_initial<(int)(sample.size()) ? sBin_initial : (int)(sample.size())-iSample-1; 
-		// width of a bin = sample[iSample].weight - sample[iSample+sBin].weight
-		// bin width has to be less than or equal to bin_width_ub
-		while (sBin>1 && fabs(sample[iSample].weight-sample[iSample+sBin].weight) > bin_width_ub)
-			sBin = sBin/2; 
-	
-		// Now the bin boundary has been determined. 
-		// It is possible that sBin=1 ???????
-		energy_lower_bound[level].push_back(-sample[iSample].weight); 
-		bin_id_string.str(string()); 
-		bin_id_string << level << "." << iBin; 
-		bin[level].push_back(CPutGetBin(size_each_data, bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node)); 
-	
-		sBin = iSample+sBin == (int)(sample.size())-1 ? sBin+1 : sBin; 
-		for (int j=iSample; j<iSample+(int)sBin && j<(int)(sample.size()); j++)
-			bin[level][iBin].DepositSample(sample[j]); 
-
-		iSample += sBin; 
-		iBin++; 	
-	}
-	return bin[level].size(); 
-}
-
-bool CStorageHead::DrawLeastWeightSample(int level, int _bin_id, CSampleIDWeight &sample) const
+bool CStorageHead::DrawLeastWeightSample(int level, int _bin_id, CSampleIDWeight &sample) 
 {
 	if (level >= (int)bin.size() || _bin_id >=(int)bin[level].size() )
 	{
@@ -308,7 +212,7 @@ bool CStorageHead::DrawLeastWeightSample(int level, int _bin_id, CSampleIDWeight
 	return bin[level][_bin_id].DrawLeastWeightSample(sample); 
 }
 
-bool CStorageHead::Draw_K_LeastWeightSample(size_t K, int level, int _bin_id, vector<CSampleIDWeight> &sample) const
+bool CStorageHead::Draw_K_LeastWeightSample(size_t K, int level, int _bin_id, vector<CSampleIDWeight> &sample)
 {
 	if (level >= (int)bin.size() || _bin_id >= (int)bin[level].size() )
 	{
@@ -318,7 +222,7 @@ bool CStorageHead::Draw_K_LeastWeightSample(size_t K, int level, int _bin_id, ve
         return bin[level][_bin_id].Draw_K_LeastWeightSample(K, sample);
 }
 
-bool CStorageHead::DrawMostWeightSample(int level, int _bin_id, CSampleIDWeight &sample) const
+bool CStorageHead::DrawMostWeightSample(int level, int _bin_id, CSampleIDWeight &sample) 
 {
 	if (level >=(int)bin.size() || _bin_id >=(int)bin[level].size() )
 	{
@@ -328,7 +232,7 @@ bool CStorageHead::DrawMostWeightSample(int level, int _bin_id, CSampleIDWeight 
 	return bin[level][_bin_id].DrawMostWeightSample(sample); 
 }
 
-bool CStorageHead::Draw_K_MostWeightSample(size_t K, int level, int _bin_id, vector<CSampleIDWeight> &sample) const
+bool CStorageHead::Draw_K_MostWeightSample(size_t K, int level, int _bin_id, vector<CSampleIDWeight> &sample)
 {
 	if (level >=(int)bin.size() || _bin_id >= (int)bin[level].size() )
         {
@@ -350,7 +254,7 @@ bool CStorageHead::DrawSample(int level, int _bin_id, CSampleIDWeight &sample)
 	return bin[level][_bin_id].DrawSample(sample); 	
 }
 
-bool CStorageHead::DrawAllSample(int level, vector<CSampleIDWeight>&sample) const
+bool CStorageHead::DrawAllSample(int level, vector<CSampleIDWeight>&sample)
 {
 	if (level >= (int)bin.size())
 	{
@@ -412,3 +316,8 @@ void CStorageHead::RestoreForFetch(int level)
 		bin[level][j].RestoreForFetch(); 
 }
 
+void CStorageHead::ClearStatus(int level)
+{
+	for (int iBin=0; iBin<(int)(bin[level].size()); iBin++)
+		bin[level][iBin].ClearStatus(); 
+}

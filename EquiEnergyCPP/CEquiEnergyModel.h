@@ -43,6 +43,10 @@ class CEquiEnergyModel
 {
 private:
 	CEquiEnergyModel(const CEquiEnergyModel &);
+	std::vector<TDenseVector> gmm_mean; 
+	std::vector<TDenseMatrix> gmm_covariance_sqrt; 
+	std::vector<double> gmm_covariance_sqrt_log_determinant; 
+	std::vector<TDenseMatrix> gmm_covariance_sqrt_inverse; 
 
 public:
 ///////////////////////////////////////////////////////////////
@@ -90,7 +94,7 @@ public:
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // 	make a equi-energy jump
-	bool MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleIDWeight &y_initial) const; 
+	bool MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleIDWeight &y_initial); 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // IO 
@@ -108,10 +112,17 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////
 // HillClimb
 public: 
-	virtual double HillClimb_NPSOL(int nSolution, std::vector<TDenseVector> &, std::vector<TDenseMatrix> &, int =10, int =10, double = 1.0); 
+	virtual double HillClimb_NPSOL(int nSolution, int =10, int =10, double = 1.0); 
 	// virtual double HillClimb_CSMINWEL(int nSolution); 
 	virtual bool DrawParametersFromPrior(double *x) const = 0; 
-	double GMM_Simulation(int simulation_length, const std::vector<TDenseVector> &gm_mean, const std::vector<TDenseMatrix> &gm_covariance_sqrt);
+	double GMM_Simulation(int simulation_length);
+	bool GMM_DrawSample(CSampleIDWeight &y); 
+	double GMM_LogPDF(const CSampleIDWeight &x) const; 
+	double GMM_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const; 
+	bool WriteGaussianMixtureModelParameters(const string &file_name) const; 
+	bool ReadGaussianMixtureModelParameters(const string &file_name); 
+	bool AggregateGaussianMixtureModelParameters(const string &file_name);
+	void ClearGaussianMixtureModelParameters(); 
 
 friend class MinusLogPosterior_NPSOL; 
 // friend class MinusLogPosterior_CSMINWEL; 

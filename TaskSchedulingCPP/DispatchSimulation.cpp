@@ -99,6 +99,7 @@ void DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel 
 	delete [] rPackage;
 
 	// Consolidate partial storage files
+	model.storage->ClearStatus(level); 
 	model.storage->consolidate(level); 
 
 	// Consolidate variance file

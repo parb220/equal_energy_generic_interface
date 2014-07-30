@@ -35,16 +35,14 @@ public:
 	void ClearDepositDrawHistory(int level); 
 	void ClearSample(int level); 
 
-	size_t binning(int level, size_t bin_number_lb, double bin_width_ub); 
-	size_t binning_geometric(int level, size_t bin_number); 
 	size_t binning_equal_size(int level, size_t bin_number); 
 
-	bool DrawLeastWeightSample(int level, int bin_id, CSampleIDWeight &) const; 
-	bool Draw_K_LeastWeightSample(size_t, int level, int bin_id, vector<CSampleIDWeight> &) const; 
-	bool DrawMostWeightSample(int level, int bin_id, CSampleIDWeight &)const; 
-	bool Draw_K_MostWeightSample(size_t, int level, int bin_id, vector<CSampleIDWeight> &) const;
+	bool DrawLeastWeightSample(int level, int bin_id, CSampleIDWeight &); 
+	bool Draw_K_LeastWeightSample(size_t, int level, int bin_id, vector<CSampleIDWeight> &) ; 
+	bool DrawMostWeightSample(int level, int bin_id, CSampleIDWeight &); 
+	bool Draw_K_MostWeightSample(size_t, int level, int bin_id, vector<CSampleIDWeight> &) ;
 	bool DrawSample(int level, int bin_id, CSampleIDWeight &) ; 
-	bool DrawAllSample(int level, vector<CSampleIDWeight> &) const; 
+	bool DrawAllSample(int level, vector<CSampleIDWeight> &) ; 
 	
 	size_t GetNumberRecrod(int level, int index) const ;  
 
@@ -52,6 +50,9 @@ public:
 	void DisregardHistorySamples(int level); 
 	void RestoreForFetch(int level); 
 	bool empty(int level) const; 
+	
+	/* reset setting */
+	void ClearStatus(int ); 
 }; 
 
 #endif

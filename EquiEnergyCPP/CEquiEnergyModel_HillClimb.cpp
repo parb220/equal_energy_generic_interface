@@ -33,7 +33,7 @@ void *MinusLogPosterior_NPSOL::function(int *mode, int *n, double *x, double *f,
 // will be set as its original value. 
 // Samples generated during HillClimb will be saved into storage but always at the level of number_energy_level
 // (the extra level)
-double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, std::vector<TDenseVector> &gm_mean, std::vector<TDenseMatrix> &gm_covariance_sqrt, int optimization_iteration, int perturbation_iteration, double perturbation_scale)
+double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iteration, int perturbation_iteration, double perturbation_scale)
 {
 	// energy_level = parameter->number_energy_level; 
 	bool if_bounded_old = if_bounded; 
@@ -68,8 +68,8 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, std::vector<TDenseVector
 	double *bu = new double[nctotal]; // upper bounds for samples, A and cJac
 	for (int i=0; i<n; i++)
 	{
-		bl[i] = 0.0; 
-		bu[i] = 100.0; 
+		bl[i] = MINUS_INFINITY; 
+		bu[i] = PLUS_INFINITY; 
 	}
 	double *clambda = new double [nctotal]; // lagragin parameters of the constraints	
 	for (int i=0; i<nctotal; i++)
@@ -98,8 +98,10 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, std::vector<TDenseVector
 
 	int nAccpt = 0; 
 
-	gm_mean.clear(); 
-	gm_covariance_sqrt.clear();
+	gmm_mean.clear(); 
+	gmm_covariance_sqrt.clear();
+	gmm_covariance_sqrt_log_determinant.clear(); 
+	gmm_covariance_sqrt_inverse.clear(); 
  
 	double log_posterior_before_perturbation, log_posterior_after_perturbation, log_posterior_optimal; 
 	TDenseVector peak(n,0.0), perturbation(n,0.0), x_plus_perturbation(n,0.0);  
@@ -148,17 +150,30 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, std::vector<TDenseVector
 			{
 				nAccpt ++; 
 				// Mean 
-				gm_mean.push_back(peak);  
-				// Hessian (inverse of covariance matrix)
+				TDenseVector copy(peak.dim); 
+				copy.CopyContent(peak); 
+				gmm_mean.push_back(copy);  
+				// Hessian = inverse of covariance matrix
 				TDenseMatrix hessian = Transpose(hessian_cholesky)*hessian_cholesky; 
 				hessian = 0.5*(hessian+Transpose(hessian)); 
-				TDenseMatrix eigenVector; 
-				TDenseVector eigenValue; 
-				Eig(eigenValue, eigenVector, hessian); 
-				for (int i=0; i<eigenValue.dim; i++)
-					eigenValue[i] = sqrt(3.0/eigenValue[i]); // diffuse covariance matrix and take root
-				TDenseMatrix covariance_sqrt = eigenVector * DiagonalMatrix(eigenValue); 
-				gm_covariance_sqrt.push_back(covariance_sqrt); 
+				TDenseMatrix eVectorHessian; 
+				TDenseVector eValueHessian; 
+				Eig(eValueHessian, eVectorHessian, hessian);  
+				// hessian = eVectorHessian * DiagonalMatrix(eValueHessian) * eVectorHessian'
+				// covariance_matrix = eVectorHessian * Inverse(DiagonalMatrix(eValueHessian)) *eVectorHessian';
+			
+				TDenseVector diffusedEValue(eValueHessian.dim,0.0), diffusedEValueInverse(eValueHessian.dim,0.0); 
+				double covariance_sqrt_log_determinant = 0.0; 
+				for (int i=0; i<eValueHessian.dim; i++)
+				{
+					diffusedEValue[i] = sqrt(3.0/eValueHessian[i]); 
+					diffusedEValueInverse[i] = sqrt(eValueHessian[i]/3.0); 
+					covariance_sqrt_log_determinant += -0.5*log(eValueHessian[i]/3.0); 
+				}
+
+				gmm_covariance_sqrt.push_back(eVectorHessian*DiagonalMatrix(diffusedEValue)*Transpose(eVectorHessian)); 
+				gmm_covariance_sqrt_inverse.push_back(eVectorHessian*DiagonalMatrix(diffusedEValueInverse)*Transpose(eVectorHessian)); 
+				gmm_covariance_sqrt_log_determinant.push_back(covariance_sqrt_log_determinant); 
 			}
 		}
 	}	

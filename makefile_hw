@@ -89,7 +89,7 @@ MATRIX_OBJS = dw_dense_matrix.o #dw_utilities.o
 
 GENERIC_OBJS = CPutGetBin.o CSampleIDWeight.o solve_polynomial_equation.o CEESParameter.o CMetropolis.o CEquiEnergyModel.o dw_csminwel.o CEquiEnergyModel_HillClimb.o CEquiEnergyModel_GMMSimulation.o CEquiEnergy_TState.o CEquiEnergyModel_Initialize.o
 
-SCHEDULE_OBJS = DispatchSimulation.o DispatchHillClimbTask.o DispatchGMMSimulationTask.o DispatchTuneSimulation.o ExecutingTuningTask.o ExecutingSimulationTask.o GetCommunicationParameter.o master_deploying.o slave_computing.o ReadWriteGaussianMixtureModelParameters.o
+SCHEDULE_OBJS = DispatchSimulation.o DispatchHillClimbTask.o DispatchGMMSimulationTask.o DispatchTuneSimulation.o ExecutingTuningTask.o ExecutingSimulationTask.o GetCommunicationParameter.o master_deploying.o slave_computing.o 
 
 #TopDownTuningTrackingSimulation.o
 
