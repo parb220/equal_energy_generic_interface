@@ -7,7 +7,7 @@ void DispatchGMMSimulationTask(const vector<vector<int> > &nodeGroup, CEquiEnerg
 
 void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag = true);
 
-void DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, size_t simulation_length, int level, int tag);
+double DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, size_t simulation_length, int level, int tag);
 
 
 #endif

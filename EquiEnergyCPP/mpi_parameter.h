@@ -1,13 +1,19 @@
 #ifndef _MPI_PARAMETER_HEADER_
 #define _MPI_PARAMETER_HEADER_
 
-const size_t N_MESSAGE = 6; 
+const size_t N_MESSAGE = 12; 
 const int LENGTH_INDEX = 0; 
 const int LEVEL_INDEX = 1; 
 const int BURN_INDEX = 2; 
 const int thin_INDEX = 3;
 const int THIN_INDEX = 4; 
 const int GROUP_INDEX = 5; 
+const int PEE_INDEX = 6; 
+const int RETURN_INDEX_1 = 7; 
+const int RETURN_INDEX_2 = 8; 
+const int RETURN_INDEX_3 = 9; 
+const int RETURN_INDEX_4 = 10; 
+const int RETURN_INDEX_5 = 11; 
 
 const int BURN_IN_LENGTH = 5000; 
 const int SIMULATION_LENGTH = 50000; 

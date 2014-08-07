@@ -46,6 +46,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 				cerr << "Error occurred while writing Gaussian mixture model parameters to " << gm_file << endl;
                                 abort();
 			}
+			sPackage[RETURN_INDEX_1] = (double)(false); 
 		}
 		else if (status.MPI_TAG == GMM_SIMULATION_TAG)
 		{
@@ -57,8 +58,6 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
                                 abort();
                         }
 
-			std::vector<TDenseVector> gm_mean;
-                        std::vector<TDenseMatrix> gm_covariance_sqrt;
 			stringstream convert;
                         convert.str(string());
                         convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE; 
@@ -72,6 +71,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 			model.storage->ClearStatus(model.energy_level); 
 			model.storage->finalize(model.energy_level);
         		model.storage->ClearDepositDrawHistory(model.energy_level);
+			sPackage[RETURN_INDEX_1] = (double)(false); 
 		}
 		else if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION || status.MPI_TAG == TUNE_TAG_AFTER_SIMULATION) 
 		{
@@ -113,7 +113,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 			model.t_bound = model.parameter->t[model.energy_level];
 
 			if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST)
-				if_within = true; 
+				if_within = false; 
 			else 
 				if_within = false; 
 	
@@ -127,13 +127,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 			else 
 				if_storage = false; 	
 
-			bool simulation_flag = ExecutingSimulationTask(if_within, if_write_file, if_storage, model, my_rank, group_index, 100*n_initial, mode, status.MPI_TAG); 
-
-			if (!simulation_flag)
-			{
-				cerr << "ExecutingSimulationTask: Error in simulation.\n"; 
-				abort(); 
-			}
+			ExecutingSimulationTask(if_within, if_write_file, if_storage, model, my_rank, group_index, 100*n_initial, mode, status.MPI_TAG); 
 		}
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD); 
 	}

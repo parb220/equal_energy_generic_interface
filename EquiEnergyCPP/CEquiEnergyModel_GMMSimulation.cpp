@@ -53,14 +53,14 @@ double CEquiEnergyModel::GMM_LogPDF(const CSampleIDWeight &x) const
 		return MINUS_INFINITY; 
 	
 	TDenseVector rotatedError = gmm_covariance_sqrt_inverse[0] * (x.data-gmm_mean[0]); 
-	double log_element_1 = -1.0*gmm_covariance_sqrt_log_determinant[0]-0.5*InnerProduct(rotatedError, rotatedError); 
+	double log_element_1 = -x.data.dim*0.918938533204673-log((double)gmm_mean.size()) -1.0*gmm_covariance_sqrt_log_determinant[0]-0.5*InnerProduct(rotatedError, rotatedError); 
 	for (int i=1; i<(int)(gmm_mean.size()); i++)
 	{
 		rotatedError = gmm_covariance_sqrt_inverse[i] * (x.data - gmm_mean[i]); 
-		double log_element_2 = -1.0*gmm_covariance_sqrt_log_determinant[i] - 0.5*InnerProduct(rotatedError, rotatedError); 
+		double log_element_2 = -x.data.dim*0.918938533204673-log((double)gmm_mean.size())-1.0*gmm_covariance_sqrt_log_determinant[i] - 0.5*InnerProduct(rotatedError, rotatedError); 
 		log_element_1 = AddLogs(log_element_1, log_element_2); 	
 	}
-	return log_element_1; 
+	return log_element_1 ; 
 }
 
 double CEquiEnergyModel::GMM_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const

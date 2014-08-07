@@ -20,7 +20,6 @@ void DispatchGMMSimulationTask(const vector<vector<int> > &nodeGroup, CEquiEnerg
 
 	double *sPackage = new double [N_MESSAGE]; 
 	sPackage[LENGTH_INDEX] = simulationLengthPerNode; 
-	sPackage[BURN_INDEX] = 0; // irrelevant
 	sPackage[thin_INDEX] = model.parameter->thin;
         sPackage[THIN_INDEX] = model.parameter->THIN;
 	sPackage[LEVEL_INDEX] = model.parameter->number_energy_level ; 

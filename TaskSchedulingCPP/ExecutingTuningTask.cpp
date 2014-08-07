@@ -29,7 +29,6 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
        	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << model.energy_level << "." << group_index;
 	string block_file_name = model.parameter->storage_dir + convert.str();	
 	bool if_eejump=true; 
-	model.parameter->pee = model.parameter->pee/10; // jump rate in tuning
 	model.storage->ClearStatus(model.energy_level); 
 	model.storage->ClearStatus(model.energy_level+1); 
 	model.storage->restore(model.energy_level);
@@ -55,7 +54,6 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
                	abort();
                 }
 	}
-	model.parameter->pee = model.parameter->pee*10; // recover
 	return true; 
 }
 
@@ -83,7 +81,6 @@ bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEqui
         convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_level << "." << group_index;	
 	string sample_file_name = model.parameter->storage_dir + convert.str();
 	bool if_eejump=true;
-	model.parameter->pee = model.parameter->pee/10; // jump rate in tuning
 	model.storage->ClearStatus(model.energy_level); 
 	model.storage->ClearStatus(model.energy_level+1); 
 	model.storage->restore(model.energy_level);
@@ -94,6 +91,5 @@ bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEqui
 		cerr << "CMetroplis::AdaptiveAfterSimulation() : Error in reading " << sample_file_name << " or writing " << block_file_name << endl;
 		abort();
 	}
-	model.parameter->pee = model.parameter->pee * 10; // recover
 	return true; 
 }

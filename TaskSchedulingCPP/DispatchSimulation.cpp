@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include "dw_math.h"
 #include "CEquiEnergyModel.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
@@ -68,6 +69,7 @@ void DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel 
 	sPackage[thin_INDEX] = model.parameter->thin; 
 	sPackage[THIN_INDEX] = model.parameter->THIN;
        	sPackage[LEVEL_INDEX] = level;
+	sPackage[PEE_INDEX] = model.parameter->pee; 
 
 	size_t nNode=0; 
 	for (int m=0; m<nodeGroup.size(); m++)
@@ -90,7 +92,7 @@ void DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel 
 	delete [] sPackage;
 
 	MPI_Status status;
-	double *rPackage = new double [N_MESSAGE];
+	double *rPackage = new double [N_MESSAGE]; 
 	for (int i=0; i<nodeGroup.size(); i++)
 	{
 		for (int j=0; j<nodeGroup[i].size(); j++)

@@ -10,7 +10,7 @@
 
 using namespace std; 
 
-bool ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergyModel &model, int my_rank, int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag)
+void ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergyModel &model, int my_rank, int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag)
 {
 	// restore partial storage (previously obtained at this node) for updating
 	model.storage->ClearStatus(model.energy_level); 
@@ -54,7 +54,7 @@ bool ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_
 	}
 	else 
 		sample_file_name = string(); 
-	
+
 	// simulation 
 	if (if_within)
 		model.Simulation_Within(if_storage, sample_file_name); 
@@ -67,5 +67,4 @@ bool ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_
 	model.storage->ClearDepositDrawHistory(model.energy_level);
 	model.storage->ClearDepositDrawHistory(model.energy_level+1); 
 
-	return true; 
 }

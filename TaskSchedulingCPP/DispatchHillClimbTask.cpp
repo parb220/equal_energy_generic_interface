@@ -21,9 +21,6 @@ void DispatchHillClimbTask(const vector<vector<int> > &nodeGroup, CEquiEnergyMod
 
 	double *sPackage = new double [N_MESSAGE]; 
 	sPackage[LENGTH_INDEX] = nFeasibleSolutionPerNode; 
-	sPackage[BURN_INDEX] = 0; // irrelevant
-	sPackage[thin_INDEX] = 0; // irrelevant
-	sPackage[THIN_INDEX] = 0; // irrelevant
 	sPackage[LEVEL_INDEX] = model.parameter->number_energy_level ; 
 
 	for (int i=0; i<(int)nodeGroup.size(); i++)

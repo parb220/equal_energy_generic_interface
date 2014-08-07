@@ -89,8 +89,8 @@ public:
 	bool Initialize_MostDistant_WithinPercentileBand(int K, int level_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
 	bool InitializeFromFile(const string &file_name); 
 
-	double Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy level (no jumping across levels). Returns the maximum posterior during simulation
-	double Simulation_Cross(bool if_storage, const string &sample_file_name=string()); 	// Simulation across levels. Returns the maximum posterior during simulation 	
+	void Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy level (no jumping across levels). Returns the maximum posterior during simulation
+	void Simulation_Cross(bool if_storage, const string &sample_file_name=string()); 	// Simulation across levels. Returns the maximum posterior during simulation 	
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // 	make a equi-energy jump

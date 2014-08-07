@@ -31,11 +31,11 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(int K, int level_
 		return true; 
 	}
 	// 1st starter, the best sample so far
-	starters[0] = samples[0]; 
+	starters[0] = samples[dw_uniform_int(K)]; 
 	// k-th starter, the most distant to starters(0..k-1) 
 	double most_distance, distance; 
 	TDenseVector e; 
-	for (int ii=1; ii<K; ii++)
+	for (int ii=0; ii<K; ii++)
 	{
 		// examining all the samples
 		for(int jj=0; jj<(int)(samples.size()); jj++)
@@ -84,12 +84,12 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentileBand(int K, int le
 		return true; 
 	}
 	// 1st starter, the best sample so far
-	starters[0] = samples[0]; 
+	starters[0] = samples[dw_uniform_int(K)]; 
 	// k-th starter, the most distant to starters(0..k-1) within the range [being_index, end_index)
 	int begin_index=1, end_index; 
 	double most_distance, distance; 
 	TDenseVector e; 
-	for (int ii=1; ii<K; ii++)
+	for (int ii=0; ii<K; ii++)
 	{
 		end_index=(int)samples.size()*ii/K; 
 		// examining the samples within the range [being_index, end_index)

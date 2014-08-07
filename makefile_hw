@@ -65,18 +65,21 @@ TASK_SCHEDULING_INCLUDE_DIR = $(EQUAL_ENERGY_DIR)/TaskSchedulingCPP
 EXAMPLE_DIR = $(EQUAL_ENERGY_DIR)/ExampleCPP
 EXAMPLE_INCLUDE_DIR = $(EQUAL_ENERGY_DIR)/ExampleCPP
 
+MDD_DIR = $(HOME)/DW_TZ_GIT/projects_dw/time-series/mdd
+MDD_INCLUDE_DIR = $(HOME)/DW_TZ_GIT/projects_dw/time-series/mdd
+
 #################################################################################
 # Building
 
 BUILD_DIR = $(EQUAL_ENERGY_DIR)/build
 EXE_DIR = $(EQUAL_ENERGY_DIR)/data
 
-INCLUDE_DIR := $(INCLUDE_DIR) -I$(ALGLIB) -I$(EQUAL_ENERGY_INCLUDE_DIR) -I$(TASK_SCHEDULING_INCLUDE_DIR) -I$(EXAMPLE_INCLUDE_DIR)
+INCLUDE_DIR := $(INCLUDE_DIR) -I$(ALGLIB) -I$(EQUAL_ENERGY_INCLUDE_DIR) -I$(TASK_SCHEDULING_INCLUDE_DIR) -I$(EXAMPLE_INCLUDE_DIR) -I$(MDD_INCLUDE_DIR)
 
-VPATH := $(VPATH) $(ALGLIB) $(EQUAL_ENERGY_CPP_DIR) $(BUILD_DIR) $(TASK_SCHEDULING_DIR) $(EXAMPLE_DIR) 
+VPATH := $(VPATH) $(ALGLIB) $(EQUAL_ENERGY_CPP_DIR) $(BUILD_DIR) $(TASK_SCHEDULING_DIR) $(EXAMPLE_DIR) $(MDD_INCLUDE_DIR)
 
 # DW FILES #########################################################################
-DW_OBJS = dw_switch.o dw_switchio.o dw_dirichlet_restrictions.o dw_metropolis_theta.o dw_switch_opt.o dw_MSStateSpace.o dw_metropolis_simulation.o dw_state_space_impulse_response.o dw_state_space_forecast.o dw_state_space_historical_decomposition.o dw_mdd_switch.o  dw_state_space_command_line_output.o dw_state_space_variance_decomposition.o dw_state_space_counterfactual.o
+DW_OBJS = dw_switch.o dw_switchio.o dw_dirichlet_restrictions.o dw_metropolis_theta.o dw_switch_opt.o dw_MSStateSpace.o dw_metropolis_simulation.o dw_state_space_impulse_response.o dw_state_space_forecast.o dw_state_space_historical_decomposition.o dw_state_space_command_line_output.o dw_state_space_variance_decomposition.o dw_state_space_counterfactual.o dw_mdd_switch.o 
 
 # TZ FILES #########################################################################
 TZ_OBJS = tzmatlab.o fn_filesetup.o rand.o mathlib.o cstz.o kalman.o csminwel.o optpackage.o gensys.o
@@ -85,11 +88,13 @@ TZ_OBJS = tzmatlab.o fn_filesetup.o rand.o mathlib.o cstz.o kalman.o csminwel.o 
 ALGLIB_OBJS = ap.o alglibinternal.o linalg.o dataanalysis.o optimization.o alglibmisc.o solvers.o statistics.o specialfunctions.o
 
 # MATRIX FILES #####################################################################
-MATRIX_OBJS = dw_dense_matrix.o #dw_utilities.o
+MATRIX_OBJS = dw_dense_matrix.o dw_matrix.o  #dw_utilities.o
 
 GENERIC_OBJS = CPutGetBin.o CSampleIDWeight.o solve_polynomial_equation.o CEESParameter.o CMetropolis.o CEquiEnergyModel.o dw_csminwel.o CEquiEnergyModel_HillClimb.o CEquiEnergyModel_GMMSimulation.o CEquiEnergy_TState.o CEquiEnergyModel_Initialize.o
 
-SCHEDULE_OBJS = DispatchSimulation.o DispatchHillClimbTask.o DispatchGMMSimulationTask.o DispatchTuneSimulation.o ExecutingTuningTask.o ExecutingSimulationTask.o GetCommunicationParameter.o master_deploying.o slave_computing.o 
+SCHEDULE_OBJS = DispatchSimulation.o DispatchHillClimbTask.o DispatchGMMSimulationTask.o DispatchTuneSimulation.o ExecutingTuningTask.o ExecutingSimulationTask.o GetCommunicationParameter.o master_deploying.o slave_computing.o  EstimateLogMDD.o
+
+MDD_OBJS = mdd_function.o
 
 #TopDownTuningTrackingSimulation.o
 
@@ -97,7 +102,7 @@ EXAMPLE_OBJS = dsgelinv1_benchmark.o dw_dsgelinv1.o dsgelinv1_comfuns.o dsgelinv
 #################################################################################
 all : $(EXE_DIR)/credit_friction2_benchmark $(EXE_DIR)/binary2text $(EXE_DIR)/text2binary $(EXE_DIR)/posterior_likelihood_sample_2_binary_EE
 
-OBJS1 := $(OBJS) $(DW_OBJS) $(TZ_OBJS) $(ALGLIB_OBJS) $(MATRIX_OBJS) $(GENERIC_OBJS) $(SCHEDULE_OBJS) $(EXAMPLE_OBJS) 
+OBJS1 := $(OBJS) $(DW_OBJS) $(TZ_OBJS) $(ALGLIB_OBJS) $(MATRIX_OBJS) $(GENERIC_OBJS) $(SCHEDULE_OBJS) $(MDD_OBJS) $(EXAMPLE_OBJS)
 OBJS2 := $(OBJS) $(MATRIX_OBJS) CSampleIDWeight.o binary2text.o
 OBJS3 := $(OBJS) $(MATRIX_OBJS) CSampleIDWeight.o text2binary.o
 OBJS4 := $(OBJS) $(MATRIX_OBJS) CSampleIDWeight.o posterior_likelihood_sample_2_binary_EE.o
