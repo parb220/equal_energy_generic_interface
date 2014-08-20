@@ -166,9 +166,9 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 				double covariance_sqrt_log_determinant = 0.0; 
 				for (int i=0; i<eValueHessian.dim; i++)
 				{
-					diffusedEValue[i] = sqrt(3.0/eValueHessian[i]); 
-					diffusedEValueInverse[i] = sqrt(eValueHessian[i]/3.0); 
-					covariance_sqrt_log_determinant += -0.5*log(eValueHessian[i]/3.0); 
+					diffusedEValue[i] = sqrt(1000.0/eValueHessian[i]); 
+					diffusedEValueInverse[i] = sqrt(eValueHessian[i]/1000.0); 
+					covariance_sqrt_log_determinant += -0.5*log(eValueHessian[i]/1000.0); 
 				}
 
 				gmm_covariance_sqrt.push_back(eVectorHessian*DiagonalMatrix(diffusedEValue)*Transpose(eVectorHessian)); 

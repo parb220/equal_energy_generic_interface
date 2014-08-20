@@ -105,14 +105,26 @@ bool CEESParameter::WriteSummaryFile(string file_name) const
 	return true; 
 }
 
-bool CEESParameter::SetTemperature()
+bool CEESParameter::SetTemperature(bool if_additional)
 {
         /*
  *  *     T[i] = T[i-1]+gamma^i
  *   *     gamma is determined by solving a polynomial equation 
  *    *     gamma+gamma^2+...+gamma^{K-1} = T[K-1]-T[0]; 
  *     *     */
-	return Solve_Polynomial_Equation(t, number_energy_level+1, t0, tk_1); 
+	if (!if_additional)
+		return Solve_Polynomial_Equation(t, number_energy_level+1, t0, tk_1); // t[0]=t0, t[1], ..., t[number_energy_level-1]=tk_1, t[number_energy_level] 
+	else 
+	{
+		// Solve_Polynomial_Equation(t, number_energy_level+2, t0, tk_1); // t[0]=t0, t[1], ..., t[number_energy_level]=tk_1, t[number_energy_level+1] 
+		// t.erase(t.end()-1); // remove t[number_energy_level+1], so now we have t[0]=t0, t[1], ..., t[number_energy_level]=tk_1
+		t.resize(number_energy_level+1); 
+		t[0] = t0; 
+		t[number_energy_level] = tk_1; 
+		for (int i=1; i<number_energy_level; i++) 
+			t[i] = t[0] + (t[number_energy_level]-t[0])*i/(double)number_energy_level; 
+	}
+
 	/*t.resize(number_energy_level+1);  
 	if (number_energy_level == 1)
 	{

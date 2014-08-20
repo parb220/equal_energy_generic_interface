@@ -42,7 +42,7 @@ public:
 	bool DrawMostWeightSample(int level, int bin_id, CSampleIDWeight &); 
 	bool Draw_K_MostWeightSample(size_t, int level, int bin_id, vector<CSampleIDWeight> &) ;
 	bool DrawSample(int level, int bin_id, CSampleIDWeight &) ; 
-	bool DrawAllSample(int level, vector<CSampleIDWeight> &) ; 
+	bool DrawAllSample(int level, vector<CSampleIDWeight> &, bool unstructured=false, int data_size=1) ; 
 	
 	size_t GetNumberRecrod(int level, int index) const ;  
 

@@ -1,16 +1,40 @@
 #include <sstream>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <errno.h>
 #include <cstdlib>
 #include <cmath>
 #include <algorithm>
+#include <glob.h>
 
 #include "CSampleIDWeight.h"
 #include "CPutGetBin.h"
 #include "CStorageHead.h"
 
 using namespace std;
+
+vector <CSampleIDWeight> ReadSampleFromFile(const string &file_name, int size_each_data) 
+{
+        struct stat file_status;
+        stat(file_name.c_str(), &file_status);
+        int lenFile = file_status.st_size;
+        int nRecord = lenFile/size_each_data;
+
+        if (nRecord <= 0)
+                return vector<CSampleIDWeight>(0);
+
+        fstream iFile;
+        iFile.open(file_name.c_str(), ios::in|ios::binary);
+        if (!iFile)
+		return vector<CSampleIDWeight>(0);
+	
+	vector <CSampleIDWeight> sample(nRecord);
+        for(int n=0; n<nRecord; n++)
+                read(iFile, &(sample[n]));
+	iFile.close();
+	return sample;
+}
 
 CStorageHead::CStorageHead(int size_each_data, int _node_index, const string & _run_id, size_t _storage_marker, string _file_location, size_t _number_level) : cluster_node(_node_index), run_id(_run_id), storage_marker(_storage_marker), filename_base(_file_location), bin(vector<vector<CPutGetBin> >(_number_level+1)), energy_lower_bound(vector<vector<double> >(_number_level+1)) 
 {
@@ -254,17 +278,36 @@ bool CStorageHead::DrawSample(int level, int _bin_id, CSampleIDWeight &sample)
 	return bin[level][_bin_id].DrawSample(sample); 	
 }
 
-bool CStorageHead::DrawAllSample(int level, vector<CSampleIDWeight>&sample)
+bool CStorageHead::DrawAllSample(int level, vector<CSampleIDWeight>&sample, bool unstructured, int data_size)
 {
 	if (level >= (int)bin.size())
 	{
 		cerr << "CStorageHead::DrawAllSample : level index exceeds the range.\n"; 
 		abort(); 
 	}
-	for (int ii=0; ii<(int)(bin[level].size()); ii++)
+	if (unstructured)
 	{
-		if (!bin[level][ii].DrawAllSample(sample))		
-			return false; 
+		stringstream convert; 
+        	convert << run_id << "/" << run_id << ".binary/" << level << ".*.record"; 
+		string filename_pattern = filename_base+convert.str(); 
+		
+		glob_t glob_result;
+        	glob(filename_pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
+		vector<CSampleIDWeight> sample_block;
+        	for (int i=0; i<(int)glob_result.gl_pathc; i++)
+		{
+			sample_block = ReadSampleFromFile(string(glob_result.gl_pathv[i]), data_size); 
+			sample.insert(sample.end(), sample_block.begin(), sample_block.end()); 
+		}
+		globfree(&glob_result); 
+	}
+	else 
+	{
+		for (int ii=0; ii<(int)(bin[level].size()); ii++)
+		{
+			if (!bin[level][ii].DrawAllSample(sample))		
+				return false; 
+		}
 	}
 	return true; 
 }

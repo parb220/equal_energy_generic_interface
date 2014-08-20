@@ -54,6 +54,12 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
                	abort();
                 }
 	}
+
+	model.storage->ClearStatus(model.energy_level);
+	model.storage->ClearStatus(model.energy_level+1); 
+        model.storage->finalize(model.energy_level);
+        model.storage->ClearDepositDrawHistory(model.energy_level);
+        model.storage->ClearDepositDrawHistory(model.energy_level+1);
 	return true; 
 }
 
@@ -91,5 +97,10 @@ bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEqui
 		cerr << "CMetroplis::AdaptiveAfterSimulation() : Error in reading " << sample_file_name << " or writing " << block_file_name << endl;
 		abort();
 	}
+	model.storage->ClearStatus(model.energy_level);
+        model.storage->ClearStatus(model.energy_level+1);
+        model.storage->finalize(model.energy_level);
+        model.storage->ClearDepositDrawHistory(model.energy_level);
+        model.storage->ClearDepositDrawHistory(model.energy_level+1);
 	return true; 
 }

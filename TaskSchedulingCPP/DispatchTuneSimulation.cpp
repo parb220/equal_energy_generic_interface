@@ -9,13 +9,16 @@
 #include "storage_parameter.h"
 #include "mpi_parameter.h"
 #include "dw_matrix.h"
+#include "mdd.hpp"
 #include "mdd_function.h"
 
 using namespace std; 
 
 void DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, size_t simulation_length, int level, int message_tag); 
 
-// void EstimateLogMDD(CEquiEnergyModel &model, int level, double logMDD_previous_bridge, double logMDD_previous_mueller, double &logMDD_bridge, double &logMDD_mueller); 
+double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level, double logMDD_previous); 
+
+double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type); 
 
 void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
 {
@@ -26,13 +29,7 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 
 	// start point for tuning
 	vector<CSampleIDWeight> start_points(nodeGroup.size());  
-	// logMDD
-	vector<CSampleIDWeight> proposal, posterior;
-
-	TMatrix proposal_value=(TMatrix)NULL; // CreateMatrix(proposal.size(), 2);
-        TMatrix posterior_value=(TMatrix)NULL; //CreateMatrix(posterior.size(), 2);
-
-	vector<double>logMDD_bridge(model.parameter->number_energy_level, 0.0), logMDD_mueller(model.parameter->number_energy_level, 0.0); 
+	vector<double> logMDD(model.parameter->number_energy_level, 0.0); 
 	for (int level=model.parameter->highest_level; level>=model.parameter->lowest_level; level--)
 	{
 		sPackage[LEVEL_INDEX] = level; 
@@ -40,26 +37,14 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 		sPackage[THIN_INDEX] = model.parameter->THIN; 
 		sPackage[PEE_INDEX] = model.parameter->pee/10; 
 
-		// Tune before simulation 
-		// start points are either mode (when higher level is empty or k-means
-		// clustering is failed) or centers of the k-clusters obained through 
-		// k-means clustering
-		/*if (model.energy_level == model.parameter->number_energy_level-1)
+		model.storage->ClearStatus(level+1); 
+		model.storage->RestoreForFetch(level+1); 
+		if (model.storage->empty(level+1) || !model.Initialize_MostDistant_WithinPercentile(nodeGroup.size(), level+1, start_points, 0.30) ) // !model.Initialize_KMeansClustering(nodeGroup.size(), level+1, start_points) )
 		{
 			for (int i=0; i<(int)(nodeGroup.size()); i++)
 				start_points[i] = mode; 
-		}
-		else */
-		{		
-			model.storage->ClearStatus(level+1); 
-			model.storage->RestoreForFetch(level+1); 
-			if (model.storage->empty(level+1) || !model.Initialize_MostDistant_WithinPercentile(nodeGroup.size(), level+1, start_points, 0.30) ) // !model.Initialize_KMeansClustering(nodeGroup.size(), level+1, start_points) )
-			{
-				for (int i=0; i<(int)(nodeGroup.size()); i++)
-					start_points[i] = mode; 
-			} 
-			model.storage->ClearDepositDrawHistory(level+1); 
-		}
+		} 
+		model.storage->ClearDepositDrawHistory(level+1); 
 
 		stringstream convert; 
 		string start_point_file; 
@@ -104,50 +89,11 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 		// simualtion
 		cout << "Simulation at " << level << " for " << model.parameter->simulation_length << endl; 
 		DispatchSimulation(nodeGroup, model, model.parameter->simulation_length, level, SIMULATION_TAG);
-		// LogMDD
-		if (level == model.parameter->number_energy_level-1)
-		{
-			if (!model.storage->DrawAllSample(level+1, proposal)) 
-			{
-				cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
-                		abort();
-			}
-			proposal_value = CreateMatrix(proposal.size(), 2);	
-			convert.str(string());
-                	convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE;
-                	string gm_file = model.parameter->storage_dir + convert.str();
-                	if (!model.ReadGaussianMixtureModelParameters(gm_file) )
-                	{
-                        	cerr << "Error occurred while reading Gaussian mixture model parameters from " << gm_file << endl;
-                        	abort();
-                	}
-			for (int i=0; i<(int)proposal.size(); i++)
-                        	ElementM(proposal_value, i, 0) =  model.GMM_LogPDF(proposal[i]);
-
-		}
-		if (!model.storage->DrawAllSample(level, posterior))
-		{
-			cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
-                        abort();
-		}
-		posterior_value = CreateMatrix(posterior.size(), 2); 
-		for (int i=1; i<(int)posterior.size(); i++)
-                        ElementM(posterior_value, i, 0) = model.GMM_LogPDF(posterior[i]);
-		for(int i=0; i<(int)proposal.size(); i++)
-                	ElementM(proposal_value, i, 1) = proposal[i].weight/model.parameter->t[level];		
-		for(int i=0; i<(int)posterior.size(); i++)
-                	ElementM(posterior_value, i, 1) = posterior[i].weight/model.parameter->t[level];
-		logMDD_bridge[level] = ComputeLogMarginalDensity_Bridge(proposal_value, posterior_value);
-		int in_P1, in_P2;
-        	logMDD_mueller[level] = ComputeLogMarginalDensity_Mueller(proposal_value, posterior_value, &in_P1, &in_P2);
-		FreeMatrix(posterior_value); 
-		posterior.clear();
-			
-		//	EstimateLogMDD(model, level, 0.0, 0.0, logMDD_bridge[level], logMDD_mueller[level]); 
-		//else
-		//	EstimateLogMDD(model, level, logMDD_bridge[level+1], logMDD_mueller[level+1], logMDD_bridge[level], logMDD_mueller[level]);
-		cout << "logMDD at " << level << " by bridge method is " << logMDD_bridge[level] << endl; 
-		cout << "lgoMDD at " << level << " by mueller method is " << logMDD_mueller[level] << endl;  
+		
+		if (level == model.parameter->highest_level)	
+			logMDD[level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER); 
+		else 
+			logMDD[level] = EstimateLogMDD(model, level, level+1, logMDD[level+1]); 
 	
 		// simualtion for the not-group-specific covariance of the lower temp level
 		if (level > 0)

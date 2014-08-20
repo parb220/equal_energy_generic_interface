@@ -31,8 +31,8 @@ protected:
 	bool Dump(const string & =string()); 			// dump the current materials to file;
 	bool Fetch(); 
  	bool ReadFromOneFile(const string &, int &, const vector<int> &index);
-	vector <CSampleIDWeight> ReadSampleFromFile(const string & ) const;  
 
+	vector <CSampleIDWeight> ReadSampleFromFile(const string &file_name) const; 
 	int NumberRecord(const string &) const; 
 	bool LoadLeastWeightSample(const string &, CSampleIDWeight &) const ; 
 	bool LoadMostWeightSample(const string &, CSampleIDWeight &) const; 

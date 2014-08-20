@@ -26,7 +26,7 @@ void master_deploying(int nNode, int nHillClimb, int nInitial, CEquiEnergyModel 
         if (nHillClimb )
 	{
 		DispatchHillClimbTask(nodeGroup, model, nHillClimb);
-		DispatchGMMSimulationTask(nodeGroup, model, 10*nHillClimb > 2000 ? 10*nHillClimb : 2000); 
+		DispatchGMMSimulationTask(nodeGroup, model, 100*nHillClimb > 20000 ? 100*nHillClimb : 20000); 
 	}
 
 	// Simulation
