@@ -34,7 +34,8 @@ bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleI
 		return true; 
 	}
 	// draw x_new from bin of the higher level of the same energy; 
-	else*/ if (energy_level<parameter->number_energy_level-1 && dw_uniform_rnd() <= parameter->pee && storage->DrawSample(energy_level+1, storage->BinIndex(energy_level+1,-y_initial.weight), y_end) ) // if a sample is successfully draw from bin
+	else if (energy_level<parameter->number_energy_level-1 && */ 
+	if(dw_uniform_rnd() <= parameter->pee && storage->DrawSample(energy_level+1, storage->BinIndex(energy_level+1,-y_initial.weight), y_end) ) // if a sample is successfully draw from bin
 	{
 		// calculate log_ratio in the current and the higher levels
 		double log_ratio = parameter->LogRatio_Level(-y_end.weight, -y_initial.weight, energy_level); 

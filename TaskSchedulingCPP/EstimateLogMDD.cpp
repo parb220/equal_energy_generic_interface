@@ -1,5 +1,6 @@
 #include <sstream>
 #include <string>
+#include <algorithm>
 #include "CEquiEnergyModel.h"
 #include "CSampleIDWeight.h"
 #include "CStorageHead.h"
@@ -17,6 +18,11 @@ double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level, do
 double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type);
 double EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level); 
 
+vector<double>EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type, int nGroup); 
+vector<double>EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level, int nGroup);
+ 
+double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, int level, int proposal_type); 
+double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, int level); 
 TMatrix CreateProposalMatrix(int ndraws, CEquiEnergyModel &model, const TElliptical *elliptical); 
 TMatrix CreatePosteriorMatrix(const vector<CSampleIDWeight> &sample, const TElliptical *elliptical);
 TMatrix CreateGaussianProposalMatrix(int ndraws, CEquiEnergyModel &model, const TDenseVector &center, const TDenseMatrix &scale);
@@ -252,7 +258,11 @@ double EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level)
                 cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
                 abort();
         }
-	
+	return LogMDD_gaussian(posterior, model, level); 
+}
+
+double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, int level)
+{	
 	TDenseVector center(posterior[0].data.dim, 0.0);
         TDenseMatrix scale(posterior[0].data.dim, posterior[0].data.dim, 0.0);
         if(!GetCenterScaleFromSample(posterior, center, scale))
@@ -289,7 +299,11 @@ double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type)
                 cerr << "EstimateLogMDD:: error occurred when loading all samples.\n"; 
                 abort();
         }
+	return LogMDD(posterior, model, level, proposal_type); 
+}
 
+double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, int level, int proposal_type)
+{
 	TDenseVector center(posterior[0].data.dim, 0.0); 
 	TDenseMatrix scale(posterior[0].data.dim, posterior[0].data.dim, 0.0); 
 	if(!GetCenterScaleFromSample(posterior, center, scale))
@@ -340,7 +354,7 @@ double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type)
 
 	// TMatrix proposal_matrix=CreateProposalMatrix(posterior.size(), model, elliptical); 
 	// TMatrix posterior_matrix=CreatePosteriorMatrix(posterior, elliptical); 
-	TMatrix proposal_matrix=CreateProposalMatrix(posterior.size(), model, model.parameter->t[level], elliptical); 
+	TMatrix proposal_matrix=CreateProposalMatrix((int)posterior.size(), model, model.parameter->t[level], elliptical); 
 	TMatrix posterior_matrix=CreatePosteriorMatrix(posterior, model.parameter->t[level], elliptical); 
 
 	if (!proposal_matrix || !posterior_matrix)
@@ -408,66 +422,63 @@ double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level,  d
 	return logMDD; 
 }
 
-/*
-double ComputeLogMDD_Bridge(const TDenseMatrix &proposal, const TDenseMatrix &posterior)
+bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSampleIDWeight &j); 
+vector<double>EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type, int nGroup)
 {
-	double min_c, max_c, mid_c=0.0, diff;
+	vector<CSampleIDWeight> posterior; 
+	bool unstructured = true;
+        int data_size = model.current_sample.GetSize_Data();
+	if(!model.storage->DrawAllSample(level, posterior, unstructured, data_size))
+        {
+                cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
+                abort();
+        }
+	sort(posterior.begin(), posterior.end(), compare_CSampleIDWeight_BasedOnEnergy);
+	random_shuffle(posterior.begin(), posterior.end()); 
 
-	// Bracket the zero
-	if ((diff=BridgeDifference(proposal,posterior,mid_c)) < 0.0)
-    	{
-      	max_c=mid_c;
-      	for (min_c=-1.0; min_c > MINUS_INFINITY; max_c=min_c, min_c*=10)
-        	if ((diff=BridgeDifference(proposal,posterior,min_c)) > 0)
-			break;
-      	if (min_c <= MINUS_INFINITY) 
-		return min_c;
-    	}
-  	else
-    	{
-      		min_c=mid_c;
-      		for (max_c=1.0; max_c < PLUS_INFINITY; min_c=max_c, max_c*=10)
-        		if ((diff=BridgeDifference(proposal,posterior,max_c)) < 0)
-				break;
-      		if (max_c >= PLUS_INFINITY) 
-			return max_c;
-    	}
+	int group_size = ceil((double)posterior.size()/(double)nGroup); 
+	int begin_index = 0, end_index = group_size; 
+	vector<CSampleIDWeight> group_sample; 
+	vector<double> logMDD(nGroup, 0.0); 
+	for (int i=0; i<nGroup; i++)
+	{
+		group_sample.clear(); 
+		for (int j=begin_index; j<end_index; j++)
+			group_sample.push_back(posterior[j]); 
+		logMDD[i] = LogMDD(group_sample, model, level, proposal_type); 
+		begin_index = end_index; 
+		end_index = end_index + group_size < (int)(posterior.size()) ? end_index + group_size : (int)(posterior.size()); 
+	}
 
-	// Divide and conququer
-	diff=BridgeDifference(proposal,posterior,mid_c=(min_c + max_c)/2.0);
-  	for (int i=0; i < 300; i++)
-    	{
-      		if (diff > 0)
-        		min_c=mid_c;
-      		else
-        		max_c=mid_c;
-      		if ((fabs(diff=BridgeDifference(proposal,posterior,mid_c=(min_c + max_c)/2.0)) < SQRT_MACHINE_EPSILON)) 
-			break;
-    	}
-  	return mid_c;
+	return logMDD; 
 }
 
-double BridgeDifference(const TDenseMatrix &proposal, const TDenseMatrix &posterior, double logr)
-{	
-	double x, sum1=MINUS_INFINITY, sum2=MINUS_INFINITY; 
- 	int n1=posterior.rows, n2=proposal.rows;
+vector<double>EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level, int nGroup)
+{
+	vector<CSampleIDWeight> posterior;
+        bool unstructured = true;
+        int data_size = model.current_sample.GetSize_Data();
+        if(!model.storage->DrawAllSample(level, posterior, unstructured, data_size))
+        {
+                cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
+                abort();
+        }
+        sort(posterior.begin(), posterior.end(), compare_CSampleIDWeight_BasedOnEnergy);
+	random_shuffle(posterior.begin(), posterior.end()); 
 
-	double r = (double)n2/(double)n1; 
-  	for (int i=n2-1; i >= 0; i--)
-    		if ((x=proposal(i,0)+logr-proposal(i,1)) < 0)
-      			sum2=AddLogs(sum2,-log(1+r*exp(x)));
-    		else
-      			sum2=AddLogs(sum2,-x-log(exp(-x)+r));
-
-	r=(double)n1/(double)n2; 
-  	for (int i=n1-1; i >= 0; i--)
-    		if ((x=posterior(i,1)-posterior(i,0)-logr) < 0)
-      			sum1=AddLogs(sum1,-log(1+r*exp(x)));
-    		else
-      			sum1=AddLogs(sum1,-x-log(exp(-x)+r));
-
-  	return sum2 - sum1;
+        int group_size = ceil((double)posterior.size()/(double)nGroup);
+        int begin_index = 0, end_index = group_size;
+        vector<CSampleIDWeight> group_sample;
+        vector<double> logMDD(nGroup, 0.0);
+        for (int i=0; i<nGroup; i++)
+        {
+                group_sample.clear();
+                for (int j=begin_index; j<end_index; j++)
+                        group_sample.push_back(posterior[j]);
+                logMDD[i] = LogMDD_gaussian(group_sample, model, level);
+                begin_index = end_index;
+                end_index = end_index + group_size < (int)(posterior.size()) ? end_index + group_size : (int)(posterior.size());
+        }
+        return logMDD;
 }
-*/
-
 

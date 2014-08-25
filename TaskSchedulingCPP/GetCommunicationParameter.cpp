@@ -9,7 +9,7 @@ bool GetCommunicationParameter(const double *rPackage, size_t package_size, CEES
 	parameter->THIN = (size_t)(rPackage[THIN_INDEX]); 
 	parameter->pee = rPackage[PEE_INDEX]; 
 
-        parameter->SetTemperature();
+        // parameter->SetTemperature();
 	return true; 
 }
 

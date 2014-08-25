@@ -105,65 +105,38 @@ bool CEESParameter::WriteSummaryFile(string file_name) const
 	return true; 
 }
 
-bool CEESParameter::SetTemperature(bool if_additional)
+bool CEESParameter::SetTemperature(int nGeometricLevel, int nFinerLevel)
 {
-        /*
- *  *     T[i] = T[i-1]+gamma^i
- *   *     gamma is determined by solving a polynomial equation 
- *    *     gamma+gamma^2+...+gamma^{K-1} = T[K-1]-T[0]; 
- *     *     */
-	if (!if_additional)
-		return Solve_Polynomial_Equation(t, number_energy_level+1, t0, tk_1); // t[0]=t0, t[1], ..., t[number_energy_level-1]=tk_1, t[number_energy_level] 
-	else 
+	number_energy_level = nGeometricLevel + nFinerLevel + 1; 
+	
+	if (number_energy_level == 0) // nGeometricLevel == 0 && nFinerLevel == 0
+		return false; 
+	
+	t.resize(number_energy_level+1); 
+	if (nGeometricLevel) // nGeometricLevel != 0
 	{
-		// Solve_Polynomial_Equation(t, number_energy_level+2, t0, tk_1); // t[0]=t0, t[1], ..., t[number_energy_level]=tk_1, t[number_energy_level+1] 
-		// t.erase(t.end()-1); // remove t[number_energy_level+1], so now we have t[0]=t0, t[1], ..., t[number_energy_level]=tk_1
-		t.resize(number_energy_level+1); 
-		t[0] = t0; 
-		t[number_energy_level] = tk_1; 
-		for (int i=1; i<number_energy_level; i++) 
-			t[i] = t[0] + (t[number_energy_level]-t[0])*i/(double)number_energy_level; 
+		vector<double> geometric_t(nGeometricLevel+1, 0.0); 
+		Solve_Polynomial_Equation(geometric_t, nGeometricLevel+1, t0, tk_1); 
+		
+		vector<double> finer_t(nFinerLevel, 0.0); 
+		for (int i=0; i<nFinerLevel; i++)
+			finer_t[i] = geometric_t[0] + (geometric_t[1]-geometric_t[0])*(double)(i+1.0)/(double)(nFinerLevel+1.0); 
+
+		t[0] = geometric_t[0]; 
+		for (int i=0; i<nFinerLevel; i++)
+			t[i+1] = finer_t[i]; 
+		for (int i=1; i<=nGeometricLevel; i++)
+			t[nFinerLevel+i] = geometric_t[i]; 
 	}
-
-	/*t.resize(number_energy_level+1);  
-	if (number_energy_level == 1)
+	else // nGeometricLevel == 0 && nFinerLevel != 0
 	{
-		t[number_energy_level] = t[0] = t0; 
-		return true; 
-	}
-	else 
-	{
-		double *coefficients = new double [number_energy_level];
-        	coefficients[0] = t0-tk_1;
-        	for (int i=1; i<number_energy_level; i++)
-                	coefficients[i]=1.0;
-        	double *Z = new double [(number_energy_level-1)*2];
-
-        	gsl_poly_complex_workspace *w = gsl_poly_complex_workspace_alloc(number_energy_level);
-        	gsl_poly_complex_solve(coefficients, number_energy_level, w, Z);
-
-        	double gamma;
-        	bool continue_flag = true;
-        	for (int i=0; i<number_energy_level-1 && continue_flag; i++)
-        	{
-                	if (Z[2*i]>0 && abs(Z[2*i+1]) <= 1.0e-6)
-                	{
-                        	gamma = Z[2*i];
-                        	continue_flag = false;
-                	}
-        	}
-        	delete [] Z;
-        	delete [] coefficients;
-        	if (continue_flag)
-                	return false;
-
 		t[0] = t0; 
-		t[number_energy_level-1] = tk_1; 
-		for (int i=1; i<number_energy_level-1; i++)
-			t[i] = t[i-1]+pow(gamma, (double)i);
-		t[number_energy_level] = t[number_energy_level-1]+pow(gamma, (double)number_energy_level);  
-		return true; 
-	}*/
+		t[nFinerLevel-1] = tk_1; 
+		for (int i=1; i<nFinerLevel-1; i++)
+			t[i] = t[0] + (t[nFinerLevel-1]-t[0])*(double)i/(double)(nFinerLevel-1.0); 
+		t[nFinerLevel] = t[nFinerLevel-1] + (t[nFinerLevel-1]-t[0])/(double)(nFinerLevel-1.0); 
+	} 
+	return true; 
 }
 
 double CEESParameter::LogRatio_Level(double original_energy_x, double original_energy_y, int level) const
