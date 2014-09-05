@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 #include "CSampleIDWeight.h"
 #include "CEquiEnergyModel.h"
 #include "storage_parameter.h"
@@ -105,10 +106,13 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 		for (int j=level+1; j<(int)(logMDD[level].size()); j++)
 			logMDD[level][j] = EstimateLogMDD(model, level, level+1, logMDD[level+1][j]); 
 
+		cout << setprecision(20) << endl; 
 		cout << "logMDD at " << level << endl; 
 		for (int j=level; j<(int)(logMDD[level].size()); j++)
 			cout << logMDD[level][j] << "\t"; 
 		cout << endl; 
+
+		
 
 		// to save space, remove level+1 samples
 		if (save_space_flag && level+2 < model.parameter->highest_level-1 )
