@@ -1,0 +1,158 @@
+# -*- Makefile -*- 
+# Generic makefile for IMSL, MKL, blas/lapack, and FORTRAN libraries
+# Generic makefile Tao's and Daniel's C routines 
+# Generic makefile for various machines
+
+# MACHINE
+USE_WORK_64_DW=USE_WORK_64_DW
+
+# LIBRARIES SUPPORTED
+#USE_TZ = USE_TZ
+USE_DW = USE_DW
+  USE_DW_MATRIX_CPP = USE_DW_MATRIX_CPP
+  #USE_DW_MATRIX = USE_DW_MATRIX
+  #USE_DW_ERROR = USE_DW_ERROR
+  #USE_DW_ARRAY = USE_DW_ARRAY
+  #USE_DW_ASCII = USE_DW_ASCII
+  #USE_DW_STAT = USE_DW_STAT
+  #USE_DW_SORT = USE_DW_SORT
+  #USE_DW_ELLIPTICAL = USE_DW_ELLIPTICAL
+  #USE_DW_HISTO = USE_DW_HISTO
+  #USE_DW_MATH = USE_DW_MATH
+  #USE_DW_SWITCH = USE_DW_SWITCH
+  #USE_DW_STATE_SPACE = USE_DW_STATE_SPACE
+USE_MKL = USE_MKL
+USE_NPSOL = USE_NPSOL 
+USE_FORTRAN = USE_FORTRAN
+#USE_ATLAS = USE_ATLAS
+#USE_IMSL = USE_IMSL
+#USE_LAPACK = USE_LAPACK
+#USE_FORTRAN = USE_FORTRAN
+#USE_PTHREAD = USE_PTHREAD
+USE_MATH = USE_MATH
+USE_GSL = USE_GSL
+#USE_GSL_CBLAS = USE_GSL_CBLAS
+#USE_BOOST = USE_BOOST
+#USE_MYSQL_CPP_CONN = USE_MYSQL_CPP_CONN
+#USE_LOG4CXX = USE_LOG4CXX
+
+BASE_DIR = $(HOME)/git
+
+CC = g++ #mpicc #gcc
+CFLAGS = -g -Wall
+
+MAKEFILE_DIR = $(BASE_DIR)/projects_dw
+
+include $(MAKEFILE_DIR)/make_machines_master
+include $(MAKEFILE_DIR)/make_libraries_master
+
+NPSOL_LIB = $(HOME)/npsol/Linux-x86_64/optimized/lib
+LIBS_DIR := $(LIBS_DIR) -L$(NPSOL_LIB) 
+LIBS := $(LIBS) -lnpsol_f77 -llssol_f77 -lgfortran
+LIBS := $(LIBS) -lstdc++ -lpthread 
+LIBS := $(LIBS) -lmpich -lopa -lmpl -lrt #MPI-related
+
+#################################################################################
+# PROJECT PATHS
+ALGLIB = $(HOME)/alglib/alglib-3.8.2/cpp/src
+
+EQUAL_ENERGY_DIR = $(BASE_DIR)/equal_energy_generic_interface
+EQUAL_ENERGY_CPP_DIR = $(EQUAL_ENERGY_DIR)/EquiEnergyCPP
+EQUAL_ENERGY_INCLUDE_DIR = $(EQUAL_ENERGY_DIR)/EquiEnergyCPP
+
+TASK_SCHEDULING_DIR = $(EQUAL_ENERGY_DIR)/TaskSchedulingCPP
+TASK_SCHEDULING_INCLUDE_DIR = $(EQUAL_ENERGY_DIR)/TaskSchedulingCPP
+
+EXAMPLE_DIR = $(EQUAL_ENERGY_DIR)/ExampleCPP
+EXAMPLE_INCLUDE_DIR = $(EQUAL_ENERGY_DIR)/ExampleCPP
+
+#MDD_DIR = $(HOME)/DW_TZ_GIT/projects_dw/time-series/mdd
+#MDD_INCLUDE_DIR = $(HOME)/DW_TZ_GIT/projects_dw/time-series/mdd
+
+#################################################################################
+# Building
+
+BUILD_DIR = $(BASE_DIR)/projects_dw/work/sbvar/build
+EXE_DIR = $(BASE_DIR)/projects_dw/work/sbvar
+
+INCLUDE_DIR := $(INCLUDE_DIR) -I$(ALGLIB) -I$(EQUAL_ENERGY_INCLUDE_DIR) -I$(TASK_SCHEDULING_INCLUDE_DIR) -I$(EXAMPLE_INCLUDE_DIR) -I$(MDD_INCLUDE_DIR)
+
+VPATH := $(VPATH) $(ALGLIB) $(EQUAL_ENERGY_CPP_DIR) $(BUILD_DIR) $(TASK_SCHEDULING_DIR) $(EXAMPLE_DIR) $(MDD_INCLUDE_DIR)
+
+# DW FILES #########################################################################
+DW_OBJS = dw_switch.o dw_switchio.o dw_dirichlet_restrictions.o dw_metropolis_theta.o dw_switch_opt.o dw_MSStateSpace.o dw_metropolis_simulation.o dw_state_space_impulse_response.o dw_state_space_forecast.o dw_state_space_historical_decomposition.o dw_state_space_command_line_output.o dw_state_space_variance_decomposition.o dw_state_space_counterfactual.o dw_mdd_switch.o 
+
+# TZ FILES #########################################################################
+TZ_OBJS = tzmatlab.o fn_filesetup.o rand.o mathlib.o cstz.o kalman.o csminwel.o optpackage.o gensys.o
+
+# ALGLIB ###########################################################################
+ALGLIB_OBJS = ap.o alglibinternal.o linalg.o dataanalysis.o optimization.o alglibmisc.o solvers.o statistics.o specialfunctions.o
+
+# MATRIX FILES #####################################################################
+MATRIX_OBJS = dw_dense_matrix.o #dw_matrix.o  #dw_utilities.o
+
+GENERIC_OBJS = CPutGetBin.o CSampleIDWeight.o solve_polynomial_equation.o CEESParameter.o CMetropolis.o CEquiEnergyModel.o dw_csminwel.o CEquiEnergyModel_HillClimb.o CEquiEnergyModel_GMMSimulation.o CEquiEnergy_TState.o CEquiEnergyModel_Initialize.o
+
+SCHEDULE_OBJS = DispatchSimulation.o DispatchHillClimbTask.o DispatchGMMSimulationTask.o DispatchTuneSimulation.o ExecutingTuningTask.o ExecutingSimulationTask.o GetCommunicationParameter.o master_deploying.o slave_computing.o  EstimateLogMDD.o
+
+MDD_OBJS = mdd_function.o
+
+#TopDownTuningTrackingSimulation.o
+
+EXAMPLE_OBJS = dsgelinv1_benchmark.o dw_dsgelinv1.o dsgelinv1_comfuns.o dsgelinv1_estmcmc.o 
+#################################################################################
+#all : $(EXE_DIR)/credit_friction2_benchmark $(EXE_DIR)/binary2text $(EXE_DIR)/text2binary $(EXE_DIR)/posterior_likelihood_sample_2_binary_EE
+all : $(EXE_DIR)/binary2text
+
+#OBJS1 := $(OBJS) $(DW_OBJS) $(TZ_OBJS) $(ALGLIB_OBJS) $(MATRIX_OBJS) $(GENERIC_OBJS) $(SCHEDULE_OBJS) $(MDD_OBJS) $(EXAMPLE_OBJS)
+OBJS2 := binary2text.o CSampleIDWeight.o $(OBJS) 
+#OBJS3 := $(OBJS) $(MATRIX_OBJS) CSampleIDWeight.o text2binary.o
+#OBJS4 := $(OBJS) $(MATRIX_OBJS) CSampleIDWeight.o posterior_likelihood_sample_2_binary_EE.o
+
+#CMSSM_APP :  $(EXE_DIR)/est_all_mpi
+# $(EXE_DIR)/est_all
+
+$(EXE_DIR)/credit_friction2_benchmark: $(OBJS1) $(BUILD_DIR)/CStorageHead.o
+	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/credit_friction2_benchmark
+
+$(EXE_DIR)/binary2text: $(OBJS2)
+	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/binary2text
+
+$(EXE_DIR)/text2binary: $(OBJS3)
+	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/text2binary
+
+$(EXE_DIR)/posterior_likelihood_sample_2_binary_EE: $(OBJS4)
+	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/posterior_likelihood_sample_2_binary_EE
+
+$(BUILD_DIR)/CStorageHead.o : $(EQUAL_ENERGY_CPP_DIR)/CStorageHead.cpp
+	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $@
+
+$(BUILD_DIR)/text2binary.o : $(EQUAL_ENERGY_CPP_DIR)/text2binary.cpp
+	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $@
+
+$(BUILD_DIR)/posterior_likelihood_sample_2_binary_EE.o : $(EQUAL_ENERGY_CPP_DIR)/posterior_likelihood_sample_2_binary_EE.cpp
+	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $@
+
+%.o : %.c
+	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $(BUILD_DIR)/$@
+%.o : %.cpp
+	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $(BUILD_DIR)/$@
+
+#################################################################################
+clean:
+	rm -f $(EXE_DIR)/*.o
+	rm -f $(BUILD_DIR)/*.o
+	rm -f $(BUILD_DIR)/*.[0-9]
+#
+#################################################################################
+display:
+	echo "EXE_DIR: $(EXE_DIR)"
+	echo "BUILD_DIR: $(BUILD_DIR)"
+	echo "VPATH: $(VPATH)"
+	echo "INCLUDE_DIR: $(INCLUDE_DIR)"
+	echo "LIBS_DIR: $(LIBS_DIR)"
+	echo "LIBS: $(LIBS)"
+	echo "OBJS2: $(OBJS2)"
+	echo "OBJS: $(OBJS)"
+	echo "MATRIX_OBJS: $(MATRIX_OBJS)"
+	echo $(CFLAGS)
