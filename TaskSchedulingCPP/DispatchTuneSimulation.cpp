@@ -16,9 +16,8 @@ using namespace std;
 
 void DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, size_t simulation_length, int level, int message_tag); 
 
-double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level, double logMDD_previous); 
-
-double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type); 
+double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level, double logMDD_previous);
+double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type);
 
 void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
 {
@@ -28,8 +27,8 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 	size_t estimation_length; 
 
 	// start point for tuning
-	vector<CSampleIDWeight> start_points(nodeGroup.size());  
-	vector<double> logMDD(model.parameter->number_energy_level, 0.0); 
+	vector<CSampleIDWeight> start_points(nodeGroup.size()); 
+	vector<vector<double> > logMDD(model.parameter->number_energy_level, vector<double>(model.parameter->number_energy_level, 0.0)); 
 	for (int level=model.parameter->highest_level; level>=model.parameter->lowest_level; level--)
 	{
 		sPackage[LEVEL_INDEX] = level; 
@@ -90,24 +89,26 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 		cout << "Simulation at " << level << " for " << model.parameter->simulation_length << endl; 
 		DispatchSimulation(nodeGroup, model, model.parameter->simulation_length, level, SIMULATION_TAG);
 		
-		if (level == model.parameter->highest_level)	
-			logMDD[level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER); 
-		else 
-			logMDD[level] = EstimateLogMDD(model, level, level+1, logMDD[level+1]); 
-	
 		// simualtion for the not-group-specific covariance of the lower temp level
-		if (level > 0)
-		{
-			estimation_length = 5000;
-			DispatchSimulation(nodeGroup, model, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
+		estimation_length = 5000;
+		DispatchSimulation(nodeGroup, model, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
 
-			// binning for the lower temperature-level's jump.  
-			// storage.binning(level, parameter.number_energy_level, -log(0.5)/(1.0/parameter.t[level-1]-1.0/parameter.t[level])); 
-			model.storage->ClearStatus(level); 
-			model.storage->binning_equal_size(level, model.parameter->number_energy_level); 
-			model.storage->finalize(level); 
-			model.storage->ClearDepositDrawHistory(level);
-		}
+		// binning for the lower temperature-level's jump.  
+		// storage.binning(level, parameter.number_energy_level, -log(0.5)/(1.0/parameter.t[level-1]-1.0/parameter.t[level])); 
+		model.storage->ClearStatus(level); 
+		model.storage->binning_equal_size(level, model.parameter->number_energy_level); 
+		model.storage->finalize(level); 
+		model.storage->ClearDepositDrawHistory(level);
+
+		// logMDD
+	        logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);
+		for (int j=level+1; j<(int)(logMDD[level].size()); j++)
+			logMDD[level][j] = EstimateLogMDD(model, level, level+1, logMDD[level+1][j]); 
+
+		cout << "logMDD at " << level << endl; 
+		for (int j=level; j<(int)(logMDD[level].size()); j++)
+			cout << logMDD[level][j] << "\t"; 
+		cout << endl; 
 
 		// to save space, remove level+1 samples
 		if (save_space_flag && level+2 < model.parameter->highest_level-1 )
