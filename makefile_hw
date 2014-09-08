@@ -100,18 +100,20 @@ MDD_OBJS = mdd_function.o
 
 EXAMPLE_OBJS = dsgelinv1_benchmark.o dw_dsgelinv1.o dsgelinv1_comfuns.o dsgelinv1_estmcmc.o 
 #################################################################################
-all : $(EXE_DIR)/credit_friction2_benchmark $(EXE_DIR)/binary2text $(EXE_DIR)/text2binary $(EXE_DIR)/posterior_likelihood_sample_2_binary_EE
+all :  $(EXE_DIR)/binary2text $(EXE_DIR)/text2binary $(EXE_DIR)/posterior_likelihood_sample_2_binary_EE $(EXE_DIR)/block_binary2text #$(EXE_DIR)/credit_friction2_benchmark 
 
 OBJS1 := $(OBJS) $(DW_OBJS) $(TZ_OBJS) $(ALGLIB_OBJS) $(MATRIX_OBJS) $(GENERIC_OBJS) $(SCHEDULE_OBJS) $(MDD_OBJS) $(EXAMPLE_OBJS)
 OBJS2 := $(OBJS) $(MATRIX_OBJS) CSampleIDWeight.o binary2text.o
 OBJS3 := $(OBJS) $(MATRIX_OBJS) CSampleIDWeight.o text2binary.o
 OBJS4 := $(OBJS) $(MATRIX_OBJS) CSampleIDWeight.o posterior_likelihood_sample_2_binary_EE.o
+OBJS5 := $(OBJS) $(MATRIX_OBS) dw_dense_matrix.o block_binary2text.o 
+
 
 #CMSSM_APP :  $(EXE_DIR)/est_all_mpi
 # $(EXE_DIR)/est_all
 
-$(EXE_DIR)/credit_friction2_benchmark: $(OBJS1) $(BUILD_DIR)/CStorageHead.o
-	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/credit_friction2_benchmark
+#$(EXE_DIR)/credit_friction2_benchmark: $(OBJS1) $(BUILD_DIR)/CStorageHead.o
+#	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/credit_friction2_benchmark
 
 $(EXE_DIR)/binary2text: $(OBJS2)
 	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/binary2text
@@ -122,6 +124,9 @@ $(EXE_DIR)/text2binary: $(OBJS3)
 $(EXE_DIR)/posterior_likelihood_sample_2_binary_EE: $(OBJS4)
 	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/posterior_likelihood_sample_2_binary_EE
 
+$(EXE_DIR)/block_binary2text: $(OBJS5)
+	$(CC) $(CFLAGS) $^ $(LIBS_DIR) $(LIBS) -o $(EXE_DIR)/block_binary2text
+
 $(BUILD_DIR)/CStorageHead.o : $(EQUAL_ENERGY_CPP_DIR)/CStorageHead.cpp
 	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $@
 
@@ -130,6 +135,10 @@ $(BUILD_DIR)/text2binary.o : $(EQUAL_ENERGY_CPP_DIR)/text2binary.cpp
 
 $(BUILD_DIR)/posterior_likelihood_sample_2_binary_EE.o : $(EQUAL_ENERGY_CPP_DIR)/posterior_likelihood_sample_2_binary_EE.cpp
 	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $@
+
+$(BUILD_DIR)/block_binary2text.o : $(EQUAL_ENERGY_CPP_DIR)/block_binary2text.cpp
+	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $@
+
 
 %.o : %.c
 	$(CC) $(CFLAGS) $(INCLUDE_DIR) -c $< -o $(BUILD_DIR)/$@
