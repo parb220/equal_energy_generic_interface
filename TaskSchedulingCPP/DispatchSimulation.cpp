@@ -72,7 +72,7 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t
        	sPackage[LEVEL_INDEX] = level;
 	sPackage[PEE_INDEX] = model.parameter->pee; 
 
-	size_t simulation_length_per_node = (size_t)ceil((double)simulation_length/(double)(nInitial*nNode-1)); 
+	size_t simulation_length_per_node = (size_t)ceil((double)simulation_length/(double)(nInitial*(nNode-1))); 
 	MPI_Status status;
 	for (int iInitial=0; iInitial<nInitial; iInitial++)
 	{
