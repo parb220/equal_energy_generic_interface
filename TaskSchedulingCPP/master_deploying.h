@@ -1,13 +1,13 @@
 #ifndef _MASTER_DEPLOY_HEADER_
 #define _MASTER_DEPLOY_HEADER_
 
-void DispatchHillClimbTask(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, int number_hill_climb);
+void DispatchHillClimbTask(int nNode, CEquiEnergyModel &model, int number_hill_climb);
 
-void DispatchGMMSimulationTask(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, int simulation_length); 
+void DispatchGMMSimulationTask(int nNode, CEquiEnergyModel &model, int simulation_length); 
 
-void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag = true);
+void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model, const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag = true);
 
-double DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, size_t simulation_length, int level, int tag);
+double DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t simulation_length, int level, int tag);
 
 
 #endif

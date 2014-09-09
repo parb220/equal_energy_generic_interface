@@ -15,12 +15,12 @@
 
 using namespace std; 
 
-void DispatchSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, size_t simulation_length, int level, int message_tag); 
+void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t simulation_length, int level, int message_tag); 
 
 double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level, double logMDD_previous);
 double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type);
 
-void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
+void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
 {
 	double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];  
 	MPI_Status status; 
@@ -28,22 +28,25 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 	size_t estimation_length; 
 
 	// start point for tuning
-	vector<CSampleIDWeight> start_points(nodeGroup.size()); 
+	vector<CSampleIDWeight> start_points(nInitial); 
 	vector<vector<double> > logMDD(model.parameter->number_energy_level, vector<double>(model.parameter->number_energy_level, 0.0)); 
 	for (int level=model.parameter->highest_level; level>=model.parameter->lowest_level; level--)
 	{
 		sPackage[LEVEL_INDEX] = level; 
 		sPackage[thin_INDEX] = model.parameter->thin; 
 		sPackage[THIN_INDEX] = model.parameter->THIN; 
-		sPackage[PEE_INDEX] = model.parameter->pee/10; 
+		sPackage[PEE_INDEX] = model.parameter->pee; 
 
 		model.storage->ClearStatus(level+1); 
 		model.storage->RestoreForFetch(level+1); 
 
-		if (model.storage->empty(level+1) || !model.Initialize_WeightedSampling(nodeGroup.size(), level+1, start_points))
-		// if (model.storage->empty(level+1) || !model.Initialize_MostDistant_WithinPercentile(nodeGroup.size(), level+1, start_points, 0.30) ) // !model.Initialize_KMeansClustering(nodeGroup.size(), level+1, start_points) )
+		////////////////////////////////////////////////////////////////////////////////
+		// Starting points
+		if (model.storage->empty(level+1) || !model.Initialize_WeightedSampling(nInitial, level+1, start_points))
+		// if (model.storage->empty(level+1) || !model.Initialize_MostDistant_WithinPercentile(nInitial, level+1, start_points, 0.30) ) 
+		// !model.Initialize_KMeansClustering(nInitial, level+1, start_points) )
 		{
-			for (int i=0; i<(int)(nodeGroup.size()); i++)
+			for (int i=0; i<nInitial; i++)
 				start_points[i] = mode; 
 		} 
 		model.storage->ClearDepositDrawHistory(level+1); 
@@ -51,7 +54,7 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 		stringstream convert; 
 		string start_point_file; 
         	ofstream output_file;
-		for (int i=0; i<nodeGroup.size(); i++)
+		for (int i=0; i<nInitial; i++)
 		{
         		convert.str(string());
         		convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << level << "." << i;
@@ -65,37 +68,73 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
         		else
                			write(output_file, &(start_points[i]));
         		output_file.close();
-
-			sPackage[GROUP_INDEX] = i; 
-			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][0], TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD); 
 		}
-		for (int i=0; i<nodeGroup.size(); i++)
+
+		/////////////////////////////////////////////////////////////////////////////////
+		// Send out tuning jobs
+		vector <int> availableNode(nNode-1); 
+		for (int i=1; i<nNode; i++)
+			availableNode[i-1] = i; 
+		
+		int iInitial = 0; 
+		while (iInitial < nInitial)
 		{
-			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD, &status);
+			if (availableNode.empty())
+			{
+				MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD, &status);
+				availableNode.push_back(status.MPI_SOURCE); 
+			}
+			// Assigns the last node in availableNode to iInitial, and remove the last node of availableNode
+			sPackage[GROUP_INDEX] = iInitial; 
+			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, availableNode.back(), TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD); 
+			availableNode.pop_back(); 
+			iInitial ++; 
 		}
+		
+		for (int i=0; i<nNode-1-(int)availableNode.size(); i++)
+			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD, &status);
 
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Simulation to estimate group-specific covariance matrix
 		estimation_length = 5000; 
-		DispatchSimulation(nodeGroup, model, estimation_length, level, TUNE_TAG_SIMULATION_FIRST); 
+		DispatchSimulation(nNode, nInitial, model, estimation_length, level, TUNE_TAG_SIMULATION_FIRST); 
 
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Tune after simulation
-		sPackage[PEE_INDEX] = model.parameter->pee/10; 
-		for (int i=0; i<nodeGroup.size(); i++)
+		availableNode.clear(); 
+		availableNode.resize(nNode-1); 
+		for (int i=1; i<nNode; i++)
+			availableNode[i-1] = i; 
+
+		iInitial = 0; 
+		while (iInitial < nInitial)
 		{
-			sPackage[GROUP_INDEX] = i;
-                        MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][0], TUNE_TAG_AFTER_SIMULATION, MPI_COMM_WORLD);
+			if(availableNode.empty())
+			{
+				MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_AFTER_SIMULATION, MPI_COMM_WORLD, &status);
+				availableNode.push_back(status.MPI_SOURCE); 
+			}
+			// Assigns the last node in availableNode to iInitial, and remove the last node of availableNode
+
+			sPackage[GROUP_INDEX] = iInitial;
+                        MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, availableNode.back(), TUNE_TAG_AFTER_SIMULATION, MPI_COMM_WORLD);
+			availableNode.pop_back(); 
+			iInitial ++; 
 		}
-		for (int i=0; i<nodeGroup.size(); i++)
+		for (int i=0; i<nNode-1-(int)availableNode.size(); i++)
 			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_AFTER_SIMULATION, MPI_COMM_WORLD, &status);
 
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simualtion
 		cout << "Simulation at " << level << " for " << model.parameter->simulation_length << endl; 
-		DispatchSimulation(nodeGroup, model, model.parameter->simulation_length, level, SIMULATION_TAG);
+		DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length, level, SIMULATION_TAG);
 		
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simualtion for the not-group-specific covariance of the lower temp level
 		estimation_length = 5000;
-		DispatchSimulation(nodeGroup, model, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
+		DispatchSimulation(nNode, nInitial, model, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
 
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// binning for the lower temperature-level's jump.  
 		// storage.binning(level, parameter.number_energy_level, -log(0.5)/(1.0/parameter.t[level-1]-1.0/parameter.t[level])); 
 		model.storage->ClearStatus(level); 
@@ -103,6 +142,8 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 		model.storage->finalize(level); 
 		model.storage->ClearDepositDrawHistory(level);
 
+
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// logMDD
 	        logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);
 		for (int j=level+1; j<(int)(logMDD[level].size()); j++)
@@ -114,11 +155,15 @@ void DispatchTuneSimulation(const vector<vector<int> > &nodeGroup, CEquiEnergyMo
 			cout << logMDD[level][j] << "\t"; 
 		cout << endl; 
 
-		
-
 		// to save space, remove level+1 samples
 		if (save_space_flag && level+2 < model.parameter->highest_level-1 )
+		{
 			model.storage->ClearSample(level+2);  
+			convert.str(string());
+                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << level+2 << ".*";;
+                        string remove_file = model.parameter->storage_dir + convert.str();
+			remove(remove_file.c_str()); 
+		}
 	}
 
 	delete []sPackage; 
