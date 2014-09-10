@@ -11,34 +11,26 @@
 
 using namespace std; 
 
-void DispatchHillClimbTask(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, int number_hill_climb)
+void DispatchHillClimbTask(int nNode, CEquiEnergyModel &model, int number_hill_climb)
 {
-	size_t nNode=0; 
-	for (int i=0; i<(int)nodeGroup.size(); i++)
-		nNode += nodeGroup[i].size(); 
-
-	size_t nFeasibleSolutionPerNode = ceil((double)number_hill_climb/(double)nNode);
+	int nFeasibleSolutionPerNode = ceil((double)number_hill_climb/(double)nNode);
 
 	double *sPackage = new double [N_MESSAGE]; 
 	sPackage[LENGTH_INDEX] = nFeasibleSolutionPerNode; 
 	sPackage[LEVEL_INDEX] = model.parameter->number_energy_level ; 
 
-	for (int i=0; i<(int)nodeGroup.size(); i++)
+	for (int i=1; i<nNode; i++)
 	{
-		for (int j=0; j<(int)nodeGroup[i].size(); j++)
-		{
-			sPackage[GROUP_INDEX] = i; 
-			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][j], HILL_CLIMB_TAG, MPI_COMM_WORLD);		
-		}
+		sPackage[GROUP_INDEX] = i; 
+		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, HILL_CLIMB_TAG, MPI_COMM_WORLD);		
 	}
 	delete [] sPackage; 
 
 	MPI_Status status; 
 	double *rPackage = new double [N_MESSAGE];
-	for (int i=0; i<(int)nodeGroup.size(); i++)
+	for (int i=1; i<nNode; i++)
 	{
-		for (int j=0; j<(int)nodeGroup[i].size(); j++)
-			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, HILL_CLIMB_TAG, MPI_COMM_WORLD, &status);
+		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, HILL_CLIMB_TAG, MPI_COMM_WORLD, &status);
 	}
 	delete [] rPackage;
  

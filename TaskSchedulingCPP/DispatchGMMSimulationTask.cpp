@@ -10,12 +10,8 @@
 
 using namespace std; 
 
-void DispatchGMMSimulationTask(const vector<vector<int> > &nodeGroup, CEquiEnergyModel &model, int simulation_length)
+void DispatchGMMSimulationTask(int nNode, CEquiEnergyModel &model, int simulation_length)
 {
-	int nNode=0; 
-	for (int i=0; i<(int)nodeGroup.size(); i++)
-		nNode += (int)nodeGroup[i].size(); 
-
 	int simulationLengthPerNode = ceil((double)simulation_length/(double)nNode);
 
 	double *sPackage = new double [N_MESSAGE]; 
@@ -24,22 +20,18 @@ void DispatchGMMSimulationTask(const vector<vector<int> > &nodeGroup, CEquiEnerg
         sPackage[THIN_INDEX] = model.parameter->THIN;
 	sPackage[LEVEL_INDEX] = model.parameter->number_energy_level ; 
 
-	for (int i=0; i<(int)nodeGroup.size(); i++)
+	for (int i=1; i<nNode; i++)
 	{
-		for (int j=0; j<(int)nodeGroup[i].size(); j++)
-		{
-			sPackage[GROUP_INDEX] = i; 
-			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, nodeGroup[i][j], GMM_SIMULATION_TAG, MPI_COMM_WORLD);		
-		}
+		sPackage[GROUP_INDEX] = i; 
+		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, GMM_SIMULATION_TAG, MPI_COMM_WORLD);		
 	}
 	delete [] sPackage; 
 
 	MPI_Status status; 
 	double *rPackage = new double [N_MESSAGE];
-	for (int i=0; i<(int)nodeGroup.size(); i++)
+	for (int i=1; i<nNode; i++)
 	{
-		for (int j=0; j<(int)nodeGroup[i].size(); j++)
-			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, GMM_SIMULATION_TAG, MPI_COMM_WORLD, &status);
+		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, GMM_SIMULATION_TAG, MPI_COMM_WORLD, &status);
 	}
 	delete [] rPackage;
  
@@ -50,3 +42,4 @@ void DispatchGMMSimulationTask(const vector<vector<int> > &nodeGroup, CEquiEnerg
 	model.storage->finalize(model.parameter->number_energy_level); 
 	model.storage->ClearDepositDrawHistory(model.parameter->number_energy_level); 
 }
+

@@ -3,8 +3,43 @@
 #include "stdafx.h"
 #include "ap.h"
 #include "dw_rand.h"
+#include "dw_math.h"
 #include "dataanalysis.h"
 #include "CEquiEnergyModel.h"
+
+bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int level_index, vector<CSampleIDWeight> &starters) const
+{
+	if (starters.size() != K)
+		starters.resize(K);
+
+	// Get all previous level's samples out
+	vector<CSampleIDWeight> samples;  
+	if (!storage->DrawAllSample(level_index, samples) || samples.size() < K)
+                return false;
+        if (samples.size() == K)
+        {
+                for (int ii=0; ii<(int)(starters.size()); ii++)
+                        starters[ii] = samples[ii];
+                return true;
+        }
+
+	// Cumulative sum of importance weights
+	vector<double> log_weight_sum(samples.size()), weight_sum(samples.size()); 
+	// log(importance) = weight*(1.0/K-1.0/(K+1))
+	log_weight_sum[0] = samples[0].weight*(1.0/parameter->t[level_index-1]-1.0/parameter->t[level_index]); 
+	for (int i=1; i<(int)samples.size(); i++)
+		log_weight_sum[i] = AddLogs(log_weight_sum[i-1], samples[i].weight*(1.0/parameter->t[level_index-1]-1.0/parameter->t[level_index]));
+	for (int i=0; i<(int)samples.size(); i++) // Normalize
+		weight_sum[i] = exp(log_weight_sum[i] -log_weight_sum.back()); 
+
+	for (int i=0; i<K; i++)
+	{
+		double random_number = dw_uniform_rnd(); 
+		int position = std::lower_bound(weight_sum.begin(), weight_sum.end(), random_number)-weight_sum.begin(); 
+		starters[i] = samples[position]; 	
+	} 
+	return true; 
+}
 
 bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(int K, int level_index, vector<CSampleIDWeight > &starters, double percentile) const
 {
