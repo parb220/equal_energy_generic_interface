@@ -20,7 +20,7 @@ void master_deploying(int nNode, int nHillClimb, int nInitial, CEquiEnergyModel 
 
 	// Simulation
 	if (model.parameter->simulation_length) 
-		DispatchTuneSimulation(nNode, nInitial, model, mode, model.parameter->simulation_length); 
+	  DispatchTuneSimulation(nodeGroup, model, mode, model.parameter->simulation_length, false);   // original code last argument is not present
 
 	// tell all the slaves to exit by sending an empty messag with 0 simulation length 
 	double *sMessage= new double [N_MESSAGE];  
