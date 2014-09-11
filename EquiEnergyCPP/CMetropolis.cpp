@@ -60,7 +60,10 @@ void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, con
 	while (!done)
 	{
 		if (if_eejump && model->MakeEquiEnergyJump(x,y))
+		{
 			y = x; 
+			log_previous = model->log_posterior_function(y); 
+		}
 		// draw metropolis blocks
 		for (int i=0; i<k; i++)
 		{
