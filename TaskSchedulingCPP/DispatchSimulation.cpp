@@ -74,12 +74,43 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t
 
 	size_t simulation_length_per_node; 
 	if (message_tag == TUNE_TAG_SIMULATION_FIRST)
-		simulation_length_per_node = (size_t)ceil((double)simulation_length/(double)(nNode-1)); 
+		simulation_length_per_node = (size_t)ceil((double)simulation_length/(double)(nNode-1)) > 1000 ? (size_t)ceil((double)simulation_length/(double)(nNode-1)) : 1000; 
 	else 
-		simulation_length_per_node = (size_t)ceil((double)simulation_length/(double)(nInitial*(nNode-1))); 
+		simulation_length_per_node = (size_t)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) > 1000 ? (size_t)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) : 1000; 
 	MPI_Status status;
-	for (int iInitial=0; iInitial<nInitial; iInitial++)
+	
+	vector<int> available_node(nNode-1); 
+	for (int i=0; i<(int)(available_node.size()); i++)
+		available_node[i] = i+1; 
+	
+	int iInitial =0, cumulative_length = 0; 
+	while (iInitial < nInitial)
 	{
+		while (cumulative_length < simulation_length)
+		{
+			sPackage[LENGTH_INDEX] = simulation_length_per_node;
+			sPackage[BURN_INDEX] = model.parameter->burn_in_length;
+			sPackage[GROUP_INDEX] = iInitial; 
+			if (available_node.empty())
+			{
+				MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status); 
+				available_node.push_back(status.MPI_SOURCE); 
+			}
+			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, available_node.back(), message_tag, MPI_COMM_WORLD);
+			available_node.pop_back(); 
+			cumulative_length += simulation_length_per_node; 	
+		}
+		cumulative_length = 0; 
+		iInitial ++; 
+	}
+	
+	for (int j=0; j<(nNode-1)-(int)available_node.size(); j++)
+		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status);
+
+	/*for (int iInitial=0; iInitial<nInitial; iInitial++)
+	{
+
+
 		for (int j = 1; j<nNode; j++)
 		{
 			sPackage[LENGTH_INDEX] = simulation_length_per_node; 
@@ -90,7 +121,7 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t
 
 		for (int j=1; j<nNode; j++)
 			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status); 
-	}
+	}*/
 	delete [] sPackage;
 	delete [] rPackage;
 
