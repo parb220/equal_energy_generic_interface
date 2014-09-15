@@ -296,9 +296,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 		// Consolidate partial storage files and bin
 		model.storage->ClearStatus(level); 
-		int nX=0; 
-		while (nX==0)
-		  nX=0; 
 		model.storage->consolidate(level); 
 		model.storage->ClearStatus(level);
 		model.storage->binning_equal_size(level, model.parameter->number_energy_level); 

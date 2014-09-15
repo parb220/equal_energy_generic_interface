@@ -99,6 +99,10 @@ void ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_
 
 cout << "calling model.Simulate(" << number_to_simulate << "," << model.parameter->simulation_length << "," << model.parameter->n_compute_cores << ")" << endl;
 
+	int nX=0; 
+	while (nX==0)
+		nX=0; 
+
         if (!model.Simulate(if_storage, sample_file_name, number_to_simulate, 500, false, true))
 	        {
 		  cerr << "Error simulating model - level " << model.energy_level << endl;
