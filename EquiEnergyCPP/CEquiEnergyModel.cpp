@@ -4,6 +4,8 @@
 #include <functional>
 #include <ctime>
 #include <fstream>
+#include <iomanip> 
+
 #include "CSampleIDWeight.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
@@ -13,9 +15,9 @@
 #include "CMetropolis.h"
 
 extern "C" {
-	#include "dw_math.h"
-	// #include "dw_switchio.h"
-	#include "dw_rand.h"
+        #include "dw_math.h"
+        // #include "dw_switchio.h"
+        #include "dw_rand.h"
 }
 
 using namespace std;
@@ -180,16 +182,358 @@ void CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_fi
 }
 
 CEquiEnergyModel::CEquiEnergyModel() : 
-gmm_mean(vector<TDenseVector>(0)), gmm_covariance_sqrt(vector<TDenseMatrix>(0)), 
-gmm_covariance_sqrt_log_determinant(vector<double>(0)), gmm_covariance_sqrt_inverse(vector<TDenseMatrix>(0)), 
-if_bounded(true), energy_level(0), t_bound(1.0), current_sample(CSampleIDWeight()), timer_when_started(time(NULL)), metropolis(NULL), parameter(NULL), storage(NULL)
-{}
+  gmm_mean(vector<TDenseVector>(0)), gmm_covariance_sqrt(vector<TDenseMatrix>(0)), 
+  gmm_covariance_sqrt_log_determinant(vector<double>(0)), gmm_covariance_sqrt_inverse(vector<TDenseMatrix>(0)), 
+  if_bounded(true), energy_level(0), t_bound(1.0), current_sample(CSampleIDWeight()), timer_when_started(time(NULL)), metropolis(NULL), parameter(NULL), storage(NULL)
+{};
 
 CEquiEnergyModel::CEquiEnergyModel(bool _if_bounded, int eL, double _t, const CSampleIDWeight &_x, time_t _time, CMetropolis *_metropolis, CEESParameter *_parameter, CStorageHead *_storage) :
-gmm_mean(vector<TDenseVector>(0)), gmm_covariance_sqrt(vector<TDenseMatrix>(0)), 
-gmm_covariance_sqrt_log_determinant(vector<double>(0)), gmm_covariance_sqrt_inverse(vector<TDenseMatrix>(0)),
-if_bounded(_if_bounded), energy_level(eL), t_bound(_t), current_sample(_x), timer_when_started(_time), metropolis(_metropolis), parameter(_parameter), storage(_storage) 
+  gmm_mean(vector<TDenseVector>(0)), gmm_covariance_sqrt(vector<TDenseMatrix>(0)), 
+  gmm_covariance_sqrt_log_determinant(vector<double>(0)), gmm_covariance_sqrt_inverse(vector<TDenseMatrix>(0)),
+  if_bounded(_if_bounded), energy_level(eL), t_bound(_t), current_sample(_x), timer_when_started(_time), metropolis(_metropolis), parameter(_parameter), storage(_storage) 
+{};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Sampling and Tuning - added by DW 9/10/2014
+
+bool CEquiEnergyModel::GetIndependentDirectionsFromPreviousLevel(int level, bool force_recompute)
 {
+  // read independent directions
+  if (!force_recompute)
+    {
+      stringstream convert;
+      convert << parameter->run_id << "/" << parameter->run_id << ".IndependentDirections." << level;
+      string filename = parameter->storage_dir + convert.str();
+      ifstream input_file;
+      input_file.open(filename.c_str(), ios::in);
+      if (input_file)
+	{
+	  IndependentDirections.Resize(parameter->nParameters,parameter->nParameters);
+	  try
+	    {
+	      input_file >> IndependentDirections;
+	      input_file.close();
+	      return true;
+	    }
+	  catch(dw_exception &e)
+	    {
+	      cerr << "Exception reading independent directions from " << filename << " : " << e.what() << endl << " : Attempting recomputation" << endl;
+	    }
+	  input_file.close();
+	}
+    }
+
+  // Get all previous level samples
+  vector<CSampleIDWeight> samples;  
+  if (!storage->DrawAllSample(level+1, samples, true, current_sample.GetSize_Data()) || (samples.size() == 0)) 
+    {
+      cerr << "Error obtaining all samples from level " << level+1 << endl;
+      return false;
+    }
+
+  // Importance weights
+  TDenseVector importance_weights(samples.size());
+  double power=(1.0/parameter->t[level]-1.0/parameter->t[level+1]);
+  double sum=samples[0].weight*power;
+  for (int i=samples.size()-1; i > 0; i--)
+    sum=AddLogs(sum,samples[i].weight*power);
+  for (int i=samples.size()-1; i >= 0; i--)
+    importance_weights(i)=exp(samples[i].weight*power - sum);
+
+  // Compute variance matrix
+  TDenseMatrix variance;
+  variance=OuterProduct(importance_weights(0)*samples[0].data,samples[0].data);
+  for (int i=samples.size()-1; i > 0; i--)
+    variance+=OuterProduct(importance_weights(i)*samples[i].data,samples[i].data);
+  variance=0.5*(variance + Transpose(variance));
+
+  // Compute independent directions
+  TDenseVector EigenValues;
+  Eig(EigenValues,IndependentDirections,variance);
+  IndependentDirections.Resize(variance.rows,variance.cols);
+  for (int j=EigenValues.dim-1; j >= 0; j--)
+    {
+      double factor=sqrt(EigenValues(j));
+      for (int i=EigenValues.dim-1; i >= 0; i--)
+	IndependentDirections(i,j)*=factor;
+    }
+
+  // Write independent directions
+  stringstream convert;
+  string filename;
+  ofstream output_file;
+  convert << parameter->run_id << "/" << parameter->run_id << ".IndependentDirections." << level;
+  filename = parameter->storage_dir + convert.str();
+  output_file.open(filename.c_str(), ios::out);
+  if (!output_file)
+    {
+      cerr << "Error in opening " << filename << endl; 
+      return false; 	
+    }
+  else
+    {
+      output_file << IndependentDirections;
+    }
+
+  return true; 
 }
 
+/*
+  (1) Sets energy_level to level
+  (2) Sets IndependentDirections
+  (3) Sets scale
+        (a) if new_scale > 0, scale = new_scale
+        (b) if new_scale <= 0, reads scale from file
+  (4) Computes density_constant for metropolis jumps
+  (5) Sets ImportanceSamples
+*/ 
+bool CEquiEnergyModel::SetupForSimulation(int level, double new_scale)
+{
+  // sets energy_level
+  energy_level=level;
 
+  // sets independent directions
+  if (!GetIndependentDirectionsFromPreviousLevel(level))
+    return false;
+  
+  // sets scale
+  if (new_scale <= 0.0)
+    {
+      stringstream convert;
+      convert << parameter->run_id << "/" << parameter->run_id << ".Scale." << energy_level;
+      string filename = parameter->storage_dir + convert.str();
+      ifstream input_file;
+      input_file.open(filename.c_str(), ios::in);
+      if (!input_file)
+	{
+	  cerr << "Error in opening " << filename << endl; 
+	  return false; 	
+	}
+      else
+	{
+	  try
+	    {
+	      input_file >> scale;
+	    }
+	  catch(dw_exception &e)
+	    {
+	      cerr << "Exception reading scale from " << filename << endl << e.what() << endl;
+	      return false;
+	    }
+	}
+      input_file.close();
+    }
+  else
+    scale=new_scale;
+
+  // gets importance sample from previous level
+  return GetImportanceSamples();
+}
+
+bool CEquiEnergyModel::Tune(double target_scale, int period, int max_period, bool verbose)
+{
+  double previous_ratio; 
+  double new_scale;
+  double best_scale; 
+  double low_scale; 
+  double low_jump_ratio=-1.0; 
+  double high_scale; 
+  double high_jump_ratio=-1.0; 
+
+  double log_mid=log(target_scale);
+  double lower_bound=exp(log_mid/0.2);
+  double upper_bound=exp(log_mid/5.0);
+
+  int reinitialize_factor=(period > 20) ? period : 20;
+
+  if (max_period < period) 
+    max_period=32*period;
+
+  // Beginning adaptive burn-in 
+  while (period <= max_period)
+    {
+
+      // simulate approximately period/p_saved draws 
+      if (!Simulate(false,string(),period,reinitialize_factor,false,false)) return false;
+
+      // jump ratio
+      previous_ratio = (double)nMHJumps/(double)nMHProposed;
+
+      // output progress
+      if (verbose)
+	{
+	  cout << setprecision(4) << "Tune(" << target_scale << ", " << period << ", " << max_period << ") acceptance = " << 100*previous_ratio << "  scale = " << scale << endl;  
+	}
+
+      // set new low or high bounds
+      if (previous_ratio < target_scale)
+	{
+	  low_scale = scale; 
+	  low_jump_ratio = previous_ratio; 
+	}
+      else 
+	{
+	  high_scale = scale; 
+	  high_jump_ratio = previous_ratio; 
+	}
+
+      // new scale and best scale
+      if (low_jump_ratio < 0.0)
+	{
+	  best_scale = scale; 
+	  //new_scale=(1.0 + 4.0*(previous_ratio - target_scale)/(1.0 - target_scale))*high_scale;
+	  new_scale = (previous_ratio > upper_bound) ? 5.0*high_scale : (log_mid/log(previous_ratio))*high_scale;
+	}
+      else if (high_jump_ratio < 0.0)
+	{
+	  best_scale = scale; 
+	  //new_scale=(0.2 + 0.8*previous_ratio/target_scale)*low_scale;
+	  new_scale = (previous_ratio < lower_bound) ? 0.2*low_scale : (log_mid/log(previous_ratio))*low_scale;
+	}
+      else 
+	{
+	  best_scale = new_scale = ((target_scale-low_jump_ratio)*low_scale + (high_jump_ratio-target_scale)*high_scale)/(high_jump_ratio-low_jump_ratio);
+	  period*=2; 
+	  low_jump_ratio = -1.0; 
+	  high_jump_ratio = -1.0; 
+	}
+			
+      // reset scale
+      scale = new_scale; 
+    }	  
+
+  // set scale
+  scale=best_scale;
+  
+  return true;
+}
+
+/*
+   Set reinitialize_factor to -1.0 to never reinitialize.
+*/
+bool CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample, bool verbose)
+{
+  CSampleIDWeight x_new;
+
+  nEEJumps=nMHJumps=nEEProposed=nMHProposed=nRestarts=0; 
+
+  bool if_write_file = false;
+  ofstream output_file;
+  if (!sample_file_name.empty() )
+    {
+      output_file.open(sample_file_name.c_str(), ios::binary | ios::out);
+      if (output_file)
+	if_write_file = true;
+    }
+
+  // initial value
+  if (!start_from_current_sample)
+    {
+      ImportanceSamplePreviousLevel(current_sample);
+      nRestarts++;
+    }
+
+  // simulation runs
+  for (int number_saved=0, count=reinitialize_factor; number_saved < number_to_save; )
+    {       
+      // verbose output
+      if (verbose && (count == 0))
+	{
+	  cout << setprecision(4) << "EE: " << nEEJumps << "/" << nEEProposed << " = " << 100*(double)nEEJumps/(double)nEEProposed;
+	  cout << " -- MH: " << nMHJumps << "/" << nMHProposed << " = " << 100*(double)nMHJumps/(double)nMHProposed;
+	  cout << " -- Restarts = " << nRestarts << " -- Number saved = " << number_saved << endl;
+	}
+
+      if (count == 0)
+	{
+	  ImportanceSamplePreviousLevel(current_sample);
+	  count=reinitialize_factor;
+	  nRestarts++;
+	}
+
+      // write previous draw
+      if (dw_uniform_rnd() <= parameter->p_save)
+	{
+	  number_saved++;
+	  count--;
+	  if (if_storage)
+	    SaveSampleToStorage(current_sample); 
+	  if (if_write_file)
+	    write(output_file, &current_sample);      
+
+	  // make equi-energy jump
+	  if (dw_uniform_rnd() < parameter->pee)  
+	    {
+	      nEEProposed++;
+	      if (storage->DrawSample(energy_level+1, storage->BinIndex(energy_level+1,-current_sample.weight), x_new))
+		{
+		  if (log(dw_uniform_rnd()) <= (x_new.weight - current_sample.weight)*(1.0/parameter->t[energy_level] - 1.0/parameter->t[energy_level+1]))
+		    {
+		      nEEJumps++;
+		      current_sample = x_new; 
+		      current_sample.id = (int)(time(NULL)-timer_when_started);
+		    }
+		}
+	      else
+		return false;
+
+	      continue;
+	    }   
+	}
+
+      // make MH jump
+      nMHProposed++;
+      GetMetropolisProposal(x_new);
+      if (log(dw_uniform_rnd()) <= (x_new.weight - current_sample.weight)/parameter->t[energy_level])
+	{
+	  nMHJumps++;
+	  current_sample = x_new; 
+	  current_sample.id = (int)(time(NULL)-timer_when_started);
+	}	
+    }
+
+  if (if_write_file)
+    output_file.close(); 	
+
+  return true;
+}
+
+double CEquiEnergyModel::GetMetropolisProposal(CSampleIDWeight &new_x)
+{
+  int n=IndependentDirections.cols;
+  TDenseVector v(n);
+  double density=density_constant; 
+  if (parameter->p_select >= 1.0)
+    v=scale*RandomNormalVector(n);
+  else
+    {
+      for (int i=n-1; i >= 0; i--)
+	v.vector[i]=(dw_uniform_rnd() <= parameter->p_select) ? scale*dw_gaussian_rnd() : parameter->tiny * scale * dw_gaussian_rnd();     
+    }
+  new_x.data=IndependentDirections*v;
+  new_x.DataChanged();
+  log_posterior_function(new_x);
+
+  return 0.0;
+}
+
+bool CEquiEnergyModel::ImportanceSamplePreviousLevel(CSampleIDWeight &x_new)
+{
+  if ((iImportanceSamples == 0) && !GetImportanceSamples()) return false;
+  x_new=ImportanceSamples[--iImportanceSamples];
+  return true;
+}
+
+bool CEquiEnergyModel::GetImportanceSamples(void)
+{
+  if (Initialize_WeightedSampling(parameter->nImportanceSamples,energy_level+1,ImportanceSamples))
+    {
+      iImportanceSamples=parameter->nImportanceSamples;
+      return true;
+    }
+  else
+    {
+      cerr << "Unable to obtain importance samples from level " << energy_level+1 << endl;
+      return false;
+    }
+}

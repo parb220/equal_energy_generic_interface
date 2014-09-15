@@ -44,5 +44,14 @@ public: // parameters that are not saved, just for purpose of encapsulation
 	size_t max_energy_tuning_time; 
 	size_t shuffle_frequency;
         size_t size_per_block;
+
+public:
+        double p_save;               // probability saving draw - actual probability of making equi-energy jump is p_save*pee
+        double p_select;             // probability of selecting an independent direction to make a full size jump in that direction
+	double tiny;                 // scale factor when not making a full sized jump
+        int reinitialize_factor;     // sampler reinitializes from importance weighted previous level every reinitialize_factor saved draws
+        int nImportanceSamples;      // number of random importance weighted previous samples to carry
+        int nParameters;             // number of model parameters
+	int n_compute_cores;         // number of slave compute cores (nNode - 1)
 };
 #endif
