@@ -1,4 +1,5 @@
 #include <fstream>
+#include <ostream>
 #include <iomanip>
 #include <vector>
 #include <cstdlib>

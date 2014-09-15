@@ -14,13 +14,13 @@ void master_deploying(int nNode, int nHillClimb, int nInitial, CEquiEnergyModel 
 	// Hill climb and GMM simulation at the highest+1 level
         if (nHillClimb )
 	{
-		DispatchHillClimbTask(nNode, model, nHillClimb);
-		DispatchGMMSimulationTask(nNode, model, model.parameter->simulation_length); 
+	        DispatchHillClimbTask(nNode, model, nHillClimb);
+	  	DispatchGMMSimulationTask(nNode, model, model.parameter->simulation_length); 
 	}
 
 	// Simulation
 	if (model.parameter->simulation_length) 
-		DispatchTuneSimulation(nNode, nInitial, model, mode, model.parameter->simulation_length); 
+	        DispatchTuneSimulation(nNode, nInitial, model, mode, model.parameter->simulation_length, false);   // original code last argument is not present
 
 	// tell all the slaves to exit by sending an empty messag with 0 simulation length 
 	double *sMessage= new double [N_MESSAGE];  
