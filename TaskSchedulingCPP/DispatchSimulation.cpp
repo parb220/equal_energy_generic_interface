@@ -72,11 +72,18 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t
        	sPackage[LEVEL_INDEX] = level;
 	sPackage[PEE_INDEX] = model.parameter->pee; 
 
-	size_t simulation_length_per_node; 
+	size_t simulation_length_per_node, simulation_length_check; 
 	if (message_tag == TUNE_TAG_SIMULATION_FIRST)
-		simulation_length_per_node = (size_t)ceil((double)simulation_length/(double)(nNode-1)) > 1000 ? (size_t)ceil((double)simulation_length/(double)(nNode-1)) : 1000; 
+	{
+		simulation_length_per_node = (int)ceil((double)simulation_length/(double)(nNode-1)) > 1000 ? (size_t)ceil((double)simulation_length/(double)(nNode-1)) : 1000; 
+		simulation_length_check = simulation_length; 
+	}
 	else 
-		simulation_length_per_node = (size_t)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) > 1000 ? (size_t)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) : 1000; 
+	{
+		simulation_length_per_node = (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) > 1000 ? (size_t)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) : 1000; 
+		simulation_length_check = (int)ceil((double)simulation_length/(double)(nInitial)); 
+	}
+
 	MPI_Status status;
 	
 	vector<int> available_node(nNode-1); 
@@ -86,7 +93,7 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t
 	int iInitial =0, cumulative_length = 0; 
 	while (iInitial < nInitial)
 	{
-		while (cumulative_length < simulation_length)
+		while (cumulative_length < simulation_length_check)
 		{
 			sPackage[LENGTH_INDEX] = simulation_length_per_node;
 			sPackage[BURN_INDEX] = model.parameter->burn_in_length;

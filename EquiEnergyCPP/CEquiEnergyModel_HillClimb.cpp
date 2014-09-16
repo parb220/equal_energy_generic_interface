@@ -33,7 +33,7 @@ void *MinusLogPosterior_NPSOL::function(int *mode, int *n, double *x, double *f,
 // will be set as its original value. 
 // Samples generated during HillClimb will be saved into storage but always at the level of number_energy_level
 // (the extra level)
-double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iteration, int perturbation_iteration, double perturbation_scale)
+double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iteration, int perturbation_iteration, double perturbation_scale, double scale)
 {
 	// energy_level = parameter->number_energy_level; 
 	bool if_bounded_old = if_bounded; 
@@ -166,9 +166,9 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 				double covariance_sqrt_log_determinant = 0.0; 
 				for (int i=0; i<eValueHessian.dim; i++)
 				{
-					diffusedEValue[i] = sqrt(1000.0/eValueHessian[i]); 
-					diffusedEValueInverse[i] = sqrt(eValueHessian[i]/1000.0); 
-					covariance_sqrt_log_determinant += -0.5*log(eValueHessian[i]/1000.0); 
+					diffusedEValue[i] = sqrt(scale/eValueHessian[i]); 
+					diffusedEValueInverse[i] = sqrt(eValueHessian[i]/scale); 
+					covariance_sqrt_log_determinant += -0.5*log(eValueHessian[i]/scale); 
 				}
 
 				gmm_covariance_sqrt.push_back(eVectorHessian*DiagonalMatrix(diffusedEValue)*Transpose(eVectorHessian)); 

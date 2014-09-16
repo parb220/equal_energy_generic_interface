@@ -153,3 +153,4 @@ double CEESParameter::LogRatio_Level(double original_energy_x, double original_e
         double log_prob_y_bounded = -original_energy_y/t[level];
         return log_prob_x_bounded - log_prob_y_bounded;
 }
+

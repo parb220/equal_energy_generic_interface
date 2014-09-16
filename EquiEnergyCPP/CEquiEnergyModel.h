@@ -107,14 +107,13 @@ public:
 // Construction & Destruction functions here
 public:
 	CEquiEnergyModel(); 
-	CEquiEnergyModel(bool _if_bounded, int eL, double _t, const CSampleIDWeight & _x=CSampleIDWeight(), 
-			 time_t _time=time(NULL), CMetropolis *_metropolis =NULL, CEESParameter *_parameter=NULL, CStorageHead *_storage = NULL);
+	CEquiEnergyModel(bool _if_bounded, int eL, double _t, const CSampleIDWeight & _x=CSampleIDWeight(), time_t _time=time(NULL), CMetropolis *_metropolis =NULL, CEESParameter *_parameter=NULL, CStorageHead *_storage = NULL); 
 	virtual ~CEquiEnergyModel() {} 
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // HillClimb
 public: 
-	virtual double HillClimb_NPSOL(int nSolution, int =10, int =10, double = 1.0); 
+	virtual double HillClimb_NPSOL(int nSolution, int =10, int =10, double = 1.0, double = 1000.0); 
 	// virtual double HillClimb_CSMINWEL(int nSolution); 
 	virtual bool DrawParametersFromPrior(double *x) const = 0; 
 	double GMM_Simulation(int simulation_length);
@@ -125,32 +124,6 @@ public:
 	bool ReadGaussianMixtureModelParameters(const string &file_name); 
 	bool AggregateGaussianMixtureModelParameters(const string &file_name);
 	void ClearGaussianMixtureModelParameters(); 
-
-//////////////////////////////////////////////////////////////////////////////////////////
-// Sampling and Tuning - added by DW 9/10/2014
-public:
-        TDenseMatrix IndependentDirections;
-	double scale;
-	double density_constant;
-
-	vector<CSampleIDWeight> ImportanceSamples;
-	int iImportanceSamples;
-
-	int nEEJumps, nEEProposed, nMHJumps, nMHProposed, nRestarts;
-
-	bool GetIndependentDirectionsFromPreviousLevel(int level, bool force_recompute=false);
-	bool GetImportanceSamples(void);
-	bool SetupForSimulation(int level, double new_scale=-1.0);
-
-        bool Tune(double mid=0.3, int period=10, int max_period=0, bool verbose=true);
-	bool Simulate(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample=false, bool verbose=true);
-        double GetMetropolisProposal(CSampleIDWeight &x_new);
-	bool ImportanceSamplePreviousLevel(CSampleIDWeight &x_new);
-
-	virtual bool SetupInitialDensity(void) = 0;
-	virtual double InitialDensity(const TDenseVector &x) = 0;
-        virtual TDenseMatrix InitialDraws(int number_draws) = 0;
-
 
 friend class MinusLogPosterior_NPSOL; 
 // friend class MinusLogPosterior_CSMINWEL; 
