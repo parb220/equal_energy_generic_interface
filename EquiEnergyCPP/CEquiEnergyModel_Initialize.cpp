@@ -9,6 +9,9 @@
 
 bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int level_index, vector<CSampleIDWeight> &starters) const
 {
+        if (level_index < 1)
+	        return false;
+
 	if (starters.size() != K)
 		starters.resize(K);
 
@@ -21,14 +24,22 @@ bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int level_index, vecto
 	vector<double> weight_sum(samples.size());
 	double power=(1.0/parameter->t[level_index-1]-1.0/parameter->t[level_index]);
 	
+	// Accumulate logs
 	weight_sum[0] = samples[0].weight*power;
 	for (int i=1; i<(int)samples.size(); i++)
                 weight_sum[i] = AddLogs(weight_sum[i-1], samples[i].weight*power);
 
+	// Normalize and exponentiate
         double sum=weight_sum.back();
 	for (int i=0; i<(int)samples.size(); i++)
 		weight_sum[i] = exp(weight_sum[i] - sum); 
 
+	for (int i=0; i<K; i++)
+        {
+	      double random_number = dw_uniform_rnd();
+	      int position = std::lower_bound(weight_sum.begin(), weight_sum.end(), random_number)-weight_sum.begin();
+	      starters[i] = samples[position];
+	}
 	return true; 
 }
 

@@ -188,9 +188,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 	size_t estimation_length; 
 
-	// // log marginal data density 
-	// vector<vector<double> > logMDD(model.parameter->number_energy_level, vector<double>(model.parameter->number_energy_level, 0.0)); 
-
 	for (int level=model.parameter->highest_level; level>=model.parameter->lowest_level; level--)
 	{
 		sPackage[LEVEL_INDEX] = level;
@@ -203,10 +200,9 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Get independent directions from previous energy level draws
-		cout << "Computing independent directions - level " << level << endl;
-		if (!model.GetIndependentDirectionsFromPreviousLevel(level))
+		if (!model.SetupLevel(level))
 		  {
-		    cerr << "Error computing independent directions from previous draws - energy level " << model.energy_level << " - aborting" << endl;
+		    cerr << "Error computing independent directions from previous draws - energy level " << model.energy_level << endl;
 		    abort();
 		  }
 
@@ -323,6 +319,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
                         string remove_file = model.parameter->storage_dir + convert.str();
 			remove(remove_file.c_str()); 
 		}
+
+		if (model.K(model.energy_level) < 1.0000001) break;
 	}
 
 	delete []sPackage; 

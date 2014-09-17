@@ -115,7 +115,7 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
   model.storage->RestoreForFetch(model.energy_level+1);	
 
   // Setup
-  if (!model.SetupForSimulation(model.energy_level,1.0))
+  if (!model.SetupLevel(model.energy_level) || !model.SetScale(1.0))
     {
       cerr << "Unable to setup model for tuning for energy level " << model.energy_level << endl;
       abort(); 	
@@ -141,7 +141,7 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
     }
   else
     {
-      output_file << model.scale;
+      output_file << model.scale(model.energy_level);
     }
   output_file.close();
 

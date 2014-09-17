@@ -71,48 +71,46 @@ using namespace std;
 
 void ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergyModel &model, int my_rank, int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag)
 {
-	// restore partial storage (previously obtained at this node) for updating
-	model.storage->ClearStatus(model.energy_level); 
-	model.storage->ClearStatus(model.energy_level+1); 
-	model.storage->restore(model.energy_level); 
-	model.storage->RestoreForFetch(model.energy_level+1);
+  // restore partial storage (previously obtained at this node) for updating
+  model.storage->ClearStatus(model.energy_level); 
+  model.storage->ClearStatus(model.energy_level+1); 
+  model.storage->restore(model.energy_level); 
+  model.storage->RestoreForFetch(model.energy_level+1);
 
-	// whether to write dw output file
-	string sample_file_name; 
-	if (if_write_sample_file)
-	{
-	        stringstream convert;
-		convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_level << "." << group_index << "." << my_rank; 
-		sample_file_name = model.parameter->storage_dir + convert.str(); 
-	}
-	else 
-		sample_file_name = string(); 
+  // whether to write dw output file
+  string sample_file_name; 
+  if (if_write_sample_file)
+    {
+      stringstream convert;
+      convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_level << "." << group_index << "." << my_rank; 
+      sample_file_name = model.parameter->storage_dir + convert.str(); 
+    }
+  else 
+    sample_file_name = string(); 
 
-	// simulate
-	if (!model.SetupForSimulation(model.energy_level))
-	  {
-	    cerr << "Unable to setup model for simulation from energy level " << model.energy_level << endl;
-	    abort(); 	
-	  }  
+  // simulate
+  if (!model.SetupLevel(model.energy_level) || !model.SetScale(-1.0))
+    {
+      cerr << "Unable to setup model for simulation from energy level " << model.energy_level << endl;
+      abort(); 	
+    }  
 
-         int number_to_simulate = 1 + model.parameter->simulation_length/model.parameter->n_compute_cores;
+  int number_to_simulate = 1 + model.parameter->simulation_length/model.parameter->n_compute_cores;
 
-cout << "calling model.Simulate(" << number_to_simulate << "," << model.parameter->simulation_length << "," << model.parameter->n_compute_cores << ")" << endl;
+  int nX=0; 
+  while (nX==0)
+	nX=0; 
+	if (!model.Simulate(if_storage, sample_file_name, number_to_simulate, 2000, false, true))
+    {
+      cerr << "Error simulating model - level " << model.energy_level << endl;
+      abort();
+    }
 
-	int nX=0; 
-	while (nX==0)
-		nX=0; 
+  model.WriteSimulationDiagnostic(group_index);
 
-        if (!model.Simulate(if_storage, sample_file_name, number_to_simulate, 500, false, true))
-	        {
-		  cerr << "Error simulating model - level " << model.energy_level << endl;
-		  abort();
-		}
-
-	// finalze and clear-up storage
-	model.storage->ClearStatus(model.energy_level); 
-	model.storage->finalize(model.energy_level); 
-	model.storage->ClearDepositDrawHistory(model.energy_level);
-	model.storage->ClearDepositDrawHistory(model.energy_level+1); 
-
+  // finalze and clear-up storage
+  model.storage->ClearStatus(model.energy_level); 
+  model.storage->finalize(model.energy_level); 
+  model.storage->ClearDepositDrawHistory(model.energy_level);
+  model.storage->ClearDepositDrawHistory(model.energy_level+1); 
 }

@@ -129,27 +129,34 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////
 // Sampling and Tuning - added by DW 9/10/2014
 public:
-        TDenseMatrix IndependentDirections;
-	double scale;
-	double density_constant;
+	TDenseVector K;
+        vector<TDenseMatrix> IndependentDirections;
+	TDenseVector scale;
+        TDenseVector ess;
+	vector< vector<int> > ring_counts;
+	vector<int> ring_changes;
 
+	double density_constant;
 	vector<CSampleIDWeight> ImportanceSamples;
 	int iImportanceSamples;
 
-	int nEEJumps, nEEProposed, nMHJumps, nMHProposed, nRestarts;
+	int nEEJumps, nEEProposed, nMHJumps, nMHProposed, nRestarts, nSaved;
 
-	bool GetIndependentDirectionsFromPreviousLevel(int level, bool force_recompute=false);
+	bool SetupLevel(int level, bool force_recompute=false);
+	bool SetScale(double new_scale);
+
 	bool GetImportanceSamples(void);
-	bool SetupForSimulation(int level, double new_scale=-1.0);
 
         bool Tune(double mid=0.3, int period=10, int max_period=0, bool verbose=true);
-	bool Simulate(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample=false, bool verbose=true);
+	virtual bool Simulate(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample=false, bool verbose=true);
         double GetMetropolisProposal(CSampleIDWeight &x_new);
 	bool ImportanceSamplePreviousLevel(CSampleIDWeight &x_new);
 
-	virtual bool SetupInitialDensity(void) = 0;
-	virtual double InitialDensity(const TDenseVector &x) = 0;
-        virtual TDenseMatrix InitialDraws(int number_draws) = 0;
+	void WriteSimulationDiagnostic(int node);
+
+	//virtual bool SetupInitialDensity(void) = 0;
+	//virtual double InitialDensity(const TDenseVector &x) = 0;
+        //virtual TDenseMatrix InitialDraws(int number_draws) = 0;
 
 
 friend class MinusLogPosterior_NPSOL; 
