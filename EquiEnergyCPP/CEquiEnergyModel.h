@@ -117,6 +117,9 @@ public:
 	// virtual double HillClimb_CSMINWEL(int nSolution); 
 	virtual bool DrawParametersFromPrior(double *x) const = 0; 
 	double GMM_Simulation(int simulation_length);
+	bool Cauchy_DrawSample(CSampleIDWeight &y); 
+	double Cauchy_LogPDF(const CSampleIDWeight &x) const; 
+	double Cauchy_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const; 
 	bool GMM_DrawSample(CSampleIDWeight &y); 
 	double GMM_LogPDF(const CSampleIDWeight &x) const; 
 	double GMM_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const; 
@@ -124,6 +127,7 @@ public:
 	bool ReadGaussianMixtureModelParameters(const string &file_name); 
 	bool AggregateGaussianMixtureModelParameters(const string &file_name);
 	void ClearGaussianMixtureModelParameters(); 
+	void KeepOptimalGaussianMixtureModelParameters(); 
 
 friend class MinusLogPosterior_NPSOL; 
 // friend class MinusLogPosterior_CSMINWEL; 

@@ -59,6 +59,7 @@ void DispatchHillClimbTask(int nNode, CEquiEnergyModel &model, int number_hill_c
 			}
 			remove(glob_result.gl_pathv[i]);
 		}
+		model.KeepOptimalGaussianMixtureModelParameters(); 
 		if (!model.WriteGaussianMixtureModelParameters(filename))
 		{
 			cerr << "Error occurred while writing Gaussian mixture model parameters to " << filename << endl;

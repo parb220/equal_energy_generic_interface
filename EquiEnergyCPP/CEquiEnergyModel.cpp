@@ -24,7 +24,7 @@ bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleI
 {
 	/*if (energy_level == parameter->number_energy_level-1 && dw_uniform_rnd() <= parameter->pee && storage->DrawSample(energy_level+1, storage->BinIndex(energy_level+1,-y_initial.weight), y_end)  )
 	{
-		double log_ratio = GMM_LogRatio(y_initial, y_end); 
+		double log_ratio = Cauchy_LogRatio(y_initial, y_end); 
 		if (log_ratio > MINUS_INFINITY)
 		{
 			log_ratio += parameter->LogRatio_Level(-y_end.weight, -y_initial.weight, energy_level); 
@@ -38,8 +38,12 @@ bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleI
 	if(dw_uniform_rnd() <= parameter->pee && storage->DrawSample(energy_level+1, storage->BinIndex(energy_level+1,-y_initial.weight), y_end) ) // if a sample is successfully draw from bin
 	{
 		// calculate log_ratio in the current and the higher levels
-		double log_ratio = parameter->LogRatio_Level(-y_end.weight, -y_initial.weight, energy_level); 
-		log_ratio += parameter->LogRatio_Level(-y_initial.weight, -y_end.weight, energy_level+1); 
+		double log_ratio; 
+		if (energy_level == parameter->number_energy_level-1)
+			log_ratio = Cauchy_LogRatio(y_initial, y_end);
+		else 
+			log_ratio = parameter->LogRatio_Level(-y_initial.weight, -y_end.weight, energy_level+1);
+		log_ratio += parameter->LogRatio_Level(-y_end.weight, -y_initial.weight, energy_level); 
 		if (log(dw_uniform_rnd()) <= log_ratio)
 			return true; 
 	}
