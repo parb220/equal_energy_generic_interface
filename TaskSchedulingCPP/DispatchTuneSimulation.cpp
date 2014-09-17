@@ -143,7 +143,17 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		model.storage->finalize(level); 
 		model.storage->ClearDepositDrawHistory(level);
 
+		sPackage[LEVEL_INDEX] = (double)level; 
+		sPackage[RESERVE_INDEX] = (double)(model.storage->GetNumber_Bin(level)); 
+		for (int i=0; i<model.storage->GetNumber_Bin(level); i++)
+			sPackage[RESERVE_INDEX + i + 1] = model.storage->GetEnergyLowerBound(level, i); 
+		
+		for (int i=1; i<nNode; i++)
+			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, BINNING_INFO, MPI_COMM_WORLD); 
 
+		for (int i=1; i<nNode; i++)
+			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, BINNING_INFO, MPI_COMM_WORLD, &status);
+		
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// logMDD
 	        logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);

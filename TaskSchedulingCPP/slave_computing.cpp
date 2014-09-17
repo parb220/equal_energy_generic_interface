@@ -32,6 +32,15 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 			delete []rPackage; 
 			delete []sPackage; 
 			exit(0); 
+		}
+		else if (status.MPI_TAG == BINNING_INFO)
+		{
+			model.energy_level = (int)(rPackage[LEVEL_INDEX]); 
+			int number_ring = (int)(rPackage[RESERVE_INDEX]); 
+			model.storage-> ResizeBin(model.energy_level, number_ring); 
+			for (int i=0; i<number_ring; i++)
+				model.storage->SetEnergyLowerBound(model.energy_level, i, rPackage[RESERVE_INDEX+i+1]);
+			sPackage[RETURN_INDEX_1] = (double)(false); 
 		}		
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
 		{
