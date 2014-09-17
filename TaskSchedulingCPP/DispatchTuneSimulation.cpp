@@ -140,6 +140,9 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// storage.binning(level, parameter.number_energy_level, -log(0.5)/(1.0/parameter.t[level-1]-1.0/parameter.t[level])); 
 		model.storage->ClearStatus(level); 
 		model.storage->binning_equal_size(level, model.parameter->number_energy_level); 
+		model.storage->finalize(level); 
+		model.storage->ClearDepositDrawHistory(level);
+
 		sPackage[LEVEL_INDEX] = (double)level; 
 		sPackage[RESERVE_INDEX] = (double)(model.storage->GetNumber_Bin(level)); 
 		for (int i=0; i<model.storage->GetNumber_Bin(level); i++)
@@ -151,10 +154,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		for (int i=1; i<nNode; i++)
 			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, BINNING_INFO, MPI_COMM_WORLD, &status);
 		
-		model.storage->finalize(level); 
-		model.storage->ClearDepositDrawHistory(level);
-
-
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// logMDD
 	        logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);
