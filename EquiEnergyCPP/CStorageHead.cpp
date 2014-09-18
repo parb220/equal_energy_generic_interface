@@ -382,7 +382,7 @@ void CStorageHead::ResizeBin(int level, int number)
 	for (int i=0; i<number; i++)
 	{
 		convert.str(string()); 
-		convert << level << ".i"; 
+		convert << level << "." << i; 
 		bin[level][i].SetBinID(convert.str(), 0); 
 	}
 	energy_lower_bound[level].resize(number); 

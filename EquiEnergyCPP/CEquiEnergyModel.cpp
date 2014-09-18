@@ -495,14 +495,7 @@ bool CEquiEnergyModel::Tune(double target_scale, int period, int max_period, boo
 */
 bool CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample, bool verbose)
 {
-  CSampleIDWeight x_new;
-
-  nEEJumps=nMHJumps=nEEProposed=nMHProposed=nRestarts=nSaved=ring_changes[energy_level]=0; 
-
-  int current_ring, new_ring;
-  ring_counts[energy_level].resize(storage->Number_Bin(energy_level+1));
-  for (int i=0; i < ring_counts[energy_level].size(); i++) ring_counts[energy_level][i]=0;
-
+  // setup file if needed
   bool if_write_file = false;
   ofstream output_file;
   if (!sample_file_name.empty() )
@@ -511,6 +504,12 @@ bool CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name,
       if (output_file)
 	if_write_file = true;
     }
+
+  // diagnostics
+  int current_ring, new_ring;
+  ring_counts.resize(storage->Number_Bin(energy_level+1));
+  for (int i=0; i < ring_counts.size(); i++) ring_counts[i]=0;
+  nEEJumps=nMHJumps=nEEProposed=nMHProposed=nRestarts=nSaved=ring_changes_up=ring_changes_down=0; 
 
   // initial value
   if (!start_from_current_sample)
@@ -523,6 +522,7 @@ bool CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name,
   // simulation runs
   int verbose_factor = number_to_save/20;
   if (verbose_factor < 500) verbose_factor=500;
+  CSampleIDWeight x_new;
   for (int verbose_count=verbose_factor, count=reinitialize_factor; nSaved < number_to_save; )
     {       
       // verbose output
@@ -537,9 +537,9 @@ bool CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name,
       if (count == 0)
 	{
 	  ImportanceSamplePreviousLevel(current_sample);
+	  current_ring=storage->BinIndex(energy_level+1,-current_sample.weight);
 	  count=reinitialize_factor;
 	  nRestarts++;
-	  current_ring=storage->BinIndex(energy_level+1,-current_sample.weight);
 	}
 
       // write previous draw
@@ -557,8 +557,14 @@ bool CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name,
 	  if (dw_uniform_rnd() < parameter->pee)  
 	    {
 	      nEEProposed++;
-	      if (storage->DrawSample(energy_level+1, storage->BinIndex(energy_level+1,-current_sample.weight), x_new))
+	      if (storage->DrawSample(energy_level+1, current_ring, x_new))
 		{
+		  if (storage->BinIndex(energy_level+1,-current_sample.weight) != current_ring)
+		    {
+		      cerr << "DrawSample() did not draw from desired ring (ring=" << current_ring << ")" << endl;
+		      return false;
+		    }
+
 		  if (log(dw_uniform_rnd()) <= (x_new.weight - current_sample.weight)*(1.0/K(energy_level) - 1.0/K(energy_level+1)))
 		    {
 		      nEEJumps++;
@@ -572,7 +578,7 @@ bool CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name,
 		  return false;
 		}
 
-	      ring_counts[energy_level][current_ring]++;
+	      ring_counts[current_ring]++;
 	      continue;
 	    }   
 	}
@@ -585,13 +591,19 @@ bool CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name,
 	  nMHJumps++;
 	  current_sample = x_new; 
 	  current_sample.id = (int)(time(NULL)-timer_when_started);
-	  if ((new_ring=storage->BinIndex(energy_level+1,-current_sample.weight)) != current_ring)
+	  new_ring=storage->BinIndex(energy_level+1,-current_sample.weight);
+	  if (new_ring > current_ring)
 	    {
-	      ring_changes[energy_level]++;
+	      ring_changes_up++;
+	      current_ring=new_ring;
+	    }
+	  else if (new_ring < current_ring)
+	    {
+	      ring_changes_down++;
 	      current_ring=new_ring;
 	    }
 	}
-      ring_counts[energy_level][current_ring]++;	
+      ring_counts[current_ring]++;	
     }
 
   if (if_write_file)
@@ -663,14 +675,15 @@ void CEquiEnergyModel::WriteSimulationDiagnostic(int node)
   output_file << "Scale: " << scale(energy_level) << endl;
   output_file << "Temperature: " << K(energy_level) << endl;
   output_file << "Effective sample size: " << ess(energy_level) << endl;
-  output_file << "Ring changes: " << ring_changes[energy_level] << endl;
+  output_file << "Ring changes up: " << ring_changes_up << endl;
+  output_file << "Ring changes down: " << ring_changes_down << endl;
   output_file << "Ring counts:" << endl;
-  for (int i=0; i < ring_counts[energy_level].size(); i++) 
-    output_file << "  " << ring_counts[energy_level][i];
+  for (int i=0; i < ring_counts.size(); i++) 
+    output_file << "  " << ring_counts[i];
   output_file << endl;
   output_file << "Ring counts:" << endl;
-  for (int i=0; i < ring_counts[energy_level].size(); i++) 
-    output_file << "  " << (double)(ring_counts[energy_level][i])/(double)(nEEProposed + nMHProposed);
+  for (int i=0; i < ring_counts.size(); i++) 
+    output_file << "  " << 100*(double)(ring_counts[i])/(double)(nEEProposed + nMHProposed);
   output_file << endl;
 
   output_file << setprecision(4) << "Equi-energy: " << nEEJumps << "/" << nEEProposed << " = " << (nEEProposed ? 100*(double)nEEJumps/(double)nEEProposed : 0.0) << endl;

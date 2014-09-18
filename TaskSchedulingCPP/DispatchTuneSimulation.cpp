@@ -140,7 +140,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		model.storage->ClearStatus(level); 
 		model.storage->consolidate(level); 
 		model.storage->ClearStatus(level);
-		model.storage->binning_equal_size(level, model.parameter->number_energy_level); 
+		model.storage->binning_equal_size(level, 2*model.parameter->number_energy_level); 
 		model.storage->finalize(level); 
 		model.storage->ClearDepositDrawHistory(level);
 

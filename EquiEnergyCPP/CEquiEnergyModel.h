@@ -133,14 +133,14 @@ public:
         vector<TDenseMatrix> IndependentDirections;
 	TDenseVector scale;
         TDenseVector ess;
-	vector< vector<int> > ring_counts;
-	vector<int> ring_changes;
+
 
 	double density_constant;
 	vector<CSampleIDWeight> ImportanceSamples;
 	int iImportanceSamples;
 
-	int nEEJumps, nEEProposed, nMHJumps, nMHProposed, nRestarts, nSaved;
+	int nEEJumps, nEEProposed, nMHJumps, nMHProposed, nRestarts, nSaved, ring_changes_up, ring_changes_down;
+	vector<int> ring_counts;
 
 	bool SetupLevel(int level, bool force_recompute=false);
 	bool SetScale(double new_scale);
