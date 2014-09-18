@@ -393,3 +393,7 @@ void CStorageHead::SetEnergyLowerBound(int level, int index, double e)
 	energy_lower_bound[level][index] = e; 
 }
 
+void CStorageHead::ClearBin(int level)
+{
+	bin[level].clear(); 
+}

@@ -40,6 +40,8 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 			model.storage-> ResizeBin(model.energy_level, number_ring); 
 			for (int i=0; i<number_ring; i++)
 				model.storage->SetEnergyLowerBound(model.energy_level, i, rPackage[RESERVE_INDEX+i+1]);
+			if (model.energy_level+1 <= model.parameter->number_energy_level)
+				model.storage->ClearBin(model.energy_level+1); 
 			sPackage[RETURN_INDEX_1] = (double)(false); 
 		}		
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
