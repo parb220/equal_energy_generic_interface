@@ -167,17 +167,25 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		cout << endl; 
 
 		// to save space, remove level+1 samples
-		if (save_space_flag && level+2 < model.parameter->highest_level-1 )
+		if (save_space_flag) // && level+1 < model.parameter->number_energy_level-1 )
 		{
-			model.storage->ClearSample(level+2);  
+			model.storage->ClearSample(level+1);  
 			convert.str(string());
-                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << level+2 << ".*";;
+                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << level+1 << ".*";;
                         string remove_file = model.parameter->storage_dir + convert.str();
-			glob_t glob_result;
-        		glob(remove_file.c_str(), GLOB_TILDE, NULL, &glob_result);
-                	for (int i=0; i<(int)glob_result.gl_pathc; i++)
-                        	remove(glob_result.gl_pathv[i]);
-			globfree(&glob_result);
+			glob_t glob_result1, glob_result2;
+        		glob(remove_file.c_str(), GLOB_TILDE, NULL, &glob_result1);
+                	for (int i=0; i<(int)glob_result1.gl_pathc; i++)
+                        	remove(glob_result1.gl_pathv[i]);
+			convert.str(string());
+                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*.sample." << level+1;
+			remove_file = model.parameter->storage_dir + convert.str();
+                        glob(remove_file.c_str(), GLOB_TILDE, NULL, &glob_result2);
+                        for (int i=0; i<(int)glob_result2.gl_pathc; i++)
+                                remove(glob_result2.gl_pathv[i]);
+                        globfree(&glob_result1);
+                        globfree(&glob_result2);
+			
 		}
 	}
 
