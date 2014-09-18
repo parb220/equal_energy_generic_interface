@@ -53,6 +53,12 @@ public:
 	
 	/* reset setting */
 	void ClearStatus(int ); 
+
+	/* get set energy lower bound */
+ 	int GetNumber_Bin(int level) const;
+        double GetEnergyLowerBound(int level, int index) const;
+        void ResizeBin(int level, int number); 
+        void SetEnergyLowerBound(int level, int index, double e); 
 }; 
 
 #endif

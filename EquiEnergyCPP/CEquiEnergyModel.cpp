@@ -567,7 +567,10 @@ bool CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name,
 		    }
 		}
 	      else
-		return false;
+		{
+		  cerr << "Unable to obtain draw - level " << energy_level+1 << " - ring " << storage->BinIndex(energy_level+1,-current_sample.weight) << endl;
+		  return false;
+		}
 
 	      ring_counts[energy_level][current_ring]++;
 	      continue;

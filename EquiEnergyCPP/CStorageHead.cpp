@@ -7,10 +7,9 @@
 #include <cmath>
 #include <algorithm>
 #include <glob.h>
-
 #include "CSampleIDWeight.h"
-#include "CPutGetBin.h"
 #include "CStorageHead.h"
+#include "CPutGetBin.h"
 
 using namespace std;
 
@@ -364,3 +363,33 @@ void CStorageHead::ClearStatus(int level)
 	for (int iBin=0; iBin<(int)(bin[level].size()); iBin++)
 		bin[level][iBin].ClearStatus(); 
 }
+
+
+int CStorageHead::GetNumber_Bin(int level) const 
+{ 
+	return (int)energy_lower_bound[level].size(); 
+}
+
+double CStorageHead::GetEnergyLowerBound(int level, int index) const 
+{ 	
+	return energy_lower_bound[level][index]; 
+}
+
+void CStorageHead::ResizeBin(int level, int number) 
+{ 
+	bin[level].resize(number, bin[level][0]); 
+	stringstream convert; 
+	for (int i=0; i<number; i++)
+	{
+		convert.str(string()); 
+		convert << level << ".i"; 
+		bin[level][i].SetBinID(convert.str(), 0); 
+	}
+	energy_lower_bound[level].resize(number); 
+}
+
+void CStorageHead::SetEnergyLowerBound(int level, int index, double e) 
+{ 
+	energy_lower_bound[level][index] = e; 
+}
+

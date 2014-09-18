@@ -35,6 +35,16 @@ cout << "Received END message" << endl;
 			delete []sPackage; 
 			exit(0); 
 		}		
+		else if (status.MPI_TAG == BINNING_INFO)
+		{
+cout << "Received BINNING message" << endl;
+			model.energy_level = (int)(rPackage[LEVEL_INDEX]); 
+			int number_ring = (int)(rPackage[RESERVE_INDEX]); 
+			model.storage-> ResizeBin(model.energy_level, number_ring); 
+			for (int i=0; i<number_ring; i++)
+				model.storage->SetEnergyLowerBound(model.energy_level, i, rPackage[RESERVE_INDEX+i+1]);
+			sPackage[RETURN_INDEX_1] = (double)(false); 
+		}		
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
 		{
 cout << "Received HILL_CLIMB message" << endl;
