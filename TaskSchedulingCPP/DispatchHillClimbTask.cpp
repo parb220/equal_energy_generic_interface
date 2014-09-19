@@ -13,7 +13,7 @@ using namespace std;
 
 void DispatchHillClimbTask(int nNode, CEquiEnergyModel &model, int number_hill_climb)
 {
-	int nFeasibleSolutionPerNode = ceil((double)number_hill_climb/(double)nNode);
+	int nFeasibleSolutionPerNode = ceil((double)number_hill_climb/(double)(nNode-1));
 
 	double *sPackage = new double [N_MESSAGE]; 
 	sPackage[LENGTH_INDEX] = nFeasibleSolutionPerNode; 
