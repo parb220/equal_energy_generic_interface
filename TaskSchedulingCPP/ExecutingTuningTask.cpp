@@ -18,36 +18,14 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
   model.storage->restore(model.energy_level);
   model.storage->RestoreForFetch(model.energy_level+1);	
 
-  // Setup
-  if (!model.SetupLevel(model.energy_level) || !model.SetScale(1.0))
-    {
-      cerr << "Unable to setup model for tuning for energy level " << model.energy_level << endl;
-      abort(); 	
-    }	
+  model.ReadInitializationFile(model.energy_level);
+  model.scale=1.0;
 
   // tune
-  if (!model.Tune())
-    {
-      cerr << "Unable to tune MH sampler - level " << model.energy_level << endl;
-      abort();
-    }
+  double scale = model.Tune();
 
   // write scale
-  stringstream convert;
-  convert << model.parameter->run_id << "/" << model.parameter->run_id << ".Scale." << model.energy_level << "." << group_index;
-  string filename = model.parameter->storage_dir + convert.str();
-  ofstream output_file;
-  output_file.open(filename.c_str(), ios::out);
-  if (!output_file)
-    {
-      cerr << "Error opening " << filename << endl; 
-      abort(); 	
-    }
-  else
-    {
-      output_file << model.scale(model.energy_level);
-    }
-  output_file.close();
+  model.WriteScale(model.energy_level,group_index,scale);
 
   // prepare storage
   model.storage->ClearStatus(model.energy_level);

@@ -46,11 +46,12 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Get independent directions from previous energy level draws
-		if (!model.SetupLevel(level))
-		  {
-		    cerr << "Error computing independent directions from previous draws - energy level " << model.energy_level << endl;
-		    abort();
-		  }
+		// if (!model.SetupLevel(level))
+		//   {
+		//     cerr << "Error computing independent directions from previous draws - energy level " << model.energy_level << endl;
+		//     abort();
+		//   }
+		model.SetupFromPreviousLevel(level);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Send out tuning jobs
@@ -77,40 +78,9 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Consolidate scales
-		double scale=0.0, scale_i;
-		for (int i=0; i < nNode-1; i++)
-		  {
-		    convert.str(string());
-		    convert << model.parameter->run_id << "/" << model.parameter->run_id << ".Scale." << level << "." << i;
-		    filename = model.parameter->storage_dir + convert.str();
-		    input_file.open(filename.c_str(), ios::in);
-		    if (!input_file)
-		      {
-			cerr << "Error in opening " << filename << endl; 
-			abort(); 	
-		      }
-		    else
-		      {
-			input_file >> scale_i;
-			scale+=scale_i;
-		      }
-		    input_file.close();
-		  }
-		scale/=(double)(nNode-1);
-
-		// write scale
-      		convert.str(string());
-		convert << model.parameter->run_id << "/" << model.parameter->run_id << ".Scale." << level;
-		filename = model.parameter->storage_dir + convert.str();
-		output_file.open(filename.c_str(), ios::out);
-		if (!output_file)
-		  {
-		    cerr << "Error in opening " << filename << endl; 
-		    abort(); 	
-		  }
-		else
-		  output_file << scale;
-		output_file.close();
+		double scale=model.ConsolidateScales(level);
+		model.WriteScale(level,scale);
+		model.CreateInitializationFile(level,model.K(level),scale,model.OrthonormalDirections,model.SqrtDiagonal);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simulation

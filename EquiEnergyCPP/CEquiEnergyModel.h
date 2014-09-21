@@ -7,6 +7,7 @@
 #include "CSampleIDWeight.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
+#include "dw_time_series.hpp"
 
 using namespace std;
 
@@ -71,6 +72,8 @@ public:
 	CMetropolis *metropolis; 	// pointer to CMetropolis
 	CEESParameter *parameter;	// pointer to CEESParameter 
 	CStorageHead *storage; 		// pointer to CStorageHead
+	TTimeSeries *target;
+
 	virtual double log_posterior_function(CSampleIDWeight &x)=0;
         virtual double log_likelihood_function(const CSampleIDWeight &x)=0;
 	virtual double log_posterior_function(const double *x, int n)=0; 
@@ -130,8 +133,9 @@ public:
 // Sampling and Tuning - added by DW 9/10/2014
 public:
 	TDenseVector K;
-        vector<TDenseMatrix> IndependentDirections;
-	TDenseVector scale;
+        // vector<TDenseMatrix> IndependentDirections;
+	//TDenseVector scale;
+	double scale;
         TDenseVector ess;
 
 
@@ -142,21 +146,41 @@ public:
 	int nEEJumps, nEEProposed, nMHJumps, nMHProposed, nRestarts, nSaved, ring_changes_up, ring_changes_down;
 	vector<int> ring_counts;
 
-	bool SetupLevel(int level, bool force_recompute=false);
-	bool SetScale(double new_scale);
+	//bool SetupLevel(int level, bool force_recompute=false);
+	//bool SetScale(double new_scale);
 
 	bool GetImportanceSamples(void);
 
-        bool Tune(double mid=0.3, int period=10, int max_period=0, bool verbose=true);
-	virtual bool Simulate(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample=false, bool verbose=true);
+        double Tune(double mid=0.3, int period=10, int max_period=0, bool verbose=true);
+	void Simulate(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample=false, bool verbose=true);
         double GetMetropolisProposal(CSampleIDWeight &x_new);
 	bool ImportanceSamplePreviousLevel(CSampleIDWeight &x_new);
 
 	void WriteSimulationDiagnostic(int node);
 
-	//virtual bool SetupInitialDensity(void) = 0;
-	//virtual double InitialDensity(const TDenseVector &x) = 0;
-        //virtual TDenseMatrix InitialDraws(int number_draws) = 0;
+	/////////////////////////////////////////////////////////////////////////
+	TDenseMatrix OrthonormalDirections;
+	TDenseVector SqrtDiagonal;
+
+	// initial distributions
+	double nu;
+	TDenseVector InitialCenter;
+	double InitialDraw(TDenseVector &x);
+	double LogInitialDensity(const TDenseVector &x);
+	double AnalyzeInitialDraws(int level);
+
+
+	// seting up filename
+	string MakeFilename(const string &id, int level, int node);
+	string MakeFilename(const string &id, int level);
+
+	// initialization
+	void SetupFromPreviousLevel(int level);
+	void CreateInitializationFile(int level, double Te, double Sc, const TDenseMatrix &Or, const TDenseVector &Di);
+	void ReadInitializationFile(int level);
+	void WriteScale(int level, int node, double s);
+	void WriteScale(int level, double s);
+	double ConsolidateScales(int level);
 
 
 friend class MinusLogPosterior_NPSOL; 

@@ -30,19 +30,16 @@ void ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_
     sample_file_name = string(); 
 
   // simulate
-  if (!model.SetupLevel(model.energy_level) || !model.SetScale(-1.0))
-    {
-      cerr << "Unable to setup model for simulation from energy level " << model.energy_level << endl;
-      abort(); 	
-    }  
+  model.ReadInitializationFile(model.energy_level);
+  // if (!model.SetupLevel(model.energy_level) || !model.SetScale(-1.0))
+  //   {
+  //     cerr << "Unable to setup model for simulation from energy level " << model.energy_level << endl;
+  //     abort(); 	
+  //   }  
 
   int number_to_simulate = 1 + model.parameter->simulation_length/model.parameter->n_compute_cores;
 
-  if (!model.Simulate(if_storage, sample_file_name, number_to_simulate, 2000, false, true))
-    {
-      cerr << "Error simulating model - level " << model.energy_level << endl;
-      abort();
-    }
+  model.Simulate(if_storage, sample_file_name, number_to_simulate, 2000, false, true);
 
   model.WriteSimulationDiagnostic(group_index);
 
