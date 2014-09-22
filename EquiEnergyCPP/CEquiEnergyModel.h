@@ -117,6 +117,9 @@ public:
 	// virtual double HillClimb_CSMINWEL(int nSolution); 
 	virtual bool DrawParametersFromPrior(double *x) const = 0; 
 	double GMM_Simulation(int simulation_length);
+	bool StudentT_DrawSample(CSampleIDWeight &y); 
+	double StudentT_LogPDF(const CSampleIDWeight &x) const; 
+	double StudentT_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const; 
 	bool Cauchy_DrawSample(CSampleIDWeight &y); 
 	double Cauchy_LogPDF(const CSampleIDWeight &x) const; 
 	double Cauchy_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const; 

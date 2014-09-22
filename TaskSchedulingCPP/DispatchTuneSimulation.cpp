@@ -154,20 +154,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		for (int i=1; i<nNode; i++)
 			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, BINNING_INFO, MPI_COMM_WORLD, &status);
 		
-		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// logMDD
-	        logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);
-		for (int j=level+1; j<(int)(logMDD[level].size()); j++)
-			logMDD[level][j] = EstimateLogMDD(model, level, level+1, logMDD[level+1][j]); 
-
-		cout << setprecision(20) << endl; 
-		cout << "logMDD at " << level << endl; 
-		for (int j=level; j<(int)(logMDD[level].size()); j++)
-			cout << logMDD[level][j] << "\t"; 
-		cout << endl; 
-
 		// to save space, remove level+1 samples
-		if (save_space_flag) // && level+1 < model.parameter->number_energy_level-1 )
+		if (save_space_flag  && level > 0 && level+1 < model.parameter->number_energy_level-1 )
 		{
 			model.storage->ClearSample(level+1);  
 			convert.str(string());
@@ -187,6 +175,19 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
                         globfree(&glob_result2);
 			
 		}
+		
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		// logMDD
+	        logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);
+		for (int j=level+1; j<(int)(logMDD[level].size()); j++)
+			logMDD[level][j] = EstimateLogMDD(model, level, level+1, logMDD[level+1][j]); 
+
+		cout << setprecision(20) << endl; 
+		cout << "logMDD at " << level << endl; 
+		for (int j=level; j<(int)(logMDD[level].size()); j++)
+			cout << logMDD[level][j] << "\t"; 
+		cout << endl; 
+
 	}
 
 	delete []sPackage; 

@@ -20,7 +20,8 @@ double CEquiEnergyModel::GMM_Simulation(int simulation_length)
 	for (int i=0; i<simulation_length; i++)
 	{
 		CSampleIDWeight sample; 
-		if (Cauchy_DrawSample(sample))
+		if (StudentT_DrawSample(sample))
+		// if (Cauchy_DrawSample(sample))
 		// if (GMM_DrawSample(sample))
 		{	
  			SaveSampleToStorage(sample);
@@ -30,6 +31,23 @@ double CEquiEnergyModel::GMM_Simulation(int simulation_length)
 
 	if_bounded = if_bounded_old;
 	return (double)nAccpt/(double)(simulation_length*parameter->thin); 
+}
+
+bool CEquiEnergyModel::StudentT_DrawSample(CSampleIDWeight &y) 
+{
+	int dim = current_sample.data.dim;
+	TDenseVector x(dim,0.0);
+	for (int i=0; i<dim; i++)
+		x[i] = dw_tdistribution_rnd(5.0); // degree of freedom by default = 5.0 
+	x = gmm_covariance_sqrt[0]*x+gmm_mean[0];
+	double log_posterior = log_posterior_function(x.vector, x.dim);
+	if (log_posterior > MINUS_INFINITY)
+	{
+		y = CSampleIDWeight(x, (int)(time(NULL)-timer_when_started), log_posterior, true);
+		return true; 
+	}
+	else 
+		return false; 
 }
 
 bool CEquiEnergyModel::Cauchy_DrawSample(CSampleIDWeight &y) 
@@ -78,6 +96,19 @@ double CEquiEnergyModel::Cauchy_LogPDF(const CSampleIDWeight &x) const
 	return log_element ; 
 }
 
+double CEquiEnergyModel::StudentT_LogPDF(const CSampleIDWeight &x) const 
+{
+	if (gmm_mean.empty() || gmm_covariance_sqrt.size() != gmm_mean.size() || gmm_covariance_sqrt_log_determinant.size() != gmm_mean.size() || gmm_covariance_sqrt_inverse.size() != gmm_mean.size())
+		return MINUS_INFINITY; 
+	
+	TDenseVector rotatedError = gmm_covariance_sqrt_inverse[0] * (x.data-gmm_mean[0]); 
+	double log_element = gmm_covariance_sqrt_log_determinant[0] ; 
+	for (int i=0; i<rotatedError.dim; i++)
+		log_element += log(dw_tdistribution_pdf(rotatedError[i], 5.0)); // by default, degree of freedom = 5.0 
+
+	return log_element ; 
+}
+
 double CEquiEnergyModel::GMM_LogPDF(const CSampleIDWeight &x) const 
 {
 	if (gmm_mean.empty() || gmm_covariance_sqrt.size() != gmm_mean.size() || gmm_covariance_sqrt_log_determinant.size() != gmm_mean.size() || gmm_covariance_sqrt_inverse.size() != gmm_mean.size())
@@ -92,6 +123,16 @@ double CEquiEnergyModel::GMM_LogPDF(const CSampleIDWeight &x) const
 		log_element_1 = AddLogs(log_element_1, log_element_2); 	
 	}
 	return log_element_1 ; 
+}
+
+double CEquiEnergyModel::StudentT_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const
+{
+	double log_pdf_x = StudentT_LogPDF(x); 
+	double log_pdf_y = StudentT_LogPDF(y); 
+	if (log_pdf_x > MINUS_INFINITY && log_pdf_y > MINUS_INFINITY)
+		return log_pdf_x - log_pdf_y; 
+	else 
+		return MINUS_INFINITY; 
 }
 
 double CEquiEnergyModel::Cauchy_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const

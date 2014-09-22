@@ -33,11 +33,14 @@ void *MinusLogPosterior_NPSOL::function(int *mode, int *n, double *x, double *f,
 // will be set as its original value. 
 // Samples generated during HillClimb will be saved into storage but always at the level of number_energy_level
 // (the extra level)
+//
+// Revision on 09/22/2014, HillClimb is on the heated model. Therefore, if_bounded will not be changed
+// during hillclimb; and Hessian matrix will not be scaled either.
 double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iteration, int perturbation_iteration, double perturbation_scale, double scale)
 {
 	// energy_level = parameter->number_energy_level; 
-	bool if_bounded_old = if_bounded; 
-	if_bounded = false;	// temperarily set if_bounded as false so hill-climbing is with respect to original model
+	// bool if_bounded_old = if_bounded; 
+	// if_bounded = false;	// temperarily set if_bounded as false so hill-climbing is with respect to original model
  
 	const string COLD_START = string("Cold Start");
         const string NO_PRINT_OUT = string("Major print level = 0");
@@ -179,7 +182,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 	}	
 	catch(...)
 	{
-		if_bounded = if_bounded_old; 
+		// if_bounded = if_bounded_old; 
 		delete [] g; 
 		delete [] c;
 		delete [] w; 
@@ -209,7 +212,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 	// storage->finalize(energy_level); 
 	// storage->ClearDepositDrawHistory(energy_level);
 
-	if_bounded = if_bounded_old; 
+	// if_bounded = if_bounded_old; 
 	return (double)nAccpt/(double)nSolution; 
 }
 
