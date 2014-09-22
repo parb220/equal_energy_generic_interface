@@ -40,7 +40,7 @@ bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleI
 		// calculate log_ratio in the current and the higher levels
 		double log_ratio; 
 		if (energy_level == parameter->number_energy_level-1)
-			log_ratio = Cauchy_LogRatio(y_initial, y_end);
+			log_ratio = StudentT_LogRatio(y_initial, y_end); //Cauchy_LogRatio(y_initial, y_end);
 		else 
 			log_ratio = parameter->LogRatio_Level(-y_initial.weight, -y_end.weight, energy_level+1);
 		log_ratio += parameter->LogRatio_Level(-y_end.weight, -y_initial.weight, energy_level); 
