@@ -236,7 +236,7 @@ bool CEquiEnergyModel::Initialize(int desiredPoolSize, int level_index)
         {
                 if(storage->DrawSample(level_index, bin_index, current_sample))
                 {
-                        current_sample.id = (int)(time(NULL)-timer_when_started);
+                        current_sample.id = timer_when_started;
 			// Because all samples stored in storage have had their log-posterior calculated and stored 
 			// together with the sample values, there is no need to recalculate log-posterior at this moment
 		return true;
@@ -252,7 +252,7 @@ bool CEquiEnergyModel::InitializeWithBestSample(int level_index)
                 bin_index ++;
         if (bin_index >= storage->Number_Bin(level_index))
                 return false;
-        current_sample.id = (int)(time(NULL)-timer_when_started);
+        current_sample.id = timer_when_started;
         return true;
 }
 

@@ -21,7 +21,7 @@ bool CEquiEnergy_TState::SaveTargetModelOriginalSetting()
         for (int i=0; i<original_sample.data.dim; i++)
                 original_sample.data[i] = x[i];
         original_sample.DataChanged();
-        original_sample.id = (int)(time(NULL)-timer_when_started);
+        original_sample.id = timer_when_started;
         log_posterior_function(original_sample);
         return true;
 }
@@ -49,7 +49,7 @@ bool CEquiEnergy_TState::InitializeFromTarget()
 	// current_sample.data[i] = x[i]; 
 	// current_sample.DataChanged(); 
 	current_sample = original_sample;
-        current_sample.id = (int)(time(NULL)-timer_when_started);
+        current_sample.id = timer_when_started;
 	// log_posterior_function(current_sample);
 	// delete []x;
 	return true; 

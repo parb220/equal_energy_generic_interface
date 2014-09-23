@@ -248,7 +248,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
                         for (int i=0; i<n; i++)
                                 sample.data[i] = x[i];
                         sample.DataChanged();
-                        sample.id = (int)(time(NULL)-timer_when_started);
+                        sample.id = timer_when_started;
                         log_posterior_function(sample);
 
 			SaveSampleToStorage(sample); 

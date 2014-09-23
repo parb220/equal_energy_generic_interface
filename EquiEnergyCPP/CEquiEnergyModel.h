@@ -65,7 +65,7 @@ public:
 // 		between when it is drawn and when the program is started)
 // 	Weight:	energy (log posterior)
 	CSampleIDWeight current_sample; 
-	time_t timer_when_started; 
+	int timer_when_started; 
 	
 public:
 	CMetropolis *metropolis; 	// pointer to CMetropolis

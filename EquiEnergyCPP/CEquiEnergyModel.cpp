@@ -59,7 +59,7 @@ void CEquiEnergyModel::SaveSampleToStorage(const CSampleIDWeight &sample)
 void CEquiEnergyModel::Take_Sample_Just_Drawn_From_Storage(const CSampleIDWeight &x)
 {
 	current_sample = x; 
-	current_sample.id = (int)(time(NULL)-timer_when_started);
+	current_sample.id = timer_when_started;
 }
 
 int CEquiEnergyModel::EE_Draw(int MH_thin)
@@ -78,7 +78,7 @@ int CEquiEnergyModel::EE_Draw(int MH_thin)
 		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, MH_thin))
 		{
 			current_sample = x_new; 
-			current_sample.id = (int)(time(NULL)-timer_when_started);
+			current_sample.id = timer_when_started;
 			new_sample_code = METROPOLIS_JUMP; 
 		}
 	}
@@ -97,7 +97,7 @@ double CEquiEnergyModel::BurnIn(int burn_in_length)
 		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1) )
 		{
 			current_sample = x_new;
-			current_sample.id = (int)(time(NULL)-timer_when_started);  
+			current_sample.id = timer_when_started;  
 			max_posterior = current_sample.weight > max_posterior ? current_sample.weight : max_posterior; 
 			nJump ++; 
 		}
@@ -127,7 +127,7 @@ void CEquiEnergyModel::Simulation_Within(bool if_storage, const string &sample_f
 			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, parameter->THIN/parameter->thin) )
                 	{
                         	current_sample = x_new;
-                        	current_sample.id = (int)(time(NULL)-timer_when_started);
+                        	current_sample.id = timer_when_started;
                         	// max_posterior = current_sample.weight > max_posterior ? current_sample.weight : max_posterior;
                         	nJump ++;
                 	}
@@ -186,7 +186,7 @@ void CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_fi
 CEquiEnergyModel::CEquiEnergyModel() : 
 gmm_mean(vector<TDenseVector>(0)), gmm_covariance_sqrt(vector<TDenseMatrix>(0)), 
 gmm_covariance_sqrt_log_determinant(vector<double>(0)), gmm_covariance_sqrt_inverse(vector<TDenseMatrix>(0)), 
-if_bounded(true), energy_level(0), t_bound(1.0), current_sample(CSampleIDWeight()), timer_when_started(time(NULL)), metropolis(NULL), parameter(NULL), storage(NULL)
+if_bounded(true), energy_level(0), t_bound(1.0), current_sample(CSampleIDWeight()), timer_when_started(-1), metropolis(NULL), parameter(NULL), storage(NULL)
 {}
 
 CEquiEnergyModel::CEquiEnergyModel(bool _if_bounded, int eL, double _t, const CSampleIDWeight &_x, time_t _time, CMetropolis *_metropolis, CEESParameter *_parameter, CStorageHead *_storage) :

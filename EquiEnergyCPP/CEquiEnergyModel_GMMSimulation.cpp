@@ -43,7 +43,7 @@ bool CEquiEnergyModel::StudentT_DrawSample(CSampleIDWeight &y)
 	double log_posterior = log_posterior_function(x.vector, x.dim);
 	if (log_posterior > MINUS_INFINITY)
 	{
-		y = CSampleIDWeight(x, (int)(time(NULL)-timer_when_started), log_posterior, true);
+		y = CSampleIDWeight(x, timer_when_started, log_posterior, true);
 		return true; 
 	}
 	else 
@@ -60,7 +60,7 @@ bool CEquiEnergyModel::Cauchy_DrawSample(CSampleIDWeight &y)
 	double log_posterior = log_posterior_function(x.vector, x.dim);
 	if (log_posterior > MINUS_INFINITY)
 	{
-		y = CSampleIDWeight(x, (int)(time(NULL)-timer_when_started), log_posterior, true);
+		y = CSampleIDWeight(x, timer_when_started, log_posterior, true);
 		return true; 
 	}
 	else 
@@ -76,7 +76,7 @@ bool CEquiEnergyModel::GMM_DrawSample(CSampleIDWeight &y)
 	double log_posterior = log_posterior_function(x.vector, x.dim);
 	if (log_posterior > MINUS_INFINITY)
 	{
-		y = CSampleIDWeight(x, (int)(time(NULL)-timer_when_started), log_posterior, true);
+		y = CSampleIDWeight(x, timer_when_started, log_posterior, true);
 		return true; 
 	}
 	else 
