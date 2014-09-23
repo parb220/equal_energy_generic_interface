@@ -39,7 +39,7 @@ void ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_
 
   int number_to_simulate = 1 + model.parameter->simulation_length/model.parameter->n_compute_cores;
 
-  model.Simulate(if_storage, sample_file_name, number_to_simulate, 2000, false, true);
+  model.SimulateEE(if_storage, sample_file_name, number_to_simulate, 2000, false, true);
 
   model.WriteSimulationDiagnostic(group_index);
 

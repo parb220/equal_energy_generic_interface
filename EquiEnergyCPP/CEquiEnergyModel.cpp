@@ -222,26 +222,42 @@ double EffectiveSampleSize(double K1, double K2, vector<CSampleIDWeight> &sample
   return 1.0/sum2;
 }
 
-double EffectiveSampleSize(double K1, TDenseVector log_posterior, TDenseVector log_initial_density)
+double EffectiveSampleSize(TDenseVector log_kernel_target, TDenseVector log_density_proposal)
 {
-  if (log_posterior.dim != log_initial_density.dim)
+  if (log_kernel_target.dim != log_density_proposal.dim)
     {
-      cerr << "EffectiveSampleSize(): log_posterior and log_initial_density must be same length" << endl;
+      cerr << "EffectiveSampleSize(): log_kernel_target and log_density_proposal must be same length" << endl;
       abort();
     }
 
-  double sum=log_posterior(0)/K1 - log_initial_density(0), sum2=0.0, weight;
-  for (int i=log_posterior.dim-1; i > 0; i--)
-    sum=AddLogs(sum,log_posterior(i)/K1 - log_initial_density(i));
+  double sum=log_kernel_target(0) - log_density_proposal(0), sum2=0.0, weight;
+  for (int i=log_kernel_target.dim-1; i > 0; i--)
+    sum=AddLogs(sum,log_kernel_target(i) - log_density_proposal(i));
 
-  for (int i=log_posterior.dim-1; i >= 0; i--)
+  for (int i=log_kernel_target.dim-1; i >= 0; i--)
     {
-      weight=exp(log_posterior(i)/K1 - log_initial_density(i) - sum);
+      weight=exp(log_kernel_target(i) - log_density_proposal(i) - sum);
       sum2+=weight*weight;
     }
 
   return 1.0/sum2;
 }
+
+double ComputeLogKernelIntegral(TDenseVector log_kernel_target, TDenseVector log_density_proposal)
+{
+  if (log_kernel_target.dim != log_density_proposal.dim)
+    {
+      cerr << "LogKernelIntegral(): log_kernel_target and log_density_proposal must be same length" << endl;
+      abort();
+    }
+
+  double sum=log_kernel_target(0) - log_density_proposal(0);
+  for (int i=log_kernel_target.dim-1; i > 0; i--)
+    sum=AddLogs(sum,log_kernel_target(i) - log_density_proposal(i));
+
+  return sum - log(log_kernel_target.dim);
+}
+
 
 /*
    (1) Sets energy_level to level
@@ -253,6 +269,12 @@ double EffectiveSampleSize(double K1, TDenseVector log_posterior, TDenseVector l
 */
 void CEquiEnergyModel::SetupFromPreviousLevel(int level)
 {
+  if (level != energy_level)
+    {
+      cerr << "SetupFromPreviousLevel(): energy_level not equal to level" << endl;
+      abort();
+    }
+
   if (level == parameter->number_energy_level)
     {
       cerr << "Cannot setup highest level from previous level" << endl;
@@ -260,20 +282,29 @@ void CEquiEnergyModel::SetupFromPreviousLevel(int level)
     }
 
   // Get all previous level samples
-  cout << "SetupFromPreviousLevel(): calling DrawAllSample()\n";
   vector<CSampleIDWeight> samples;  
-  if (!storage->DrawAllSample(level+1, samples, true, current_sample.GetSize_Data())) // || (samples.size() < parameter->simulation_length)) 
+  if (!storage->DrawAllSample(level+1, samples, true, current_sample.GetSize_Data()) || (samples.size() < parameter->simulation_length))
     {
       cerr << "Error obtaining all samples from level " << level+1 << endl;
-      if (samples.size() < parameter->simulation_length)
-	cerr << "Not enough samples - " << samples.size() << endl;
+      if (samples.size() < parameter->simulation_length) cerr << "Not enough samples - " << samples.size() << endl;
       abort();
     }
 
+  TDenseVector log_kernel_target(samples.size()), log_density_proposal(samples.size());
   if (level == parameter->number_energy_level-1)
     {
+      energy_level++;
+      ReadInitializationFile(level+1);
+      energy_level--;
+
       K(level)=parameter->max_energy;
-      K(level+1)=parameter->max_energy;
+      for (int i=samples.size()-1; i >= 0; i--)
+      	{	
+      	  log_density_proposal(i)=LogInitialDensity(samples[i].data);
+      	  log_kernel_target(i)=samples[i].weight/K(level);
+      	}
+      ESS=EffectiveSampleSize(log_kernel_target,log_density_proposal);
+      LogKernelIntegral(level)=ComputeLogKernelIntegral(log_kernel_target,log_density_proposal);
     }
   else if (level == 0)
     {
@@ -285,52 +316,70 @@ void CEquiEnergyModel::SetupFromPreviousLevel(int level)
       double alpha=pow(K(level+1),-1.0/(level+1));
 
       K(level)=K(level+1)*alpha;
-      double ess=EffectiveSampleSize(K(level),K(level+1),samples);
+      ESS=EffectiveSampleSize(K(level),K(level+1),samples);
 
-      if (ess > parameter->min_ess)
+      if (ESS > parameter->min_ess)
 	{
 	  double ess_new, K_new=K(level)*alpha;
 	  int n=level;
 	  while ((n-- > 0) && ((ess_new=EffectiveSampleSize(K_new,K(level+1),samples)) > parameter->min_ess))
 	    {
 	      K(level)=K_new;
-	      ess=ess_new;
+	      ESS=ess_new;
 	      K_new*=alpha;
 	    }
 	}
+
+      for (int i=samples.size()-1; i >= 0; i--)
+      	{	
+      	  log_density_proposal(i)=samples[i].weight/K(level+1) - LogKernelIntegral(level+1);
+      	  log_kernel_target(i)=samples[i].weight/K(level);
+      	}
+      LogKernelIntegral(level)=ComputeLogKernelIntegral(log_kernel_target,log_density_proposal);
+
+      if (fabs(ESS - EffectiveSampleSize(log_kernel_target,log_density_proposal)) > 1.0e-7)
+	{
+	  cerr << "computations of ESS do not agree" << endl;
+	  abort();
+	}
     }
- 
-  // Importance weights
+
   TDenseVector importance_weights(samples.size());
-  // if (level < parameter->number_energy_level-1)
-  //   {
+  TDenseMatrix variance;
+  if (level < parameter->number_energy_level-1)
+    {
+      // Importance weights
       double power=(1.0/K(level)-1.0/K(level+1)), sum=samples[0].weight*power;
       for (int i=samples.size()-1; i > 0; i--)
-	sum=AddLogs(sum,samples[i].weight*power);
+  	sum=AddLogs(sum,samples[i].weight*power);
       for (int i=samples.size()-1; i >= 0; i--)
-	importance_weights(i)=exp(samples[i].weight*power - sum);
-  //   }
-  // else
-  //   {
-  //     TDenseVector log_density(samples.size());
-  //     log_density(0)=LogInitialDensity(samples[0].data);
-  //     double sum=samples[0].weight/K(level) - log_density(0);
-  //     for (int i=samples.size()-1; i > 0; i--)
-  // 	{
-  // 	  log_density(i)=LogInitialDensity(samples[i].data);
-  // 	  sum=AddLogs(sum,samples[i].weight/K(level) - log_density(i));
-  // 	}
+  	importance_weights(i)=exp(samples[i].weight*power - sum);
 
-  //     for (int i=samples.size()-1; i >= 0; i--)
-  // 	importance_weights(i)=exp(samples[i].weight/K(level) - log_density(i) - sum);
-  //   }
+      // Compute variance matrix
+      variance=OuterProduct(importance_weights(0)*samples[0].data,samples[0].data);
+      for (int i=samples.size()-1; i > 0; i--)
+	variance+=OuterProduct(importance_weights(i)*samples[i].data,samples[i].data);
+      variance=0.5*(variance + Transpose(variance));
+    }
+  else
+    {
+      // TDenseVector log_initial_density(samples.size());
+      // log_initial_density(0)=LogInitialDensity(samples[0].data);
+      // double sum=samples[0].weight/K(level) - log_initial_density(0);
+      // for (int i=samples.size()-1; i > 0; i--)
+      // 	{
+      // 	  log_initial_density(i)=LogInitialDensity(samples[i].data);
+      // 	  sum=AddLogs(sum,samples[i].weight/K(level) - log_initial_density(i));
+      // 	}
+      // for (int i=samples.size()-1; i >= 0; i--)
+      // 	importance_weights(i)=exp(samples[i].weight/K(level) - log_initial_density(i) - sum);
 
-  // Compute variance matrix
-  TDenseMatrix variance;
-  variance=OuterProduct(importance_weights(0)*samples[0].data,samples[0].data);
-  for (int i=samples.size()-1; i > 0; i--)
-    variance+=OuterProduct(importance_weights(i)*samples[i].data,samples[i].data);
-  variance=0.5*(variance + Transpose(variance));
+      // Compute variance matrix
+      variance=OuterProduct(samples[0].data,samples[0].data);
+      for (int i=samples.size()-1; i > 0; i--)
+	variance+=OuterProduct(samples[i].data,samples[i].data);
+      variance=0.5*(variance + Transpose(variance));
+    }
 
   // Compute OrthonormalDirections and SqrtDiagonal
   Eig(SqrtDiagonal,OrthonormalDirections,variance);
@@ -340,200 +389,7 @@ void CEquiEnergyModel::SetupFromPreviousLevel(int level)
   CreateInitializationFile(level,K(level),1.0,OrthonormalDirections,SqrtDiagonal);
 
   iImportanceSamples=0;
-
 }
-
-// /*
-//    (1) Sets energy_level to level
-//    (2) Sets K(level) and IndependentDirections[level]
-//          Attempts to read these from file and otherwise computes them.  If 
-//          force_recompute is true, then no attempt is made to read their values 
-//          from disk.
-//    (3) Sets parameter->t[level] to K(level)
-// */
-// bool CEquiEnergyModel::SetupLevel(int level, bool force_recompute)
-// {
-//   energy_level=level;
-
-//   if (!force_recompute)
-//     {
-//       stringstream convert;
-//       ifstream input_file;
-//       convert << parameter->run_id << "/" << parameter->run_id << ".LevelSetup." << level;
-//       string filename = parameter->storage_dir + convert.str();
-//       input_file.open(filename.c_str(), ios::in);
-//       if (input_file)
-// 	{	  
-// 	  try
-// 	    {
-// 	      input_file >> K(level);
-// 	      input_file >> ess(level);
-// 	      IndependentDirections[level].Resize(parameter->nParameters,parameter->nParameters);
-// 	      input_file >> IndependentDirections[level];
-// 	      input_file.close();
-// 	      parameter->t[level]=K(level);
-// 	      return true;
-// 	    }
-// 	  catch(dw_exception &e)
-// 	    {
-// 	      cerr << "Exception reading level setup file: " << filename << " : " << e.what() << endl;
-// 	      input_file.close();
-// 	      abort();
-// 	    }
-// 	}
-//     }
-
-//   // Get all previous level samples
-//   vector<CSampleIDWeight> samples;  
-//   if (!storage->DrawAllSample(level+1, samples, true, current_sample.GetSize_Data()) || (samples.size() < parameter->simulation_length)) 
-//     {
-//       cerr << "Error obtaining all samples from level " << level+1 << endl;
-//       abort();
-//     }
-
-//   if (level == parameter->number_energy_level-1)
-//     {
-//       //K(level)=parameter->max_energy;
-//       K(level+1)=parameter->t[level+1];
-//       K(level)=parameter->t[level];
-//       ess(level)=-1.0;
-//     }
-//   else if (level == 0)
-//     {
-//       K(level)=1.0;
-//       ess(level)=EffectiveSampleSize(K(level),K(level+1),samples);
-//     }
-//   else
-//     {
-//       // choose alpha so K(level+1) * alpha^(level+1) = 1
-//       double alpha=pow(K(level+1),-1.0/(level+1));
-
-//       K(level)=K(level+1)*alpha;
-//       ess(level)=EffectiveSampleSize(K(level),K(level+1),samples);
-
-//       if (ess(level) < 0.0)
-// 	{
-// 	  cerr << "Negative effective sample size in SetupLevel(): " << ess(level) << endl;
-// 	  abort();
-// 	}
-
-//       if (ess(level) > parameter->min_ess)
-// 	{
-// 	  double ess_new, K_new=K(level)*alpha;
-// 	  int n=level;
-// 	  while ((n-- > 0) && ((ess_new=EffectiveSampleSize(K_new,K(level+1),samples)) > parameter->min_ess))
-// 	    {
-// 	      K(level)=K_new;
-// 	      ess(level)=ess_new;
-// 	      K_new*=alpha;
-// 	      if (ess(level) < 0.0)
-// 		{
-// 		  cerr << "Negative effective sample size in SetupLevel(): " << ess(level) << endl;
-// 		  abort();
-// 		}
-// 	    }
-// 	}
-//     }
-
-//   // Importance weights
-//   TDenseVector importance_weights(samples.size());
-//   double power=(1.0/K(level)-1.0/K(level+1));
-//   double sum=samples[0].weight*power;
-//   for (int i=samples.size()-1; i > 0; i--)
-//     sum=AddLogs(sum,samples[i].weight*power);
-//   for (int i=samples.size()-1; i >= 0; i--)
-//     importance_weights(i)=exp(samples[i].weight*power - sum);
-
-//   // Compute variance matrix
-//   TDenseMatrix variance;
-//   variance=OuterProduct(importance_weights(0)*samples[0].data,samples[0].data);
-//   for (int i=samples.size()-1; i > 0; i--)
-//     variance+=OuterProduct(importance_weights(i)*samples[i].data,samples[i].data);
-//   variance=0.5*(variance + Transpose(variance));
-
-//   // Compute independent directions
-//   TDenseVector EigenValues;
-//   Eig(EigenValues,IndependentDirections[level],variance);
-//   for (int j=EigenValues.dim-1; j >= 0; j--)
-//     {
-//       double factor=sqrt(EigenValues(j));
-//       for (int i=EigenValues.dim-1; i >= 0; i--)
-// 	IndependentDirections[level](i,j)*=factor;
-//     }
-
-//   // Write K(level) and independent directions
-//   stringstream convert;
-//   ofstream output_file;
-//   convert << parameter->run_id << "/" << parameter->run_id << ".LevelSetup." << level;
-//   string filename = parameter->storage_dir + convert.str();
-//   output_file.open(filename.c_str(), ios::out);
-//   if (!output_file)
-//     {
-//       cerr << "Error in opening " << filename << endl; 
-//       return false; 	
-//     }
-//   else
-//     {
-//       output_file << K(level) << endl;
-//       output_file << ess(level) << endl;
-//       output_file << IndependentDirections[level];
-//     }
-
-//   parameter->t[level]=K(level);
-
-//   return true; 
-
-// }
-
-
-// /*
-//   (0) SetupLevel() must be called prior to SetScale()
-//   (1) Sets scale(energy_level)
-//         (a) if new_scale > 0, scale(energy_level) = new_scale
-//         (b) if new_scale <= 0, reads scale(energy_level) from file
-//   (2) Computes density_constant for metropolis jumps (not currently implemented)
-//   (3) Sets ImportanceSamples
-
-//   After a successful call to SetScales()
-// */ 
-// bool CEquiEnergyModel::SetScale(double new_scale)
-// {
-//   // sets scale
-//   if (new_scale <= 0.0)
-//     {
-//       stringstream convert;
-//       convert << parameter->run_id << "/" << parameter->run_id << ".Scale." << energy_level;
-//       string filename = parameter->storage_dir + convert.str();
-//       ifstream input_file;
-//       input_file.open(filename.c_str(), ios::in);
-//       if (!input_file)
-// 	{
-// 	  cerr << "Error in opening " << filename << endl; 
-// 	  abort();	
-// 	}
-//       else
-// 	{
-// 	  try
-// 	    {
-// 	      input_file >> scale(energy_level);
-// 	    }
-// 	  catch(dw_exception &e)
-// 	    {
-// 	      cerr << "Exception reading scale from " << filename << endl << e.what() << endl;
-// 	      abort();
-// 	    }
-// 	}
-//       input_file.close();
-//     }
-//   else
-//     scale(energy_level)=new_scale;
-
-//   // sets density_constant
-//   density_constant=0.0;
-
-//   // gets importance sample from previous level
-//   return GetImportanceSamples();
-// }
 
 double CEquiEnergyModel::Tune(double target_scale, int period, int max_period, bool verbose)
 {
@@ -557,9 +413,11 @@ double CEquiEnergyModel::Tune(double target_scale, int period, int max_period, b
   // Beginning adaptive burn-in 
   while (period <= max_period)
     {
-
       // simulate approximately period/p_saved draws 
-      Simulate(false,string(),period,reinitialize_factor,false,false);
+      if (energy_level < parameter->number_energy_level)
+	SimulateEE(false,string(),period,reinitialize_factor,false,false);
+      else
+	SimulateMH(false,string(),period,false);
 
       // jump ratio
       previous_ratio = (double)nMHJumps/(double)nMHProposed;
@@ -586,13 +444,11 @@ double CEquiEnergyModel::Tune(double target_scale, int period, int max_period, b
       if (low_jump_ratio < 0.0)
 	{
 	  best_scale = scale; 
-	  //new_scale=(1.0 + 4.0*(previous_ratio - target_scale)/(1.0 - target_scale))*high_scale;
 	  new_scale = (previous_ratio > upper_bound) ? 5.0*high_scale : (log_mid/log(previous_ratio))*high_scale;
 	}
       else if (high_jump_ratio < 0.0)
 	{
 	  best_scale = scale; 
-	  //new_scale=(0.2 + 0.8*previous_ratio/target_scale)*low_scale;
 	  new_scale = (previous_ratio < lower_bound) ? 0.2*low_scale : (log_mid/log(previous_ratio))*low_scale;
 	}
       else 
@@ -605,6 +461,15 @@ double CEquiEnergyModel::Tune(double target_scale, int period, int max_period, b
 			
       // reset scale
       scale = new_scale; 
+
+      // cout << scale << endl; abort();
+
+
+      if ((scale < 1.0e-7) || (scale > 1.0e7))
+	{
+	  cout << "Unable to tune scale - returning" << endl;
+	  return scale=best_scale;
+	}
     }	  
 
   // set scale
@@ -616,7 +481,7 @@ double CEquiEnergyModel::Tune(double target_scale, int period, int max_period, b
 /*
    Set reinitialize_factor to -1.0 to never reinitialize.
 */
-void CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample, bool verbose)
+void CEquiEnergyModel::SimulateEE(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample, bool verbose)
 {
   // setup file if needed
   bool if_write_file = false;
@@ -671,7 +536,8 @@ void CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name,
 	  nSaved++;
 	  count--;
 	  verbose_count--;
-	  if (if_storage)
+	  current_sample.id = (int)(time(NULL)-timer_when_started);
+	  if (if_storage)      
 	    SaveSampleToStorage(current_sample); 
 	  if (if_write_file)
 	    write(output_file, &current_sample);     
@@ -688,11 +554,22 @@ void CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name,
 		      abort();
 		    }
 
-		  if (log(dw_uniform_rnd()) <= (x_new.weight - current_sample.weight)*(1.0/K(energy_level) - 1.0/K(energy_level+1)))
+		  if (energy_level < parameter->number_energy_level-1)
 		    {
-		      nEEJumps++;
-		      current_sample = x_new; 
-		      current_sample.id = (int)(time(NULL)-timer_when_started);
+		      if (log(dw_uniform_rnd()) <= (x_new.weight - current_sample.weight)*(1.0/K(energy_level) - 1.0/K(energy_level+1)))
+			{
+			  nEEJumps++;
+			  current_sample = x_new; 			  
+			}
+		    }
+		  else
+		    {
+		      double log_initial_density_old=LogInitialDensity(current_sample.data), log_initial_density_new=LogInitialDensity(x_new.data);
+		      if (log(dw_uniform_rnd()) <= (x_new.weight - current_sample.weight)/K(energy_level) - (log_initial_density_new - log_initial_density_old))
+			{
+			  nEEJumps++;
+			  current_sample = x_new; 
+			}
 		    }
 		}
 	      else
@@ -713,7 +590,6 @@ void CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name,
 	{
 	  nMHJumps++;
 	  current_sample = x_new; 
-	  current_sample.id = (int)(time(NULL)-timer_when_started);
 	  new_ring=storage->BinIndex(energy_level+1,-current_sample.weight);
 	  if (new_ring > current_ring)
 	    {
@@ -740,22 +616,73 @@ void CEquiEnergyModel::Simulate(bool if_storage, const string &sample_file_name,
     }	
 }
 
+void CEquiEnergyModel::SimulateMH(bool store_internal, const string &external_filename, int number_to_save, bool verbose)
+{
+  // setup file if needed
+  bool store_external = false;
+  ofstream output_file;
+  if (!external_filename.empty() )
+    {
+      output_file.open(external_filename.c_str(), ios::out);
+      if (output_file.is_open())
+	{
+	  output_file << scientific << setprecision(12);
+	  store_external = true;
+	}
+    }
+
+  // verbose rules
+  int verbose_factor = (number_to_save/20 < 500) ? 500 : number_to_save/20;
+
+  // diagnostics
+  nMHJumps=nMHProposed=nSaved=0; 
+
+  // simulation runs
+  CSampleIDWeight x_new;
+  for (int verbose_count=verbose_factor; nSaved < number_to_save; )
+    {       
+      // verbose output
+      if (verbose && (verbose_count  == 0))
+	{
+	  cout << setprecision(4) << "MH: " << nMHJumps << "/" << nMHProposed << " = " << 100*(double)nMHJumps/(double)nMHProposed
+	       << " -- Number saved = " << nSaved << endl;
+	  verbose_count=verbose_factor;
+	}
+
+      // write previous draw?
+      if (dw_uniform_rnd() <= parameter->p_save)
+	{
+	  nSaved++;
+	  verbose_count--;
+	  current_sample.id = (int)(time(NULL)-timer_when_started);
+	  if (store_internal)
+	    SaveSampleToStorage(current_sample); 
+	  if (store_external)
+	    output_file << current_sample.data;
+	}
+
+      // make MH jump
+      nMHProposed++;
+      GetMetropolisProposal(x_new);
+      if (log(dw_uniform_rnd()) <= (x_new.weight - current_sample.weight)/K(energy_level))
+	{
+	  nMHJumps++;
+	  current_sample = x_new; 
+	}	
+    }
+
+  if (store_external)
+    output_file.close(); 
+
+  if (verbose)
+    {
+      cout << setprecision(4) << "MH: " << nMHJumps << "/" << nMHProposed << " = " << 100*(double)nMHJumps/(double)nMHProposed
+	   << " -- Number saved = " << nSaved << endl;
+    }	
+}
+
 double CEquiEnergyModel::GetMetropolisProposal(CSampleIDWeight &new_x)
 {
-  // int n=IndependentDirections[energy_level].cols;
-  // TDenseVector v(n);
-  // double density=density_constant; 
-  // if (parameter->p_select >= 1.0)
-  //   v=scale(energy_level)*RandomNormalVector(n);
-  // else
-  //   {
-  //     for (int i=n-1; i >= 0; i--)
-  // 	v.vector[i]=(dw_uniform_rnd() <= parameter->p_select) ? scale(energy_level) * dw_gaussian_rnd() : parameter->tiny * scale(energy_level) * dw_gaussian_rnd();     
-  //   }
-  // new_x.data=current_sample.data + IndependentDirections[energy_level]*v;
-  // new_x.weight=target->LogPosterior(new_x.data);
-  // new_x.calculated=true;
-
   int n=OrthonormalDirections.cols;
   TDenseVector v(n);
   //double density=density_constant; 
@@ -791,20 +718,86 @@ bool CEquiEnergyModel::GetImportanceSamples(void)
 
 void CEquiEnergyModel::WriteSimulationDiagnostic(int node)
 {
-  stringstream convert;
-  convert << parameter->run_id << "/" << parameter->run_id << ".Diagnostic." << energy_level << "." << node;
-  string filename = parameter->storage_dir + convert.str();
+  string filename=MakeFilename("Diagnostic",energy_level,node);
   ofstream output_file;
   output_file.open(filename.c_str(), ios::out);
-  if (!output_file)
+  if (!output_file.is_open())
     {
       cerr << "Error opening " << filename << endl; 
       abort(); 	
     }
 
-  output_file << "Scale: " << scale << endl;
+  output_file << setprecision(12) << scientific;
+  output_file << K(energy_level) << endl;
+  output_file << scale << endl;
+  output_file << ring_changes_up << endl;
+  output_file << ring_changes_down << endl;
+  for (int i=0; i < ring_counts.size(); i++)
+    output_file << ring_counts[i] << ' ';
+  output_file << endl;
+  output_file << nEEJumps << endl;
+  output_file  << nEEProposed << endl;
+  output_file << nMHJumps << endl;
+  output_file << nMHProposed << endl;
+  output_file << nRestarts << endl;
+  output_file << nSaved << endl;
+    
+  output_file.close();
+}
+
+void CEquiEnergyModel::WriteSimulationDiagnostic(void)
+{
+  int i_in;
+  double x_in;
+  ring_counts.resize(parameter->number_rings);
+  for (int i=0; i < ring_counts.size(); i++) ring_counts[i]=0;
+  nEEJumps=nMHJumps=nEEProposed=nMHProposed=nRestarts=nSaved=ring_changes_up=ring_changes_down=0; 
+  K(energy_level)=scale=0.0;
+  string filename;
+  ifstream in;
+  int node=0;
+  while (true)
+    {
+      filename=MakeFilename("Diagnostic",energy_level,node);
+      in.open(filename.c_str(),ios::in);
+      if (!in.is_open()) break;
+      in >> x_in; K(energy_level)+=x_in;
+      in >> x_in; scale+=x_in;
+      in >> i_in; ring_changes_up+=i_in;
+      in >> i_in; ring_changes_down+=i_in;
+      for (int i=0; i < ring_counts.size(); i++)
+	{
+	  in >> i_in; ring_counts[i]+=i_in;
+	}
+      in >> i_in; nEEJumps+=i_in;
+      in >> i_in; nEEProposed+=i_in;
+      in >> i_in; nMHJumps+=i_in;
+      in >> i_in; nMHProposed+=i_in;
+      in >> i_in; nRestarts+=i_in;
+      in >> i_in; nSaved+=i_in;
+      in.close();
+      node++;
+    }
+  if (node == 0)
+    {
+      cerr << "No diagnostic files - unable to open " << filename << endl;
+      abort();
+    }
+  K(energy_level)/=node;
+  scale/=node;
+
+  ofstream output_file;
+  filename=MakeFilename("Diagnostic",energy_level);
+  output_file.open(filename.c_str(),ios::out);
+  if (!output_file.is_open())
+    {
+      cerr << "Unable to open " << filename << endl;
+      abort();
+    }
+  output_file << setprecision(4);
   output_file << "Temperature: " << K(energy_level) << endl;
-  output_file << "Effective sample size: " << ess(energy_level) << endl;
+  output_file << "Scale: " << scale << endl;
+  output_file << "Effective sample size: " << ESS << endl;
   output_file << "Ring changes up: " << ring_changes_up << endl;
   output_file << "Ring changes down: " << ring_changes_down << endl;
   output_file << "Ring counts:" << endl;
@@ -815,14 +808,14 @@ void CEquiEnergyModel::WriteSimulationDiagnostic(int node)
   for (int i=0; i < ring_counts.size(); i++) 
     output_file << "  " << 100*(double)(ring_counts[i])/(double)(nEEProposed + nMHProposed);
   output_file << endl;
-
-  output_file << setprecision(4) << "Equi-energy: " << nEEJumps << "/" << nEEProposed << " = " << (nEEProposed ? 100*(double)nEEJumps/(double)nEEProposed : 0.0) << endl;
+  output_file << "Equi-energy: " << nEEJumps << "/" << nEEProposed << " = " << (nEEProposed ? 100*(double)nEEJumps/(double)nEEProposed : 0.0) << endl;
   output_file << "Metropolis-Hastings: " << nMHJumps << "/" << nMHProposed << " = " << (nMHProposed ? 100*(double)nMHJumps/(double)nMHProposed : 0.0) << endl;
   output_file << "Importance draw starts:" << nRestarts << endl;
   output_file << "Number saved: " << nSaved << endl;
-  
-  output_file << "Independent directions:" << endl;
-  //output_file << IndependentDirections[energy_level] << endl;
+  output_file << "Log kernel integral:" << endl;
+  for (int i=parameter->number_energy_level; i >= energy_level; i--)
+    output_file << LogKernelIntegral(i) << "  ";
+  output_file << endl;
     
   output_file.close();
 }
@@ -841,6 +834,17 @@ string CEquiEnergyModel::MakeFilename(const string &id, int level)
   stringstream filename;
   filename << parameter->storage_dir << parameter->run_id << "/" << parameter->run_id << '.' << id << '.' << level;
   return filename.str();
+}
+
+void CEquiEnergyModel::OpenFile(fstream &file, const string &id, int level, bool output_file)
+{
+  string filename=MakeFilename(id,level);
+  file.open(filename, output_file ? ios::out : ios::in );
+  if (!file.is_open())
+    {
+      cerr << "Unable to open " << filename << endl;
+      abort();
+    }
 }
 
 /*
@@ -865,8 +869,41 @@ void CEquiEnergyModel::CreateInitializationFile(int level, double Te, double Sc,
   out_file << level << endl;
   out_file << Te << endl;
   out_file << Sc << endl;
-  out_file << Or;
+  out_file << Or << endl;
   out_file << Di;
+  out_file.close();
+}
+
+/*
+   The initialization file for the top level contains
+     (1) level                                                     - model.energy_level
+     (2) temperature                                               - model.K(model.energy_level)
+     (3) othogonal transformation for independent univariate draws - model.InitialOrthonormalDirections
+     (4) individual scale for independent univariate draws         - model.InitialSqrtDiagonal
+     (5) center for initial distribuion                            - model.InitialCenter     
+*/
+void CEquiEnergyModel::CreateInitializationFile(int level, double Te, double Sc, const TDenseMatrix &Or, const TDenseVector &Di, const TDenseVector &Ce)
+{
+  if (level != parameter->number_energy_level)
+    {
+      cerr << "CreateInitializationFile(): This format initialization file only for top level" << endl;
+      abort();
+    }
+  string filename=MakeFilename("initialization",level);
+  ofstream out_file;
+  out_file.open(filename.c_str(),ios::out);
+  if (!out_file.is_open())
+    {
+      cerr << "Unable to open " << filename << endl;
+      abort();
+    }
+  out_file << scientific << setprecision(12);
+  out_file << level << endl;
+  out_file << Te << endl;
+  out_file << Sc << endl;
+  out_file << Or << endl;
+  out_file << Di << endl;
+  out_file << Ce;
   out_file.close();
 }
 
@@ -880,6 +917,11 @@ void CEquiEnergyModel::CreateInitializationFile(int level, double Te, double Sc,
 */
 void CEquiEnergyModel::ReadInitializationFile(int level)
 {
+  if (energy_level != level)
+    {
+      cerr << "energy_level not equal to level" << endl;
+      abort();
+    }
   string filename=MakeFilename("initialization",level);
   ifstream in;
   in.open(filename.c_str(),ios::in);
@@ -895,21 +937,38 @@ void CEquiEnergyModel::ReadInitializationFile(int level)
       cerr << "level in file does not agree with filename " << endl;
       abort();
     }
+  if (level == parameter->number_energy_level)
+    {
+      in >> K.vector[level];
+      in >> scale;
+      InitialOrthonormalDirections.Resize(parameter->nParameters,parameter->nParameters);
+      in >> InitialOrthonormalDirections;
+      InitialSqrtDiagonal.Resize(parameter->nParameters);
+      in >> InitialSqrtDiagonal;
+      InitialCenter.Resize(parameter->nParameters);
+      in >> InitialCenter;
 
-  in >> K.vector[level];
-  in >> scale;
-  OrthonormalDirections.Resize(parameter->nParameters,parameter->nParameters);
-  in >> OrthonormalDirections;
-  SqrtDiagonal.Resize(parameter->nParameters);
-  in >> SqrtDiagonal;
+      SqrtDiagonal=InitialSqrtDiagonal;
+      OrthonormalDirections=InitialOrthonormalDirections;
+    }
+  else 
+    {
+      if (level == parameter->number_energy_level-1)
+	{
+	  energy_level++;
+	  ReadInitializationFile(level+1);
+	  energy_level--;
+	}
+
+      in >> K.vector[level];
+      in >> scale;
+      OrthonormalDirections.Resize(parameter->nParameters,parameter->nParameters);
+      in >> OrthonormalDirections;
+      SqrtDiagonal.Resize(parameter->nParameters);
+      in >> SqrtDiagonal;
+    } 
   in.close();
   iImportanceSamples=0;
-
-  // // this provides compatibility with old code
-  // IndependentDirections[level]=OrthonormalDirections;
-  // for (int j=0; j < IndependentDirections[level].cols; j++)
-  //   for (int i=0; i < IndependentDirections[level].cols; i++)
-  //     IndependentDirections[level](i,j)*=SqrtDiagonal(j);
 }
 
 void CEquiEnergyModel::WriteScale(int level, int node, double s)
@@ -973,44 +1032,46 @@ double CEquiEnergyModel::InitialDraw(TDenseVector &x)
   double log_density=0.0;
   for (int j=parameter->nParameters-1; j >= 0; j--)
     {
-      x(j)=dw_tdistribution_rnd(nu);		
-      log_density+=log(dw_tdistribution_pdf(x(j),nu)/SqrtDiagonal(j));		
-      x(j)*=SqrtDiagonal(j);
+      x(j)=dw_tdistribution_rnd(parameter->nu);	
+      log_density+=log(dw_tdistribution_pdf(x(j),parameter->nu)/InitialSqrtDiagonal(j));		
+      x(j)*=InitialSqrtDiagonal(j);
     }
-  x=InitialCenter + OrthonormalDirections*x;
+  x=InitialCenter + InitialOrthonormalDirections*x;
   return log_density;
 }
 
 double CEquiEnergyModel::LogInitialDensity(const TDenseVector &x)
 {
   double log_density=0.0;
-  cout << OrthonormalDirections.rows << " " << OrthonormalDirections.cols << " " << x.dim << " " << InitialCenter.dim << endl; 
-  TDenseVector y=TransposeMultiply(OrthonormalDirections,x-InitialCenter);
- cout << "here\n";
+  TDenseVector y=TransposeMultiply(InitialOrthonormalDirections,x-InitialCenter);
   for (int j=parameter->nParameters-1; j >= 0; j--)	
-    log_density+=log(dw_tdistribution_pdf(y(j),nu)/SqrtDiagonal(j));		
+    log_density+=log(dw_tdistribution_pdf(y(j)/InitialSqrtDiagonal(j),parameter->nu)/InitialSqrtDiagonal(j));		
   return log_density;
+
+  //return target->LogPosterior(x)/K.vector[parameter->number_energy_level];
 }
 
 
 /*
    (1) Read draws from the top level
    (2) Compute InitialCenter, InitialOrthonormalDirections and InitialSqrtDiagonal
-   (3) Returns effective sample size with respect to the next lower level
+   (3) Returns effective sample size
 
-   Note: K(level-1) and nu, the degress of freedom for the t-distribution, must be
+   Note: K(level) and nu, the degress of freedom for the t-distribution, must be
    set upon entry.
 */
 double CEquiEnergyModel::AnalyzeInitialDraws(int level)
 {
+
+  //cout << "entered AnalyzeInitialDraws()\n";
   int nParameters=parameter->nParameters, simulation_length=parameter->simulation_length;
 
   // read draws
   string filename;
   ifstream in;
   int node=0, count=0;
-  TDenseVector x(nParameters), sum(nParameters,0.0);
-  TDenseMatrix Osum(nParameters,nParameters,0.0);
+  TDenseVector x(nParameters), m_sum(nParameters,0.0);
+  TDenseMatrix v_sum(nParameters,nParameters,0.0);
   while (true)
     {
       filename=MakeFilename("draws",level,node);
@@ -1022,8 +1083,8 @@ double CEquiEnergyModel::AnalyzeInitialDraws(int level)
 	  try
 	    {
 	      in >> x;
-	      sum+=x;
-	      Osum+=OuterProduct(x,x);
+	      m_sum+=x;
+	      v_sum+=OuterProduct(x,x);
 	      count++;
 	    }
 	  catch (dw_exception &e)
@@ -1042,19 +1103,21 @@ double CEquiEnergyModel::AnalyzeInitialDraws(int level)
       abort();
     }
 
-  // set OrthonormalDirections, SqrtDiagonal, and InitialCenter
-  InitialCenter=(1.0/(double)count)*sum;
-  Eig(SqrtDiagonal,OrthonormalDirections,(1.0/(double)count)*Osum);
+  // set InitialOrthonormalDirections, InitialSqrtDiagonal, and InitialCenter
+  InitialCenter=(1.0/(double)count)*m_sum;
+  Eig(InitialSqrtDiagonal,InitialOrthonormalDirections,(1.0/(double)count)*v_sum);
   for (int i=nParameters-1; i >= 0; i--)
-    SqrtDiagonal(i)=sqrt(SqrtDiagonal(i));
+    InitialSqrtDiagonal(i)=sqrt(InitialSqrtDiagonal(i));
+
+  // write initialization file
+  CreateInitializationFile(energy_level,parameter->max_energy,1.0,InitialOrthonormalDirections,InitialSqrtDiagonal,InitialCenter);
 
   // compute ESS
-  TDenseVector log_posterior(simulation_length), log_initial_density(simulation_length);
+  TDenseVector log_kernel_target(simulation_length), log_density_proposal(simulation_length);
   for (int i=simulation_length-1; i >= 0; i--)
     {	
-      log_initial_density(i)=InitialDraw(x);
-      log_posterior(i)=target->LogPosterior(x);
+      log_density_proposal(i)=InitialDraw(x);
+      log_kernel_target(i)=target->LogPosterior(x)/K(level);
     }
-
-  return EffectiveSampleSize(K(level-1),log_posterior,log_initial_density);
+  return EffectiveSampleSize(log_kernel_target,log_density_proposal);
 }

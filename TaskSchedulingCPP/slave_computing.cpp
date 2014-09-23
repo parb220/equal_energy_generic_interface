@@ -16,8 +16,9 @@ using namespace std;
 
 void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel &model, const CSampleIDWeight &mode, int optimizationN, int perturbationN, double perturbationS) 
 {
-	int my_rank; 
-	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);  
+  int my_rank, nNode; 
+	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &nNode);  
 	MPI_Status status; 
 	
 	double *rPackage = new double [N_MESSAGE], *sPackage = new double [N_MESSAGE];    
@@ -89,6 +90,22 @@ cout << "Received GMM message" << endl;
         		model.storage->ClearDepositDrawHistory(model.energy_level);
 			sPackage[RETURN_INDEX_1] = (double)(false); 
 		}
+		else if (status.MPI_TAG == TUNE_TAG_INITIAL)
+		  {
+		    cout << "Received TUNE_TAG_INITIAL message" << endl;
+		    model.energy_level = (int)(rPackage[LEVEL_INDEX]);
+		    group_index = (int)(rPackage[GROUP_INDEX]);
+
+		    ExecutingInitialTuningTask(model, group_index);
+		  }		
+		else if (status.MPI_TAG == SIMULATION_TAG_INITIAL)
+		  {
+		    cout << "Received SIMULATION_TAG_INITIAL message" << endl;
+		    model.energy_level = (int)(rPackage[LEVEL_INDEX]);
+		    group_index = (int)(rPackage[GROUP_INDEX]);
+
+		    ExecutingInitialSimulationTask(model, nNode, group_index);
+		  }
 		else if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION)
 		{
 cout << "Received TUNE message" << endl;

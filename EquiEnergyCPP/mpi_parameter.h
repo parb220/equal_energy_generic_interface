@@ -40,6 +40,7 @@ const int TUNE_TAG_SIMULATION_FIRST = 32;
 const int TUNE_TAG_SIMULATION_FIRST_MULTIPLE_BLOCK = 37; 
 const int TUNE_TAG_SIMULATION_SECOND = 42;
 const int TUNE_TAG_SIMULATION_SECOND_MULTIPLE_BLOCK = 47;
+const int TUNE_TAG_INITIAL = 48;                             // added 9/19/2014
 
 const int TRACKING_TAG_SIMULATION = 50;
 const int TRACKING_TAG_SIMULATION_MULTIPLE_BLOCK = 51; 
@@ -47,6 +48,7 @@ const int TRACKING_TAG_SIMULATION_MULTIPLE_BLOCK = 51;
 const int SIMULATION_TAG = 60; 
 const int NP_SOL_TAG = 61; 
 const int SIMULATION_TAG_MULTIPLE_BLOCK = 62; 
+const int SIMULATION_TAG_INITIAL = 63;                       // added 9/19/2014
 
 const int HILL_CLIMB_TAG = 70; 
 const int GMM_SIMULATION_TAG = 71; 

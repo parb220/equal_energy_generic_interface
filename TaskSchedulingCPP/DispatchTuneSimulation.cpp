@@ -45,12 +45,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		model.storage->RestoreForFetch(level+1); 
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// Get independent directions from previous energy level draws
-		// if (!model.SetupLevel(level))
-		//   {
-		//     cerr << "Error computing independent directions from previous draws - energy level " << model.energy_level << endl;
-		//     abort();
-		//   }
+		model.energy_level = level;
 		model.SetupFromPreviousLevel(level);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +74,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Consolidate scales
 		double scale=model.ConsolidateScales(level);
-		model.WriteScale(level,scale);
+		//model.WriteScale(level,scale);
 		model.CreateInitializationFile(level,model.K(level),scale,model.OrthonormalDirections,model.SqrtDiagonal);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,11 +101,30 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		for (int i=0; i<nNode-1-(int)availableNode.size(); i++)
 		  MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, SIMULATION_TAG, MPI_COMM_WORLD, &status);
 
+		model.WriteSimulationDiagnostic();
+
+		// write draws
+		if (level == model.parameter->number_energy_level-2)
+		  {
+		    fstream output_file;
+		    model.OpenFile(output_file,"Draws",level+1,true);
+		    vector<CSampleIDWeight> samples;  
+		    if (!model.storage->DrawAllSample(level+1, samples, true, model.current_sample.GetSize_Data()) || (samples.size() < model.parameter->simulation_length))
+		      {
+			cerr << "Error obtaining all samples from level " << level+1 << endl;
+			if (samples.size() < model.parameter->simulation_length) cerr << "Not enough samples - " << samples.size() << endl;
+			abort();
+		      }
+		    for (int ii=0; ii < samples.size(); ii++)
+		      output_file << samples[ii].weight << " " << samples[ii].data;
+		    output_file.close();
+		  }
+
 		// Consolidate partial storage files and bin
 		model.storage->ClearStatus(level); 
 		model.storage->consolidate(level); 
 		model.storage->ClearStatus(level);
-		model.storage->binning_equal_size(level, 2*model.parameter->number_energy_level); 
+		model.storage->binning_equal_size(level, model.parameter->number_rings); 
 		model.storage->finalize(level); 
 		model.storage->ClearDepositDrawHistory(level);
 

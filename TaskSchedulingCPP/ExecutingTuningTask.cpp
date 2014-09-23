@@ -18,6 +18,13 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
   model.storage->restore(model.energy_level);
   model.storage->RestoreForFetch(model.energy_level+1);	
 
+  // setup
+  // if (model.energy_level == model.parameter->number_energy_level-1)
+  //   {
+  //     model.energy_level++;
+  //     model.ReadInitializationFile(model.energy_level);
+  //     model.energy_level--;
+  //   }
   model.ReadInitializationFile(model.energy_level);
   model.scale=1.0;
 

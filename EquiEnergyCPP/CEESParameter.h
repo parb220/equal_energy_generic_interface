@@ -55,5 +55,7 @@ public:
 	int n_compute_cores;         // number of slave compute cores (nNode - 1)
 	double max_energy;           // highest temperature level
 	double min_ess;              // min_ess minimum desired effective sample size (default 0.80 * simulation_length?).
+	int number_rings;
+	int nu;                      // degrees of freedom for initial t-distribuion
 };
 #endif

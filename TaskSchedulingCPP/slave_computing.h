@@ -12,4 +12,8 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 
 bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, int group_index); 
 
+void ExecutingInitialTuningTask(CEquiEnergyModel &model, int node);
+
+void ExecutingInitialSimulationTask(CEquiEnergyModel &model, int nNode, int node);
+
 #endif

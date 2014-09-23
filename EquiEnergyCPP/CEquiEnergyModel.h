@@ -133,11 +133,7 @@ public:
 // Sampling and Tuning - added by DW 9/10/2014
 public:
 	TDenseVector K;
-        // vector<TDenseMatrix> IndependentDirections;
-	//TDenseVector scale;
 	double scale;
-        TDenseVector ess;
-
 
 	double density_constant;
 	vector<CSampleIDWeight> ImportanceSamples;
@@ -146,25 +142,28 @@ public:
 	int nEEJumps, nEEProposed, nMHJumps, nMHProposed, nRestarts, nSaved, ring_changes_up, ring_changes_down;
 	vector<int> ring_counts;
 
-	//bool SetupLevel(int level, bool force_recompute=false);
-	//bool SetScale(double new_scale);
-
 	bool GetImportanceSamples(void);
 
         double Tune(double mid=0.3, int period=10, int max_period=0, bool verbose=true);
-	void Simulate(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample=false, bool verbose=true);
+	void SimulateEE(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample=false, bool verbose=true);
+	void SimulateMH(bool store_internal, const string &external_filename, int number_to_save, bool verbose);
         double GetMetropolisProposal(CSampleIDWeight &x_new);
 	bool ImportanceSamplePreviousLevel(CSampleIDWeight &x_new);
 
+	double ESS;
+	TDenseVector LogKernelIntegral;
 	void WriteSimulationDiagnostic(int node);
+	void WriteSimulationDiagnostic(void);
 
 	/////////////////////////////////////////////////////////////////////////
 	TDenseMatrix OrthonormalDirections;
 	TDenseVector SqrtDiagonal;
 
 	// initial distributions
-	double nu;
+	TDenseMatrix InitialOrthonormalDirections;
+	TDenseVector InitialSqrtDiagonal;
 	TDenseVector InitialCenter;
+
 	double InitialDraw(TDenseVector &x);
 	double LogInitialDensity(const TDenseVector &x);
 	double AnalyzeInitialDraws(int level);
@@ -173,10 +172,12 @@ public:
 	// seting up filename
 	string MakeFilename(const string &id, int level, int node);
 	string MakeFilename(const string &id, int level);
+	void OpenFile(fstream &file, const string &id, int level, bool output_file);
 
 	// initialization
 	void SetupFromPreviousLevel(int level);
 	void CreateInitializationFile(int level, double Te, double Sc, const TDenseMatrix &Or, const TDenseVector &Di);
+	void CreateInitializationFile(int level, double Te, double Sc, const TDenseMatrix &Or, const TDenseVector &Di, const TDenseVector &Ce);
 	void ReadInitializationFile(int level);
 	void WriteScale(int level, int node, double s);
 	void WriteScale(int level, double s);
@@ -186,5 +187,9 @@ public:
 friend class MinusLogPosterior_NPSOL; 
 // friend class MinusLogPosterior_CSMINWEL; 
 };
+
+double EffectiveSampleSize(double K1, double K2, vector<CSampleIDWeight> &samples);
+double EffectiveSampleSize(TDenseVector log_kernel_target, TDenseVector log_density_proposal);
+double ComputeLogKernelIntegral(TDenseVector log_kernel_target, TDenseVector log_density_proposal);
 
 #endif
