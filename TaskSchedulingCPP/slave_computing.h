@@ -16,4 +16,8 @@ void ExecutingInitialTuningTask(CEquiEnergyModel &model, int node);
 
 void ExecutingInitialSimulationTask(CEquiEnergyModel &model, int nNode, int node);
 
+void ExecutingTuningTask(CEquiEnergyModel &model, int node);
+
+void ExecutingSimulationTask(CEquiEnergyModel &model, int nNode, int node);
+
 #endif

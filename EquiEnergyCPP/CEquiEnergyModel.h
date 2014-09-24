@@ -133,25 +133,26 @@ public:
 // Sampling and Tuning - added by DW 9/10/2014
 public:
 	TDenseVector K;
+	TDenseVector LogKernelIntegral;
 	double scale;
-
 	double density_constant;
-	vector<CSampleIDWeight> ImportanceSamples;
-	int iImportanceSamples;
+	int node;
 
 	int nEEJumps, nEEProposed, nMHJumps, nMHProposed, nRestarts, nSaved, ring_changes_up, ring_changes_down;
 	vector<int> ring_counts;
-
-	bool GetImportanceSamples(void);
 
         double Tune(double mid=0.3, int period=10, int max_period=0, bool verbose=true);
 	void SimulateEE(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample=false, bool verbose=true);
 	void SimulateMH(bool store_internal, const string &external_filename, int number_to_save, bool verbose);
         double GetMetropolisProposal(CSampleIDWeight &x_new);
+
+	// importance sampling
+	vector<CSampleIDWeight> ImportanceSamples;
+	int iImportanceSamples;
+	bool GetImportanceSamples(void);
 	bool ImportanceSamplePreviousLevel(CSampleIDWeight &x_new);
 
 	double ESS;
-	TDenseVector LogKernelIntegral;
 	void WriteSimulationDiagnostic(int node);
 	void WriteSimulationDiagnostic(void);
 

@@ -49,13 +49,17 @@ public:
         double p_save;               // probability saving draw - actual probability of making equi-energy jump is p_save*pee
         double p_select;             // probability of selecting an independent direction to make a full size jump in that direction
 	double tiny;                 // scale factor when not making a full sized jump
-        int reinitialize_factor;     // sampler reinitializes from importance weighted previous level every reinitialize_factor saved draws
         int nImportanceSamples;      // number of random importance weighted previous samples to carry
-        int nParameters;             // number of model parameters
-	int n_compute_cores;         // number of slave compute cores (nNode - 1)
 	double max_energy;           // highest temperature level
 	double min_ess;              // min_ess minimum desired effective sample size (default 0.80 * simulation_length?).
 	int number_rings;
 	int nu;                      // degrees of freedom for initial t-distribuion
+
+	int N;                       // number to simulate for each group
+	int G;                       // total number of groups is G * n_compute_cores
+
+	// these should not be set by the user!
+        int nParameters;             // number of model parameters
+	int n_compute_cores;         // number of slave compute cores (nNode - 1)
 };
 #endif

@@ -13,15 +13,14 @@
 
 using namespace std; 
 
-void DispatchInitialSimulation(int nNode, CEquiEnergyModel &model, int simulation_length)
+void DispatchInitialSimulation(int nNode, CEquiEnergyModel &model)
 {
   int nParameters=model.parameter->nParameters;
-  int simulationLengthPerNode = ceil((double)simulation_length/(double)(nNode-1));
   model.energy_level=model.parameter->number_energy_level;
+  model.node=-1;
 
   MPI_Status status;
   double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];
-  sPackage[LENGTH_INDEX] = (double)simulationLengthPerNode; 
   sPackage[LEVEL_INDEX] = (double)(model.energy_level);
 
   // diagnostic file
@@ -73,7 +72,8 @@ void DispatchInitialSimulation(int nNode, CEquiEnergyModel &model, int simulatio
       cout << "ESS (" << model.parameter->min_ess << ") = " << ESS << endl << endl;
 
       // exit if ESS is large enough or too many iterations have been performed
-      if ((ESS >= model.parameter->min_ess) || (++iterations > 5))
+      iterations++;
+      if ((iterations > 1) && ((ESS >= model.parameter->min_ess) || (iterations > 5)))
 	{
 	  not_done=false;
 	}
@@ -83,8 +83,9 @@ void DispatchInitialSimulation(int nNode, CEquiEnergyModel &model, int simulatio
   // simulate and save top level draws
   TDenseVector x;
   CSampleIDWeight y;
-  TDenseVector log_kernel_target(simulation_length), log_density_proposal(simulation_length);
-  for (int ii=0; ii < simulation_length; ii++)
+  int length=model.parameter->N*model.parameter->G*(nNode-1);
+  TDenseVector log_kernel_target(length), log_density_proposal(length);
+  for (int ii=0; ii < length; ii++)
     {
       log_density_proposal(ii)=model.InitialDraw(x);
       y.data=x;

@@ -11,13 +11,18 @@ using namespace std;
 
 void master_deploying(int nNode, int nHillClimb, int nInitial, CEquiEnergyModel &model, const CSampleIDWeight &mode)
 {	
-  // Initial distribution
-  if (model.parameter->simulation_length > 0)
-    DispatchInitialSimulation(nNode, model,model.parameter->simulation_length);
+  if ((model.parameter->N > 0) && (model.parameter->G > 0))
+    {
+     // Initial distribution
+      if (model.parameter->highest_level >= model.parameter->number_energy_level)
+	{
+	  DispatchInitialSimulation(nNode, model);
+	  model.parameter->highest_level=model.parameter->number_energy_level-1;
+	}
 
-  // Simulation
-  if (model.parameter->simulation_length) 
-    DispatchTuneSimulation(nNode, nInitial, model, mode, model.parameter->simulation_length, false);   // original code last argument is not present
+      // Simulation
+      DispatchTuneSimulation(nNode, nInitial, model, mode, model.parameter->N * model.parameter->G, false); 
+    }
 
   // tell all the slaves to exit by sending an empty messag with 0 simulation length 
   double *sMessage= new double [N_MESSAGE];  

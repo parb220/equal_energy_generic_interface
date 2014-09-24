@@ -15,11 +15,6 @@
 
 using namespace std; 
 
-void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t simulation_length, int level, int message_tag); 
-
-double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level, double logMDD_previous);
-double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type);
-
 void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
 {
 	double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];  
@@ -27,19 +22,16 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	int iInitial;
 	vector <int> availableNode;
 
-	stringstream convert;
-	string filename;
-	ofstream output_file;
-	ifstream input_file;
-
-	size_t estimation_length; 
+	if (model.parameter->highest_level >= model.parameter->number_energy_level)
+	  {
+	    cerr << "DispatchTuneSimulation(): model.parameter->highest_level must be less than model.parameter->number_energy_level" << endl;
+	    abort();
+	  }
 
 	for (int level=model.parameter->highest_level; level>=model.parameter->lowest_level; level--)
 	{
 		sPackage[LEVEL_INDEX] = level;
 		sPackage[PEE_INDEX] = model.parameter->pee; 
-		sPackage[thin_INDEX] = model.parameter->thin; 
-		sPackage[THIN_INDEX] = model.parameter->THIN; 
 
 		model.storage->ClearStatus(level+1); 
 		model.storage->RestoreForFetch(level+1); 
@@ -51,75 +43,56 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Send out tuning jobs
 		cout << "Dispatching tuning tasks to nodes - level " << level << endl;
-		availableNode.resize(nNode-1);
 		for (int i=1; i<nNode; i++)
-			availableNode[i-1] = i; 		
-		iInitial = 0; 
-		while (iInitial < nInitial)
-		{
-			if (availableNode.empty())
-			{
-				MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD, &status);
-				availableNode.push_back(status.MPI_SOURCE); 
-			}
-			// Assigns the last node in availableNode to iInitial, and remove the last node of availableNode
-			sPackage[GROUP_INDEX] = iInitial; 
-			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, availableNode.back(), TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD); 
-			availableNode.pop_back(); 
-			iInitial ++; 
-		}		
-		for (int i=0; i<nNode-1-(int)availableNode.size(); i++)
-			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD, &status);
+		  {
+		    sPackage[GROUP_INDEX] = i-1; 
+		    MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, TUNE_TAG, MPI_COMM_WORLD);		
+		  }
+		for (int i=1; i<nNode; i++)
+		  {
+		    MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG, MPI_COMM_WORLD, &status);		
+		  }
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Consolidate scales
 		double scale=model.ConsolidateScales(level);
-		//model.WriteScale(level,scale);
 		model.CreateInitializationFile(level,model.K(level),scale,model.OrthonormalDirections,model.SqrtDiagonal);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simulation
-		cout << "Simulation at " << level << " for " << model.parameter->simulation_length << endl; 
+		cout << "Simulation at " << level << endl; 
 		sPackage[LENGTH_INDEX] = simulation_length;
-		availableNode.resize(nNode-1);
+	
 		for (int i=1; i<nNode; i++)
-			availableNode[i-1] = i; 
-		iInitial = 0; 
-		while (iInitial < nInitial)
-		{
-			if (availableNode.empty())
-			{
-				MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, SIMULATION_TAG, MPI_COMM_WORLD, &status);
-				availableNode.push_back(status.MPI_SOURCE); 
-			}
-			// Assigns the last node in availableNode to iInitial, and remove the last node of availableNode
-			sPackage[GROUP_INDEX] = iInitial; 
-			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, availableNode.back(), SIMULATION_TAG, MPI_COMM_WORLD); 
-			availableNode.pop_back(); 
-			iInitial ++; 
-		}		
-		for (int i=0; i<nNode-1-(int)availableNode.size(); i++)
-		  MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, SIMULATION_TAG, MPI_COMM_WORLD, &status);
+		  {
+		    sPackage[GROUP_INDEX] = i-1; 
+		    MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, SIMULATION_TAG, MPI_COMM_WORLD);		
+		  }	
+		for (int i=1; i<nNode; i++)
+		  {
+		    MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, SIMULATION_TAG, MPI_COMM_WORLD, &status);
+		  }
 
 		model.WriteSimulationDiagnostic();
 
-		// write draws
-		if (level == model.parameter->number_energy_level-2)
-		  {
-		    fstream output_file;
-		    model.OpenFile(output_file,"Draws",level+1,true);
-		    vector<CSampleIDWeight> samples;  
-		    if (!model.storage->DrawAllSample(level+1, samples, true, model.current_sample.GetSize_Data()) || (samples.size() < model.parameter->simulation_length))
-		      {
-			cerr << "Error obtaining all samples from level " << level+1 << endl;
-			if (samples.size() < model.parameter->simulation_length) cerr << "Not enough samples - " << samples.size() << endl;
-			abort();
-		      }
-		    for (int ii=0; ii < samples.size(); ii++)
-		      output_file << samples[ii].weight << " " << samples[ii].data;
-		    output_file.close();
-		  }
+		// // write draws
+		// if (level == model.parameter->number_energy_level-2)
+		//   {
+		//     fstream output_file;
+		//     model.OpenFile(output_file,"Draws",level+1,true);
+		//     vector<CSampleIDWeight> samples;  
+		//     if (!model.storage->DrawAllSample(level+1, samples, true, model.current_sample.GetSize_Data()) || (samples.size() < model.parameter->simulation_length))
+		//       {
+		// 	cerr << "Error obtaining all samples from level " << level+1 << endl;
+		// 	if (samples.size() < model.parameter->simulation_length) cerr << "Not enough samples - " << samples.size() << endl;
+		// 	abort();
+		//       }
+		//     for (int ii=0; ii < samples.size(); ii++)
+		//       output_file << samples[ii].weight << " " << samples[ii].data;
+		//     output_file.close();
+		//   }
 
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Consolidate partial storage files and bin
 		model.storage->ClearStatus(level); 
 		model.storage->consolidate(level); 
@@ -139,21 +112,11 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		for (int i=1; i<nNode; i++)
 			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, BINNING_INFO, MPI_COMM_WORLD, &status);
 
-		// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// // logMDD
-	        // logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);
-		// for (int j=level+1; j<(int)(logMDD[level].size()); j++)
-		// 	logMDD[level][j] = EstimateLogMDD(model, level, level+1, logMDD[level+1][j]); 
-
-		// cout << setprecision(20) << endl; 
-		// cout << "logMDD at " << level << endl; 
-		// for (int j=level; j<(int)(logMDD[level].size()); j++)
-		// 	cout << logMDD[level][j] << "\t"; 
-		// cout << endl; 
-
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// to save space, remove level+1 samples
 		if (save_space_flag && level+2 < model.parameter->highest_level-1 )
 		{
+	                stringstream convert;
 			model.storage->ClearSample(level+2);  
 			convert.str(string());
                         convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << level+2 << ".*";;

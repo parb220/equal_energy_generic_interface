@@ -7,13 +7,13 @@
 #include "dataanalysis.h"
 #include "CEquiEnergyModel.h"
 
-bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int level_index, vector<CSampleIDWeight> &starters) const
+bool CEquiEnergyModel::Initialize_WeightedSampling(int N, int level_index, vector<CSampleIDWeight> &starters) const
 {
         if (level_index < 1)
 	        return false;
 
-	if (starters.size() != K)
-		starters.resize(K);
+	if (starters.size() != N)
+		starters.resize(N);
 
 	// Get all previous level's samples
 	vector<CSampleIDWeight> samples;  
@@ -22,7 +22,7 @@ bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int level_index, vecto
 
 	// Cumulative sum of importance weights
 	vector<double> weight_sum(samples.size());
-	double power=(1.0/parameter->t[level_index-1]-1.0/parameter->t[level_index]);
+	double power=1.0/K(level_index-1)-1.0/K(level_index);
 	
 	// Accumulate logs
 	weight_sum[0] = samples[0].weight*power;
@@ -34,7 +34,7 @@ bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int level_index, vecto
 	for (int i=0; i<(int)samples.size(); i++)
 		weight_sum[i] = exp(weight_sum[i] - sum); 
 
-	for (int i=0; i<K; i++)
+	for (int i=0; i<N; i++)
         {
 	      double random_number = dw_uniform_rnd();
 	      int position = std::lower_bound(weight_sum.begin(), weight_sum.end(), random_number)-weight_sum.begin();

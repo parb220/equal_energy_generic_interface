@@ -10,39 +10,31 @@
 
 using namespace std; 
 
-// void ExecutingTuningTask(CEquiEnergyModel &model, int node)
-// {
-//   // prepare storage for obtaining draws from model.energy_level+1
-//   model.storage->ClearStatus(model.energy_level); 
-//   model.storage->ClearStatus(model.energy_level+1); 
-//   model.storage->restore(model.energy_level);
-//   model.storage->RestoreForFetch(model.energy_level+1);	
+void ExecutingTuningTask(CEquiEnergyModel &model, int node)
+{
+  // prepare storage for obtaining draws from model.energy_level+1
+  model.storage->ClearStatus(model.energy_level); 
+  model.storage->ClearStatus(model.energy_level+1); 
+  model.storage->restore(model.energy_level);
+  model.storage->RestoreForFetch(model.energy_level+1);	
 
-//   // Setup
-//   cout << "calling model.ReadInitializationFile(model.energy_level);\n";
-//   model.ReadInitializationFile(model.energy_level);
-//   model.scale=1.0;
-//   cout << model.SqrtDiagonal.dim << endl;
+  // setup
+  model.ReadInitializationFile(model.energy_level);
+  model.scale=1.0;
 
-//   // tune
-//   cout << "calling Tune(true)\n";
-//   if (!model.Tune(true))
-//     {
-//       cerr << "Unable to tune MH sampler - level " << model.energy_level << endl;
-//       abort();
-//     }
-//   cout << "returned from Tune(true)\n";
+  // tune
+  double scale = model.Tune();
 
-//   // write scale
-//   model.WriteScale(model.energy_level,node,model.scale);
+  // write scale
+  model.WriteScale(model.energy_level,node,scale);
 
-//   // // prepare storage
-//   // model.storage->ClearStatus(model.energy_level);
-//   // model.storage->ClearStatus(model.energy_level+1); 
-//   // model.storage->finalize(model.energy_level);
-//   // model.storage->ClearDepositDrawHistory(model.energy_level);
-//   // model.storage->ClearDepositDrawHistory(model.energy_level+1);
-// }
+  // prepare storage
+  model.storage->ClearStatus(model.energy_level);
+  model.storage->ClearStatus(model.energy_level+1); 
+  model.storage->finalize(model.energy_level);
+  model.storage->ClearDepositDrawHistory(model.energy_level);
+  model.storage->ClearDepositDrawHistory(model.energy_level+1);
+}
 
 void ExecutingInitialTuningTask(CEquiEnergyModel &model, int node)
 {
@@ -62,40 +54,31 @@ void ExecutingInitialTuningTask(CEquiEnergyModel &model, int node)
   model.WriteScale(model.energy_level,node,scale);
 }
 
-// void ExecutingSimulationTask(CEquiEnergyModel &model, int nNode, int node)
-// {
-//   // restore partial storage (previously obtained at this node) for updating
-//   model.storage->ClearStatus(model.energy_level); 
-//   model.storage->ClearStatus(model.energy_level+1); 
-//   model.storage->restore(model.energy_level); 
-//   model.storage->RestoreForFetch(model.energy_level+1);
+void ExecutingSimulationTask(CEquiEnergyModel &model, int nNode, int node)
+{
+  // restore partial storage (previously obtained at this node) for updating
+  model.storage->ClearStatus(model.energy_level); 
+  model.storage->ClearStatus(model.energy_level+1); 
+  model.storage->restore(model.energy_level); 
+  model.storage->RestoreForFetch(model.energy_level+1);
 
-//   // setup
-//   model.ReadInitializationFile(model.energy_level);
-//   int number_to_simulate = ceil(model.parameter->simulation_length/(nNode - 1));
+  // simulate
+  model.ReadInitializationFile(model.energy_level);
+  model.SimulateEE(true, string(), model.parameter->G, model.parameter->N, false, true);
+  model.WriteSimulationDiagnostic(node);
 
-//   // clean up
-//   if (!model.SimulateEE(true, string(), number_to_simulate, model.parameter->reinitialize_factor, false, true))
-//     {
-//       cerr << "Error simulating model - level " << model.energy_level << endl;
-//       abort();
-//     }
-
-//   // write diagnostics
-//   model.WriteSimulationDiagnostic(node);
-
-//   // finalze and clear-up storage
-//   model.storage->ClearStatus(model.energy_level); 
-//   model.storage->finalize(model.energy_level); 
-//   model.storage->ClearDepositDrawHistory(model.energy_level);
-//   model.storage->ClearDepositDrawHistory(model.energy_level+1); 
-// }
+  // finalze and clear-up storage
+  model.storage->ClearStatus(model.energy_level); 
+  model.storage->finalize(model.energy_level); 
+  model.storage->ClearDepositDrawHistory(model.energy_level);
+  model.storage->ClearDepositDrawHistory(model.energy_level+1); 
+}
 
 void ExecutingInitialSimulationTask(CEquiEnergyModel &model, int nNode, int node)
 {
   // Setup
   model.ReadInitializationFile(model.energy_level);
-  int number_to_simulate = ceil(model.parameter->simulation_length/(nNode - 1));
+  int number_to_simulate = model.parameter->N * model.parameter->G;
   string external_filename=model.MakeFilename("draws",model.energy_level,node);
 
   // Draw initial starting point

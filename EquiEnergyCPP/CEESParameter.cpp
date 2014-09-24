@@ -19,7 +19,7 @@ CEESParameter::CEESParameter() :
 	lowest_level(0), 
 	thin(0),
 	THIN(0), 
-	simulation_length(0), 
+	//simulation_length(0), 
 	burn_in_length(0),
 	max_energy_tuning_time(0),
 	shuffle_frequency(0),

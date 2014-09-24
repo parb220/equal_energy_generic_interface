@@ -106,79 +106,79 @@ double CEquiEnergyModel::BurnIn(int burn_in_length)
 
 void CEquiEnergyModel::Simulation_Within(bool if_storage, const string &sample_file_name)
 {
-	CSampleIDWeight x_new; 
-	int nJump =0; 
-	double bounded_log_posterior_new; 
-	bool if_write_file = false; 
-	ofstream output_file; 
-	if (!sample_file_name.empty() )
-	{
-		output_file.open(sample_file_name.c_str(), ios::binary | ios::out); 
-		if (output_file)
-			if_write_file = true; 
-	}
+	// CSampleIDWeight x_new; 
+	// int nJump =0; 
+	// double bounded_log_posterior_new; 
+	// bool if_write_file = false; 
+	// ofstream output_file; 
+	// if (!sample_file_name.empty() )
+	// {
+	// 	output_file.open(sample_file_name.c_str(), ios::binary | ios::out); 
+	// 	if (output_file)
+	// 		if_write_file = true; 
+	// }
 
-	for (int i=0; i<parameter->simulation_length; i++)
-	{
-		for (int j=0; j<parameter->thin; j++)
-		{
-			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, parameter->THIN/parameter->thin) )
-                	{
-                        	current_sample = x_new;
-                        	current_sample.id = (int)(time(NULL)-timer_when_started);
-                        	// max_posterior = current_sample.weight > max_posterior ? current_sample.weight : max_posterior;
-                        	nJump ++;
-                	}
-		}
+	// for (int i=0; i<parameter->simulation_length; i++)
+	// {
+	// 	for (int j=0; j<parameter->thin; j++)
+	// 	{
+	// 		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, parameter->THIN/parameter->thin) )
+        //         	{
+        //                 	current_sample = x_new;
+        //                 	current_sample.id = (int)(time(NULL)-timer_when_started);
+        //                 	// max_posterior = current_sample.weight > max_posterior ? current_sample.weight : max_posterior;
+        //                 	nJump ++;
+        //         	}
+	// 	}
 		
-		if (if_storage)
-			SaveSampleToStorage(current_sample);
-		if (if_write_file)
-			write(output_file, &current_sample); 
-	}
-	if (if_write_file)
-		output_file.close(); 
+	// 	if (if_storage)
+	// 		SaveSampleToStorage(current_sample);
+	// 	if (if_write_file)
+	// 		write(output_file, &current_sample); 
+	// }
+	// if (if_write_file)
+	// 	output_file.close(); 
 
-	cout << "MH Jump " << nJump << " out of " << parameter->simulation_length*parameter->thin << " in simulation.\n"; 
+	// cout << "MH Jump " << nJump << " out of " << parameter->simulation_length*parameter->thin << " in simulation.\n"; 
 }
 
 void CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_file_name)
 {
-	CSampleIDWeight x_new;
+	// CSampleIDWeight x_new;
 
-	int nEEJump=0, nMHJump=0; 
-	bool if_write_file = false;
-        ofstream output_file;
-        if (!sample_file_name.empty() )
-        {
-                output_file.open(sample_file_name.c_str(), ios::binary | ios::out);
-                if (output_file)
-                        if_write_file = true;
-        }
-	for (int i=0; i<parameter->simulation_length; i++)
-	{
-		for (int j=0; j<parameter->thin; j++)
-		{
-			int jump_code = EE_Draw(parameter->THIN/parameter->thin); 
-			if (jump_code == EQUI_ENERGY_JUMP)
-				nEEJump++; 
-			else if (jump_code == METROPOLIS_JUMP)
-				nMHJump++; 
-			// if (jump_code == EQUI_ENERGY_JUMP || jump_code == METROPOLIS_JUMP)
-			//	max_posterior = max_posterior > current_sample.weight ? max_posterior : current_sample.weight; 
-		}	
+	// int nEEJump=0, nMHJump=0; 
+	// bool if_write_file = false;
+        // ofstream output_file;
+        // if (!sample_file_name.empty() )
+        // {
+        //         output_file.open(sample_file_name.c_str(), ios::binary | ios::out);
+        //         if (output_file)
+        //                 if_write_file = true;
+        // }
+	// for (int i=0; i<parameter->simulation_length; i++)
+	// {
+	// 	for (int j=0; j<parameter->thin; j++)
+	// 	{
+	// 		int jump_code = EE_Draw(parameter->THIN/parameter->thin); 
+	// 		if (jump_code == EQUI_ENERGY_JUMP)
+	// 			nEEJump++; 
+	// 		else if (jump_code == METROPOLIS_JUMP)
+	// 			nMHJump++; 
+	// 		// if (jump_code == EQUI_ENERGY_JUMP || jump_code == METROPOLIS_JUMP)
+	// 		//	max_posterior = max_posterior > current_sample.weight ? max_posterior : current_sample.weight; 
+	// 	}	
 	
-		if (if_storage)
-			SaveSampleToStorage(current_sample); 
-		if (if_write_file)
-			write(output_file, &current_sample); 
-	}
+	// 	if (if_storage)
+	// 		SaveSampleToStorage(current_sample); 
+	// 	if (if_write_file)
+	// 		write(output_file, &current_sample); 
+	// }
 
-	if (if_write_file)
-		output_file.close(); 	
+	// if (if_write_file)
+	// 	output_file.close(); 	
 
-	cout << "EE Jump " << nEEJump << " out of " << parameter->simulation_length *parameter->thin<< " in simulation.\n"; 
-	cout << "MH Jump " << nMHJump << " out of " << parameter->simulation_length *parameter->thin<< " in simulation.\n"; 
+	// cout << "EE Jump " << nEEJump << " out of " << parameter->simulation_length *parameter->thin<< " in simulation.\n"; 
+	// cout << "MH Jump " << nMHJump << " out of " << parameter->simulation_length *parameter->thin<< " in simulation.\n"; 
 }
 
 CEquiEnergyModel::CEquiEnergyModel() : 
@@ -211,12 +211,6 @@ double EffectiveSampleSize(double K1, double K2, vector<CSampleIDWeight> &sample
     {
       weight=exp(samples[i].weight*power - sum);
       sum2+=weight*weight;
-    }
-
-  if (sum2 < 0.0)
-    {
-      cerr << "Negative effective sample size: " << sum2 << endl;
-      abort();
     }
 
   return 1.0/sum2;
@@ -283,14 +277,17 @@ void CEquiEnergyModel::SetupFromPreviousLevel(int level)
 
   // Get all previous level samples
   vector<CSampleIDWeight> samples;  
-  if (!storage->DrawAllSample(level+1, samples, true, current_sample.GetSize_Data()) || (samples.size() < parameter->simulation_length))
+  if (!storage->DrawAllSample(level+1, samples, true, current_sample.GetSize_Data()) ) // || (samples.size() < parameter->simulation_length))
     {
       cerr << "Error obtaining all samples from level " << level+1 << endl;
-      if (samples.size() < parameter->simulation_length) cerr << "Not enough samples - " << samples.size() << endl;
+      if (samples.size() < parameter->simulation_length) cerr << "Not enough samples - " << samples.size() << " : " << parameter->simulation_length << endl;
       abort();
     }
 
-  TDenseVector log_kernel_target(samples.size()), log_density_proposal(samples.size());
+  TDenseVector log_kernel_target(samples.size()), log_density_proposal(samples.size()), log_posterior(samples.size());
+  for (int i=samples.size()-1; i >= 0; i--)
+    log_posterior(i)=samples[i].weight;
+
   if (level == parameter->number_energy_level-1)
     {
       energy_level++;
@@ -298,50 +295,62 @@ void CEquiEnergyModel::SetupFromPreviousLevel(int level)
       energy_level--;
 
       K(level)=parameter->max_energy;
-      for (int i=samples.size()-1; i >= 0; i--)
-      	{	
-      	  log_density_proposal(i)=LogInitialDensity(samples[i].data);
-      	  log_kernel_target(i)=samples[i].weight/K(level);
-      	}
+      for (int i=samples.size()-1; i >= 0; i--)	
+	log_density_proposal(i)=LogInitialDensity(samples[i].data);
+      log_kernel_target=(1.0/K(level))*log_posterior;
       ESS=EffectiveSampleSize(log_kernel_target,log_density_proposal);
       LogKernelIntegral(level)=ComputeLogKernelIntegral(log_kernel_target,log_density_proposal);
     }
   else if (level == 0)
     {
       K(level)=1.0;
+      log_density_proposal=(1.0/K(level+1))*log_posterior;
+      log_kernel_target=(1.0/K(level))*log_posterior;
+      ESS=EffectiveSampleSize(log_kernel_target,log_density_proposal);
+      LogKernelIntegral(level)=ComputeLogKernelIntegral(log_kernel_target,log_density_proposal);
     }
   else
     {
-      // choose alpha so K(level+1) * alpha^(level+1) = 1
-      double alpha=pow(K(level+1),-1.0/(level+1));
+      double ess, K_new, K_max=K(level+1), K_min=(K_max/2 <= 1.0) ? 1.0 : K_max/2;
 
-      K(level)=K(level+1)*alpha;
-      ESS=EffectiveSampleSize(K(level),K(level+1),samples);
-
-      if (ESS > parameter->min_ess)
+      // bracket min_ess
+      do
 	{
-	  double ess_new, K_new=K(level)*alpha;
-	  int n=level;
-	  while ((n-- > 0) && ((ess_new=EffectiveSampleSize(K_new,K(level+1),samples)) > parameter->min_ess))
+	  log_density_proposal=(1.0/K(level+1))*log_posterior;
+	  log_kernel_target=(1.0/K_min)*log_posterior;
+	  ess=EffectiveSampleSize(log_kernel_target,log_density_proposal);
+
+	  cout << "K = " << K_min << "  ESS = " << ess << endl;
+
+	  if (ess >= parameter->min_ess)  K_min=(K_min/2 <= 1.0) ? 1.0 : K_min/2;
+	} 
+      while ((K_min > 1) && (ess >= parameter->min_ess));
+
+      // bracketed?
+      if (ess < parameter->min_ess)
+	{
+	  for (int i=0; i < 10; i++)
 	    {
-	      K(level)=K_new;
-	      ESS=ess_new;
-	      K_new*=alpha;
+	      K_new=0.5*(K_max + K_min);
+	      log_density_proposal=(1.0/K(level+1))*log_posterior;
+	      log_kernel_target=(1.0/K_new)*log_posterior;
+	      ess=EffectiveSampleSize(log_kernel_target,log_density_proposal);
+
+	      if (ess >= parameter->min_ess) 
+		K_max=K_new;
+	      else
+		K_min=K_new;
 	    }
+	  K_new=0.5*(K_max + K_min);
 	}
+      else
+	K_new=1.0;
 
-      for (int i=samples.size()-1; i >= 0; i--)
-      	{	
-      	  log_density_proposal(i)=samples[i].weight/K(level+1) - LogKernelIntegral(level+1);
-      	  log_kernel_target(i)=samples[i].weight/K(level);
-      	}
+      K(level)=K_new;
+      log_density_proposal=(1.0/K(level+1))*log_posterior;
+      log_kernel_target=(1.0/K(level))*log_posterior;
+      ESS=EffectiveSampleSize(log_kernel_target,log_density_proposal);
       LogKernelIntegral(level)=ComputeLogKernelIntegral(log_kernel_target,log_density_proposal);
-
-      if (fabs(ESS - EffectiveSampleSize(log_kernel_target,log_density_proposal)) > 1.0e-7)
-	{
-	  cerr << "computations of ESS do not agree" << endl;
-	  abort();
-	}
     }
 
   TDenseVector importance_weights(samples.size());
@@ -405,7 +414,8 @@ double CEquiEnergyModel::Tune(double target_scale, int period, int max_period, b
   double lower_bound=exp(log_mid/0.2);
   double upper_bound=exp(log_mid/5.0);
 
-  int reinitialize_factor=(period > 20) ? period : 20;
+  int N=period;
+  int G=1;
 
   if (max_period < period) 
     max_period=32*period;
@@ -415,9 +425,9 @@ double CEquiEnergyModel::Tune(double target_scale, int period, int max_period, b
     {
       // simulate approximately period/p_saved draws 
       if (energy_level < parameter->number_energy_level)
-	SimulateEE(false,string(),period,reinitialize_factor,false,false);
+	SimulateEE(false,string(),G,N,false,false);
       else
-	SimulateMH(false,string(),period,false);
+	SimulateMH(false,string(),G*N,false);
 
       // jump ratio
       previous_ratio = (double)nMHJumps/(double)nMHProposed;
@@ -455,15 +465,13 @@ double CEquiEnergyModel::Tune(double target_scale, int period, int max_period, b
 	{
 	  best_scale = new_scale = ((target_scale-low_jump_ratio)*low_scale + (high_jump_ratio-target_scale)*high_scale)/(high_jump_ratio-low_jump_ratio);
 	  period*=2; 
+	  G*=2;
 	  low_jump_ratio = -1.0; 
 	  high_jump_ratio = -1.0; 
 	}
 			
       // reset scale
       scale = new_scale; 
-
-      // cout << scale << endl; abort();
-
 
       if ((scale < 1.0e-7) || (scale > 1.0e7))
 	{
@@ -481,7 +489,7 @@ double CEquiEnergyModel::Tune(double target_scale, int period, int max_period, b
 /*
    Set reinitialize_factor to -1.0 to never reinitialize.
 */
-void CEquiEnergyModel::SimulateEE(bool if_storage, const string &sample_file_name, int number_to_save, int reinitialize_factor, bool start_from_current_sample, bool verbose)
+void CEquiEnergyModel::SimulateEE(bool if_storage, const string &sample_file_name, int G, int N, bool start_from_current_sample, bool verbose)
 {
   // setup file if needed
   bool if_write_file = false;
@@ -508,10 +516,10 @@ void CEquiEnergyModel::SimulateEE(bool if_storage, const string &sample_file_nam
   current_ring=storage->BinIndex(energy_level+1,-current_sample.weight);
 
   // simulation runs
-  int verbose_factor = number_to_save/20;
+  int verbose_factor = G*N/10;
   if (verbose_factor < 500) verbose_factor=500;
   CSampleIDWeight x_new;
-  for (int verbose_count=verbose_factor, count=reinitialize_factor; nSaved < number_to_save; )
+  for (int g=0, verbose_count=verbose_factor, count=N; g < G; )
     {       
       // verbose output
       if (verbose && (verbose_count  == 0))
@@ -526,7 +534,8 @@ void CEquiEnergyModel::SimulateEE(bool if_storage, const string &sample_file_nam
 	{
 	  ImportanceSamplePreviousLevel(current_sample);
 	  current_ring=storage->BinIndex(energy_level+1,-current_sample.weight);
-	  count=reinitialize_factor;
+	  g++;
+	  count=N;
 	  nRestarts++;
 	}
 
@@ -536,14 +545,14 @@ void CEquiEnergyModel::SimulateEE(bool if_storage, const string &sample_file_nam
 	  nSaved++;
 	  count--;
 	  verbose_count--;
-	  current_sample.id = (int)(time(NULL)-timer_when_started);
+	  current_sample.id = node*G + g;
 	  if (if_storage)      
 	    SaveSampleToStorage(current_sample); 
 	  if (if_write_file)
 	    write(output_file, &current_sample);     
 
 	  // make equi-energy jump
-	  if (dw_uniform_rnd() < parameter->pee)  
+	  if (dw_uniform_rnd() <= parameter->pee)  
 	    {
 	      nEEProposed++;
 	      if (storage->DrawSample(energy_level+1, current_ring, x_new))
@@ -654,7 +663,7 @@ void CEquiEnergyModel::SimulateMH(bool store_internal, const string &external_fi
 	{
 	  nSaved++;
 	  verbose_count--;
-	  current_sample.id = (int)(time(NULL)-timer_when_started);
+	  current_sample.id = parameter->G*node;
 	  if (store_internal)
 	    SaveSampleToStorage(current_sample); 
 	  if (store_external)
@@ -794,7 +803,7 @@ void CEquiEnergyModel::WriteSimulationDiagnostic(void)
       cerr << "Unable to open " << filename << endl;
       abort();
     }
-  output_file << setprecision(4);
+  output_file << setprecision(8);
   output_file << "Temperature: " << K(energy_level) << endl;
   output_file << "Scale: " << scale << endl;
   output_file << "Effective sample size: " << ESS << endl;
@@ -815,6 +824,10 @@ void CEquiEnergyModel::WriteSimulationDiagnostic(void)
   output_file << "Log kernel integral:" << endl;
   for (int i=parameter->number_energy_level; i >= energy_level; i--)
     output_file << LogKernelIntegral(i) << "  ";
+  output_file << endl;
+  output_file << "Temperature:" << endl;
+  for (int i=parameter->number_energy_level; i >= energy_level; i--)
+    output_file << K(i) << "  ";
   output_file << endl;
     
   output_file.close();
@@ -1062,8 +1075,6 @@ double CEquiEnergyModel::LogInitialDensity(const TDenseVector &x)
 */
 double CEquiEnergyModel::AnalyzeInitialDraws(int level)
 {
-
-  //cout << "entered AnalyzeInitialDraws()\n";
   int nParameters=parameter->nParameters, simulation_length=parameter->simulation_length;
 
   // read draws
