@@ -15,7 +15,7 @@ using namespace std;
 
 void DispatchInitialSimulation(int nNode, CEquiEnergyModel &model)
 {
-  int nParameters=model.parameter->nParameters;
+  int nParameters=model.nParameters;
   model.energy_level=model.parameter->number_energy_level;
   model.node=-1;
 
@@ -28,10 +28,7 @@ void DispatchInitialSimulation(int nNode, CEquiEnergyModel &model)
   model.OpenFile(diagnostic_file,"Diagnostic",model.energy_level,true);
 
   // create initialization file
-  model.InitialOrthonormalDirections=Identity(nParameters);
-  model.InitialSqrtDiagonal=Ones(nParameters);
-  model.InitialCenter=Zeros(nParameters);
-  model.CreateInitializationFile(model.energy_level,model.parameter->max_energy,1.0,model.InitialOrthonormalDirections,model.InitialSqrtDiagonal,model.InitialCenter);
+  model.SetupFromPreviousLevel(model.energy_level);
  
   bool not_done=true;
   int iterations=0;
@@ -49,10 +46,10 @@ void DispatchInitialSimulation(int nNode, CEquiEnergyModel &model)
 	}
 
       // consolidate scales and create initialization file
-      double scale = model.ConsolidateScales(model.energy_level);
-      model.CreateInitializationFile(model.energy_level,model.parameter->max_energy,scale,model.InitialOrthonormalDirections,model.InitialSqrtDiagonal,model.InitialCenter);
+      model.scale = model.ConsolidateScales(model.energy_level);
+      model.WriteInitializationFile();
       diagnostic_file << "Temperature = " << model.parameter->max_energy << endl;
-      diagnostic_file << "Scale = " << scale << endl;
+      diagnostic_file << "Scale = " << model.scale << endl;
 
       // send out simulate command to compute nodes
       for (int i=1; i<nNode; i++)
@@ -66,12 +63,13 @@ void DispatchInitialSimulation(int nNode, CEquiEnergyModel &model)
 	}
 
       // read draws, set , compute ESS
-      double ESS = model.AnalyzeInitialDraws(model.energy_level);
+      double ESS = model.AnalyzeInitialDraws();
       diagnostic_file << "ESS = " << ESS << endl;
 
       cout << "ESS (" << model.parameter->min_ess << ") = " << ESS << endl << endl;
 
       // exit if ESS is large enough or too many iterations have been performed
+      not_done=false;
       iterations++;
       if ((iterations > 1) && ((ESS >= model.parameter->min_ess) || (iterations > 5)))
 	{
@@ -83,7 +81,7 @@ void DispatchInitialSimulation(int nNode, CEquiEnergyModel &model)
   // simulate and save top level draws
   TDenseVector x;
   CSampleIDWeight y;
-  int length=model.parameter->N*model.parameter->G*(nNode-1);
+  int length=model.parameter->simulation_length;
   TDenseVector log_kernel_target(length), log_density_proposal(length);
   for (int ii=0; ii < length; ii++)
     {

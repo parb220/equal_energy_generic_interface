@@ -35,7 +35,9 @@ vector <CSampleIDWeight> ReadSampleFromFile(const string &file_name, int size_ea
 	return sample;
 }
 
-CStorageHead::CStorageHead(int size_each_data, int _node_index, const string & _run_id, size_t _storage_marker, string _file_location, size_t _number_level) : cluster_node(_node_index), run_id(_run_id), storage_marker(_storage_marker), filename_base(_file_location), bin(vector<vector<CPutGetBin> >(_number_level+1)), energy_lower_bound(vector<vector<double> >(_number_level+1)) 
+CStorageHead::CStorageHead(int size_each_data, int _node_index, const string & _run_id, size_t _storage_marker, string _file_location, size_t _number_level) : 
+  cluster_node(_node_index), run_id(_run_id), storage_marker(_storage_marker), filename_base(_file_location),
+  bin(vector<vector<CPutGetBin> >(_number_level+1)), energy_lower_bound(vector<vector<double> >(_number_level+1)) 
 {
 	stringstream str; 
 	str << run_id << "/" << run_id << ".binary/";

@@ -105,47 +105,47 @@ bool CEESParameter::WriteSummaryFile(string file_name) const
 	return true; 
 }
 
-bool CEESParameter::SetTemperature(int nGeometricLevel, int nFinerLevel)
-{
-	if (nGeometricLevel) // nGeometricLevel != 0
-	{
-		number_energy_level = nGeometricLevel + nFinerLevel; 
-		t.resize(number_energy_level+1);
+// bool CEESParameter::SetTemperature(int nGeometricLevel, int nFinerLevel)
+// {
+// 	if (nGeometricLevel) // nGeometricLevel != 0
+// 	{
+// 		number_energy_level = nGeometricLevel + nFinerLevel; 
+// 		t.resize(number_energy_level+1);
 	
-		vector<double> geometric_t(nGeometricLevel+1, 0.0); 
-		Solve_Polynomial_Equation(geometric_t, nGeometricLevel+1, t0, tk_1); 
+// 		vector<double> geometric_t(nGeometricLevel+1, 0.0); 
+// 		Solve_Polynomial_Equation(geometric_t, nGeometricLevel+1, t0, tk_1); 
 
-		vector<double> finer_t(nFinerLevel+3, 0.0); 
-		Solve_Polynomial_Equation(finer_t, nFinerLevel+3, geometric_t[0], geometric_t[1]); 
-		for (int i=0; i<nFinerLevel+1; i++)
-			t[i] = finer_t[i]; 
-		for (int i=0; i<nGeometricLevel; i++)
-			t[nFinerLevel+i+1] = geometric_t[i+1]; 
+// 		vector<double> finer_t(nFinerLevel+3, 0.0); 
+// 		Solve_Polynomial_Equation(finer_t, nFinerLevel+3, geometric_t[0], geometric_t[1]); 
+// 		for (int i=0; i<nFinerLevel+1; i++)
+// 			t[i] = finer_t[i]; 
+// 		for (int i=0; i<nGeometricLevel; i++)
+// 			t[nFinerLevel+i+1] = geometric_t[i+1]; 
 		
-		/*vector<double> finer_t(nFinerLevel, 0.0); 
-		for (int i=0; i<nFinerLevel; i++)
-			finer_t[i] = geometric_t[0] + (geometric_t[1]-geometric_t[0])*(double)(i+1.0)/(double)(nFinerLevel+1.0); 
+// 		/*vector<double> finer_t(nFinerLevel, 0.0); 
+// 		for (int i=0; i<nFinerLevel; i++)
+// 			finer_t[i] = geometric_t[0] + (geometric_t[1]-geometric_t[0])*(double)(i+1.0)/(double)(nFinerLevel+1.0); 
 
-		t[0] = geometric_t[0]; 
-		for (int i=0; i<nFinerLevel; i++)
-			t[i+1] = finer_t[i]; 
-		for (int i=1; i<=nGeometricLevel; i++)
-			t[nFinerLevel+i] = geometric_t[i];*/ 
-	}
-	else // nGeometricLevel == 0 && nFinerLevel != 0
-	{
-		number_energy_level = nFinerLevel+2; 
-		t.resize(number_energy_level+1); 
-		Solve_Polynomial_Equation(t, number_energy_level+1, t0, tk_1); 
+// 		t[0] = geometric_t[0]; 
+// 		for (int i=0; i<nFinerLevel; i++)
+// 			t[i+1] = finer_t[i]; 
+// 		for (int i=1; i<=nGeometricLevel; i++)
+// 			t[nFinerLevel+i] = geometric_t[i];*/ 
+// 	}
+// 	else // nGeometricLevel == 0 && nFinerLevel != 0
+// 	{
+// 		number_energy_level = nFinerLevel+2; 
+// 		t.resize(number_energy_level+1); 
+// 		Solve_Polynomial_Equation(t, number_energy_level+1, t0, tk_1); 
 		
-		/*t[0] = t0; 
-		t[nFinerLevel-1] = tk_1; 
-		for (int i=1; i<nFinerLevel-1; i++)
-			t[i] = t[0] + (t[nFinerLevel-1]-t[0])*(double)i/(double)(nFinerLevel-1.0); 
-	 	t[nFinerLevel] = t[nFinerLevel-1] + (t[nFinerLevel-1]-t[0])/(double)(nFinerLevel-1.0); */
-	} 
-	return true; 
-}
+// 		/*t[0] = t0; 
+// 		t[nFinerLevel-1] = tk_1; 
+// 		for (int i=1; i<nFinerLevel-1; i++)
+// 			t[i] = t[0] + (t[nFinerLevel-1]-t[0])*(double)i/(double)(nFinerLevel-1.0); 
+// 	 	t[nFinerLevel] = t[nFinerLevel-1] + (t[nFinerLevel-1]-t[0])/(double)(nFinerLevel-1.0); */
+// 	} 
+// 	return true; 
+// }
 
 double CEESParameter::LogRatio_Level(double original_energy_x, double original_energy_y, int level) const
 {

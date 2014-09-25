@@ -10,17 +10,13 @@
 #include "storage_parameter.h"
 #include "mpi_parameter.h"
 #include "dw_matrix.h"
-#include "mdd.hpp"
-#include "mdd_function.h"
 
 using namespace std; 
 
-void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
+void DispatchTuneSimulation(int nNode, CEquiEnergyModel &model, size_t simulation_length, bool save_space_flag)
 {
 	double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];  
 	MPI_Status status; 
-	int iInitial;
-	vector <int> availableNode;
 
 	if (model.parameter->highest_level >= model.parameter->number_energy_level)
 	  {
@@ -55,8 +51,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Consolidate scales
-		double scale=model.ConsolidateScales(level);
-		model.CreateInitializationFile(level,model.K(level),scale,model.OrthonormalDirections,model.SqrtDiagonal);
+		model.scale=model.ConsolidateScales(level);
+		model.WriteInitializationFile();
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simulation

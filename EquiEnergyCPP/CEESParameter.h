@@ -30,7 +30,7 @@ public:
 	bool WriteSummaryFile(string) const; 
 	
 	bool SetEnergyBound();
-	bool SetTemperature(int nGeometricLevel, int nFinerLevel);
+	//bool SetTemperature(int nGeometricLevel, int nFinerLevel);
 
 	double LogRatio_Level(double energy_x, double energy_y, int level) const; 
 
@@ -57,9 +57,5 @@ public:
 
 	int N;                       // number to simulate for each group
 	int G;                       // total number of groups is G * n_compute_cores
-
-	// these should not be set by the user!
-        int nParameters;             // number of model parameters
-	int n_compute_cores;         // number of slave compute cores (nNode - 1)
 };
 #endif

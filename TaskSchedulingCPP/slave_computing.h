@@ -1,6 +1,8 @@
 #ifndef _SLAVE_COMPUTING_HEADER
 #define _SLAVE_COMPUTING_HEADER
 
+void slave_computing(CEquiEnergyModel &model);
+
 bool GetCommunicationParameter(const double *, size_t, CEESParameter *); 
 // CEESParameter cannot be const, because its h and t will be altered upon the received message
 
