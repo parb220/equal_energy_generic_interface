@@ -16,8 +16,9 @@ using namespace std;
 
 void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel &model, const CSampleIDWeight &mode, int optimizationN, int perturbationN, double perturbationS) 
 {
-	int my_rank; 
-	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);  
+	int my_rank, nNode; 
+	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank); 
+	MPI_Comm_size(MPI_COMM_WORLD, &nNode);  
 	MPI_Status status; 
 	
 	double *rPackage = new double [N_MESSAGE], *sPackage = new double [N_MESSAGE];    
