@@ -23,8 +23,8 @@ void master_deploying(int nNode, int nHillClimb, int nInitial, CEquiEnergyModel 
 	else // rebbing highest+1 level
 	{
 		model.storage->ClearStatus(model.parameter->highest_level+1);
-        	model.storage->consolidate(model.parameter->highest_level+1);
-        	model.storage->binning_equal_size(model.parameter->highest_level+1, model.parameter->number_energy_level);
+        	// model.storage->consolidate(model.parameter->highest_level+1);
+        	model.storage->binning_equal_size(model.parameter->highest_level+1, model.parameter->number_energy_level, true, model.current_sample.GetSize_Data());
         	model.storage->finalize(model.parameter->highest_level+1);
         	model.storage->ClearDepositDrawHistory(model.parameter->highest_level+1);
 

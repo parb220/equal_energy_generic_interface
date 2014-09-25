@@ -178,7 +178,7 @@ bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSamp
 	return -i.weight < -j.weight; 
 }
 
-size_t CStorageHead::binning_equal_size(int level, size_t bin_number)
+size_t CStorageHead::binning_equal_size(int level, size_t bin_number, bool if_unstructured, int data_size)
 {
 	if (level >=(int)bin.size())
         {
@@ -191,7 +191,7 @@ size_t CStorageHead::binning_equal_size(int level, size_t bin_number)
                 abort();
         }	
         vector<CSampleIDWeight> sample;
-        if (!DrawAllSample(level, sample) )
+        if (!DrawAllSample(level, sample, if_unstructured, data_size) )
         {
                 cerr << "CStorageHead::binning_equal_size() : error occurred when loading all samples.\n";
                 abort();

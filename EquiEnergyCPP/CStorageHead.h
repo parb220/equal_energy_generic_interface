@@ -35,7 +35,7 @@ public:
 	void ClearDepositDrawHistory(int level); 
 	void ClearSample(int level); 
 
-	size_t binning_equal_size(int level, size_t bin_number); 
+	size_t binning_equal_size(int level, size_t bin_number, bool if_unstructured=false, int data_size=1); 
 
 	bool DrawLeastWeightSample(int level, int bin_id, CSampleIDWeight &); 
 	bool Draw_K_LeastWeightSample(size_t, int level, int bin_id, vector<CSampleIDWeight> &) ; 
