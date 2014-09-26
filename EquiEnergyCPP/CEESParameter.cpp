@@ -132,7 +132,7 @@ bool CEESParameter::SetTemperature(int nGeometricLevel, int nFinerLevel)
 		for (int i=1; i<=nGeometricLevel; i++)
 			t[nFinerLevel+i] = geometric_t[i];*/ 
 	}
-	else // nGeometricLevel == 0 && nFinerLevel != 0
+	else if ( nGeometricLevel == 0 && nFinerLevel != 0)
 	{
 		number_energy_level = nFinerLevel+2; 
 		t.resize(number_energy_level+1); 
@@ -144,6 +144,12 @@ bool CEESParameter::SetTemperature(int nGeometricLevel, int nFinerLevel)
 			t[i] = t[0] + (t[nFinerLevel-1]-t[0])*(double)i/(double)(nFinerLevel-1.0); 
 	 	t[nFinerLevel] = t[nFinerLevel-1] + (t[nFinerLevel-1]-t[0])/(double)(nFinerLevel-1.0); */
 	} 
+	else // nGeometricLevel == 0 && nFinerLevel == 0
+	{
+		number_energy_level = 1;
+		t.resize(1); 
+		t[0]  = t0;  
+	}
 	return true; 
 }
 
