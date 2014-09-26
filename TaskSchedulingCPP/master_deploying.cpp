@@ -11,7 +11,7 @@ using namespace std;
 
 void master_deploying(int nNode, CEquiEnergyModel &model)
 {	
-  if ((model.parameter->N > 0) && (model.parameter->G > 0))
+  if ((model.parameter->N > 0) && (model.parameter->Gn > 0))
     {
       // setup directories
       if (!model.storage->makedir())
@@ -20,6 +20,9 @@ void master_deploying(int nNode, CEquiEnergyModel &model)
 	}
       else
 	{
+	  // Write parameters
+	  model.WriteParameters();
+
 	  // Initial distribution
 	  if (model.parameter->highest_level >= model.parameter->number_energy_level)
 	    {
@@ -28,7 +31,7 @@ void master_deploying(int nNode, CEquiEnergyModel &model)
 	    }
 
 	  // Simulation
-	  DispatchTuneSimulation(nNode, model, model.parameter->N * model.parameter->G, false); 
+	  DispatchTuneSimulation(nNode, model, model.parameter->N * model.parameter->Gn, false); 
 	}
     }
 

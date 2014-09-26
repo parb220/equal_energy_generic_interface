@@ -25,7 +25,7 @@ void DispatchInitialSimulation(int nNode, CEquiEnergyModel &model)
 
   // diagnostic file
   fstream diagnostic_file;
-  model.OpenFile(diagnostic_file,"Diagnostic",model.energy_level,true);
+  model.OpenFile(diagnostic_file,true,"Diagnostic",model.energy_level);
 
   // create initialization file
   model.SetupFromPreviousLevel(model.energy_level);
@@ -69,9 +69,9 @@ void DispatchInitialSimulation(int nNode, CEquiEnergyModel &model)
       cout << "ESS (" << model.parameter->min_ess << ") = " << ESS << endl << endl;
 
       // exit if ESS is large enough or too many iterations have been performed
-      not_done=false;
+      //not_done=false;
       iterations++;
-      if ((iterations > 1) && ((ESS >= model.parameter->min_ess) || (iterations > 5)))
+      if ((iterations > 1) && ((ESS >= model.parameter->min_ess) || (iterations > 1)))
 	{
 	  not_done=false;
 	}

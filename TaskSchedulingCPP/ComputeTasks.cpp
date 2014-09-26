@@ -41,15 +41,15 @@ void ExecutingInitialTuningTask(CEquiEnergyModel &model, int node)
   // Setup
   model.ReadInitializationFile(model.energy_level);
   model.scale=1.0;
-
+	  cout << "here 1\n";
   // Draw initial starting point
   model.InitialDraw(model.current_sample.data);
   model.current_sample.weight=model.target->LogPosterior(model.current_sample.data);
   model.current_sample.calculated=true;
-
+	  cout << "here 2\n";
   // tune
   double scale = model.Tune();
-
+	  cout << "here 3\n";
   // write scale
   model.WriteScale(model.energy_level,node,scale);
 }
@@ -64,7 +64,7 @@ void ExecutingSimulationTask(CEquiEnergyModel &model, int nNode, int node)
 
   // simulate
   model.ReadInitializationFile(model.energy_level);
-  model.SimulateEE(true, string(), model.parameter->G, model.parameter->N, false, true);
+  model.SimulateEE(true, string(), model.parameter->Gn, model.parameter->N, false, true);
   model.WriteSimulationDiagnostic(node);
 
   // finalze and clear-up storage
@@ -78,7 +78,7 @@ void ExecutingInitialSimulationTask(CEquiEnergyModel &model, int nNode, int node
 {
   // Setup
   model.ReadInitializationFile(model.energy_level);
-  int number_to_simulate = model.parameter->N * model.parameter->G;
+  int number_to_simulate = model.parameter->N * model.parameter->Gn;
   string external_filename=model.MakeFilename("draws",model.energy_level,node);
 
   // Draw initial starting point

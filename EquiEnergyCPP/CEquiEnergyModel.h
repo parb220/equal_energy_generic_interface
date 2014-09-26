@@ -97,11 +97,9 @@ public:
 	double LogInitialDensity(const TDenseVector &x);
 	double AnalyzeInitialDraws(void);
 
-
 	// seting up filename
-	string MakeFilename(const string &id, int level, int node);
-	string MakeFilename(const string &id, int level);
-	void OpenFile(fstream &file, const string &id, int level, bool output_file);
+	string MakeFilename(const string &id, int level=-1, int node=-1);
+	void OpenFile(fstream &file, bool output_file, const string &id, int level=-1, int node=-1);
 
 	// initialization
 	void SetupFromPreviousLevel(int level);
@@ -110,6 +108,7 @@ public:
 	void WriteScale(int level, int node, double s);
 	void WriteScale(int level, double s);
 	double ConsolidateScales(int level);
+	void WriteParameters(void);
 
 };
 
