@@ -14,6 +14,8 @@
 
 using namespace std; 
 
+bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSampleIDWeight &j); 
+bool compare_CSampleIDWeight_BasedOnID(const CSampleIDWeight &i, const CSampleIDWeight &j); 
 double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level, double logMDD_previous); 
 double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type);
 double EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level); 
@@ -380,6 +382,68 @@ double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model,
 	return mdd_bridge; 
 }
 
+double CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,  double convergency_previous, double &average_consistency, double &std_consistency)
+{
+	vector<CSampleIDWeight> proposal; 
+
+	bool unstructured = true; 
+	int data_size = model.current_sample.GetSize_Data();
+	if (!model.storage->DrawAllSample(previous_level, proposal, unstructured, data_size) ) 
+	{
+		cerr << "CheckConvergency:: error occurred when checking convergency.\n"; 
+		abort(); 
+	}
+
+	sort(proposal.begin(), proposal.end(), compare_CSampleIDWeight_BasedOnID);
+	vector<double> weight(proposal.size(), 0.0); 
+	for(int i=0; i<(int)proposal.size(); i++)
+	{
+		if (previous_level == model.parameter->number_energy_level)
+			weight[i] = proposal[i].weight/model.parameter->t[level]-(model.StudentT_LogPDF(proposal[i])-convergency_previous);
+		else 
+			weight[i] = proposal[i].weight/model.parameter->t[level]-(proposal[i].weight/model.parameter->t[previous_level]-convergency_previous); 
+	}
+
+	vector<double>group_consistency; 
+	double consistency; 
+	int counter =0; 
+	for (int i=0; i<(int)(proposal.size()); i++)
+	{
+		if (i==0)
+		{ 
+			group_consistency.push_back(weight[i]); 
+			counter = 1; 
+			consistency = weight[i]; 
+		}
+		else if (proposal[i].id > proposal[i-1].id)
+		{
+			group_consistency[group_consistency.size()-1] -= log((double)counter); 
+			group_consistency.push_back(weight[i]); 
+			counter = 1; 
+			consistency = AddLogs(consistency, weight[i]); 
+		}
+		else 
+		{
+			group_consistency[group_consistency.size()-1] = AddLogs(group_consistency[group_consistency.size()-1], weight[i]);  
+			counter ++; 
+			consistency = AddLogs(consistency, weight[i]);
+		}
+	}
+	group_consistency[group_consistency.size()-1] -= log((double)counter);
+	consistency -= log((double)(proposal.size())); 
+	
+	average_consistency=0.0; 
+	std_consistency=0.0; 
+	for (int i=0; i<(int)(group_consistency.size()); i++)
+	{
+		average_consistency += group_consistency[i]; 
+		std_consistency += group_consistency[i] * group_consistency[i]; 
+	}	
+	average_consistency = average_consistency/(double)(group_consistency.size()); 
+	std_consistency = sqrt(std_consistency/(double)(group_consistency.size())-average_consistency*average_consistency); 
+	return consistency; 
+}
+
 
 double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level,  double logMDD_previous)
 {
@@ -422,7 +486,6 @@ double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level,  d
 	return logMDD; 
 }
 
-bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSampleIDWeight &j); 
 vector<double>EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type, int nGroup)
 {
 	vector<CSampleIDWeight> posterior; 

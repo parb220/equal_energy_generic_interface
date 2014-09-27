@@ -64,7 +64,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		{
 			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]);
-			model.timer_when_started = my_rank*n_initial + group_index; 
+			model.timer_when_started = group_index; 
                         if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
                         {
                                 cout << "GetCommunicationParameter() : Error occurred.\n";
@@ -90,7 +90,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		{
 			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]); 
-			model.timer_when_started = my_rank * n_initial + group_index; 
+			model.timer_when_started = group_index; 
 			if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
 			{
 				cerr << "GetCommunicationParameter() : Error occurred.\n"; 
@@ -119,7 +119,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		{	
 			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]); 
-			model.timer_when_started = my_rank * n_initial + group_index; 
+			model.timer_when_started = group_index; 
 			if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
 			{
 				cout << "GetCommunicationParameter() : Error occurred.\n"; 

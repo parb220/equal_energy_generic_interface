@@ -20,6 +20,7 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t
 
 double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level, double logMDD_previous);
 double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type);
+double  CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,  double convergency_previous, double &average, double &std); 
 
 void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
 {
@@ -31,8 +32,17 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	// start point for tuning
 	vector<CSampleIDWeight> start_points(nInitial); 
 	vector<vector<double> > logMDD(model.parameter->number_energy_level, vector<double>(model.parameter->number_energy_level, 0.0)); 
+	vector<double> consistency(model.parameter->number_energy_level, 0.0);
+	vector<double> average_consistency(model.parameter->number_energy_level, 0.0); 
+	vector<double> std_consistency(model.parameter->number_energy_level, 0.0);
 	for (int level=model.parameter->highest_level; level>=model.parameter->lowest_level; level--)
 	{
+		if (level == model.parameter->number_energy_level-2)
+			consistency[level] = CheckConvergency(model, level, level+1, logMDD[level+1][level+1], average_consistency[level], std_consistency[level]); 
+		else if (level < model.parameter->number_energy_level-2)
+			consistency[level] = CheckConvergency(model, level, level+1, consistency[level+1], average_consistency[level], std_consistency[level]); 
+		cout << "Convergency Measure at level " << level << ": " << setprecision(20) << consistency[level] << "\t" << average_consistency[level] << "\t" << std_consistency[level]<< endl; 
+
 		sPackage[LEVEL_INDEX] = level; 
 		sPackage[thin_INDEX] = model.parameter->thin; 
 		sPackage[THIN_INDEX] = model.parameter->THIN; 
@@ -136,6 +146,17 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		DispatchSimulation(nNode, nInitial, model, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		// logMDD
+	        logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);
+		/*for (int j=level+1; j<(int)(logMDD[level].size()); j++)
+			logMDD[level][j] = EstimateLogMDD(model, level, level+1, logMDD[level+1][j]); */
+
+		cout << setprecision(20) << "logMDD at level " << level << ": " << logMDD[level][level] << endl; 
+		/*for (int j=level; j<(int)(logMDD[level].size()); j++)
+			cout << logMDD[level][j] << "\t"; 
+		cout << endl; */
+		
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// binning for the lower temperature-level's jump.  
 		// storage.binning(level, parameter.number_energy_level, -log(0.5)/(1.0/parameter.t[level-1]-1.0/parameter.t[level])); 
 		model.storage->ClearStatus(level); 
@@ -153,18 +174,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 		for (int i=1; i<nNode; i++)
 			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, BINNING_INFO, MPI_COMM_WORLD, &status);
-		
-		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// logMDD
-	        logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);
-		for (int j=level+1; j<(int)(logMDD[level].size()); j++)
-			logMDD[level][j] = EstimateLogMDD(model, level, level+1, logMDD[level+1][j]); 
-
-		cout << setprecision(20) << endl; 
-		cout << "logMDD at " << level << endl; 
-		for (int j=level; j<(int)(logMDD[level].size()); j++)
-			cout << logMDD[level][j] << "\t"; 
-		cout << endl; 
 
 		// to save space, remove level+1 samples
 		if (save_space_flag  && level > 0 && level+1 < model.parameter->number_energy_level-1 )

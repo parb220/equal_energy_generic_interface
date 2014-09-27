@@ -178,6 +178,11 @@ bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSamp
 	return -i.weight < -j.weight; 
 }
 
+bool compare_CSampleIDWeight_BasedOnID(const CSampleIDWeight &i, const CSampleIDWeight &j)
+{
+	return i.id < j.id; 
+}
+
 size_t CStorageHead::binning_equal_size(int level, size_t bin_number, bool if_unstructured, int data_size)
 {
 	if (level >=(int)bin.size())
