@@ -20,7 +20,7 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t
 
 double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level, double logMDD_previous);
 double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type);
-double  CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,  double convergency_previous, double &average, double &std); 
+double  CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,  double convergency_previous, double &average, double &std, double &LB_ESS); 
 
 void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
 {
@@ -35,13 +35,14 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	vector<double> consistency(model.parameter->number_energy_level, 0.0);
 	vector<double> average_consistency(model.parameter->number_energy_level, 0.0); 
 	vector<double> std_consistency(model.parameter->number_energy_level, 0.0);
+	vector<double> LB_ESS(model.parameter->number_energy_level, 0.0); 
 	for (int level=model.parameter->highest_level; level>=model.parameter->lowest_level; level--)
 	{
 		if (level == model.parameter->number_energy_level-2)
-			consistency[level] = CheckConvergency(model, level, level+1, logMDD[level+1][level+1], average_consistency[level], std_consistency[level]); 
+			consistency[level] = CheckConvergency(model, level, level+1, logMDD[level+1][level+1], average_consistency[level], std_consistency[level], LB_ESS[level]); 
 		else if (level < model.parameter->number_energy_level-2)
-			consistency[level] = CheckConvergency(model, level, level+1, consistency[level+1], average_consistency[level], std_consistency[level]); 
-		cout << "Convergency Measure at level " << level << ": " << setprecision(20) << consistency[level] << "\t" << average_consistency[level] << "\t" << std_consistency[level]<< endl; 
+			consistency[level] = CheckConvergency(model, level, level+1, consistency[level+1], average_consistency[level], std_consistency[level], LB_ESS[level]); 
+		cout << "Convergency Measure at level " << level << ": " << setprecision(20) << consistency[level] << "\t" << average_consistency[level] << "\t" << std_consistency[level]<< "\t" << LB_ESS[level] << endl; 
 
 		sPackage[LEVEL_INDEX] = level; 
 		sPackage[thin_INDEX] = model.parameter->thin; 

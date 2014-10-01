@@ -1,5 +1,6 @@
 #include <sstream>
 #include <string>
+#include <iomanip>
 #include <algorithm>
 #include "CEquiEnergyModel.h"
 #include "CSampleIDWeight.h"
@@ -23,8 +24,8 @@ double EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level);
 vector<double>EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type, int nGroup); 
 vector<double>EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level, int nGroup);
  
-double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, int level, int proposal_type); 
-double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, int level); 
+double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t, int proposal_type); 
+double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t); 
 TMatrix CreateProposalMatrix(int ndraws, CEquiEnergyModel &model, const TElliptical *elliptical); 
 TMatrix CreatePosteriorMatrix(const vector<CSampleIDWeight> &sample, const TElliptical *elliptical);
 TMatrix CreateGaussianProposalMatrix(int ndraws, CEquiEnergyModel &model, const TDenseVector &center, const TDenseMatrix &scale);
@@ -260,10 +261,10 @@ double EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level)
                 cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
                 abort();
         }
-	return LogMDD_gaussian(posterior, model, level); 
+	return LogMDD_gaussian(posterior, model, model.parameter->t[level]); 
 }
 
-double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, int level)
+double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t)
 {	
 	TDenseVector center(posterior[0].data.dim, 0.0);
         TDenseMatrix scale(posterior[0].data.dim, posterior[0].data.dim, 0.0);
@@ -273,8 +274,8 @@ double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyMode
                 abort();
         }
 
-	TMatrix proposal_matrix = CreateGaussianProposalMatrix(posterior.size(), model, model.parameter->t[level], center, scale); 
-	TMatrix posterior_matrix = CreateGaussianPosteriorMatrix(posterior,  model.parameter->t[level], center, scale); 
+	TMatrix proposal_matrix = CreateGaussianProposalMatrix(posterior.size(), model, t, center, scale); 
+	TMatrix posterior_matrix = CreateGaussianPosteriorMatrix(posterior,  t, center, scale); 
 
         if (!proposal_matrix || !posterior_matrix)
         {
@@ -301,10 +302,10 @@ double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type)
                 cerr << "EstimateLogMDD:: error occurred when loading all samples.\n"; 
                 abort();
         }
-	return LogMDD(posterior, model, level, proposal_type); 
+	return LogMDD(posterior, model, model.parameter->t[level], proposal_type); 
 }
 
-double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, int level, int proposal_type)
+double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t,  int proposal_type)
 {
 	TDenseVector center(posterior[0].data.dim, 0.0); 
 	TDenseMatrix scale(posterior[0].data.dim, posterior[0].data.dim, 0.0); 
@@ -356,8 +357,8 @@ double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model,
 
 	// TMatrix proposal_matrix=CreateProposalMatrix(posterior.size(), model, elliptical); 
 	// TMatrix posterior_matrix=CreatePosteriorMatrix(posterior, elliptical); 
-	TMatrix proposal_matrix=CreateProposalMatrix((int)posterior.size(), model, model.parameter->t[level], elliptical); 
-	TMatrix posterior_matrix=CreatePosteriorMatrix(posterior, model.parameter->t[level], elliptical); 
+	TMatrix proposal_matrix=CreateProposalMatrix((int)posterior.size(), model, t, elliptical); 
+	TMatrix posterior_matrix=CreatePosteriorMatrix(posterior, t, elliptical); 
 
 	if (!proposal_matrix || !posterior_matrix)
 	{
@@ -369,9 +370,6 @@ double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model,
 	double mdd_mueller = ComputeLogMarginalDensity_Mueller(proposal_matrix, posterior_matrix, &in_P1, &in_P2); 
 	double mdd_bridge = ComputeLogMarginalDensity_Bridge(proposal_matrix, posterior_matrix); 
 	
-	// cout << "logMDD mueller at level " << level << " using truncated power as proposal is " << mdd_mueller << endl; 
-	// cout << "logMDD bridge at level " << level << " using truncated power as proposal is " << mdd_bridge << endl; 
-
 	FreeVector(center_vector); 
 	FreeMatrix(scale_matrix); 
 	FreeVector(R_vector); 
@@ -382,7 +380,103 @@ double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model,
 	return mdd_bridge; 
 }
 
-double CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,  double convergency_previous, double &average_consistency, double &std_consistency)
+double LowerBoundEffectiveSampleSize(CEquiEnergyModel &model, int level, int previous_level)
+{
+	vector<CSampleIDWeight> proposal; 
+
+	bool unstructured = true; 
+	int data_size = model.current_sample.GetSize_Data();
+	if (!model.storage->DrawAllSample(previous_level, proposal, unstructured, data_size) ) 
+	{
+		cerr << "LowerBoundEffectiveSampleSize():: error occurred when checking convergency.\n"; 
+		abort(); 
+	}
+
+	vector<double> weight(proposal.size(), 0.0); 
+	double sum_weight=0.0; 
+	for(int i=0; i<(int)proposal.size(); i++)
+	{
+		if (previous_level == model.parameter->number_energy_level)
+			weight[i] = proposal[i].weight/model.parameter->t[level]-model.StudentT_LogPDF(proposal[i]);
+		else 
+			weight[i] = proposal[i].weight/model.parameter->t[level]-proposal[i].weight/model.parameter->t[previous_level]; 
+		if (i==0)
+			sum_weight = weight[i]; 
+		else
+			sum_weight = AddLogs(sum_weight, weight[i]); 
+	}
+	sort(weight.begin(), weight.end()); 
+
+	double LB_ESS = 0.0; 
+	for (int i=0; i<(int)proposal.size(); i++)
+		LB_ESS += exp(2.0*(weight[i]-sum_weight)); 
+	
+	return 1.0/LB_ESS; 
+}
+
+vector<double> EffectiveSampleSize(CEquiEnergyModel &model, int level)
+{
+	vector<CSampleIDWeight> sample; 
+	bool unstructured = true;
+	int data_size = model.current_sample.GetSize_Data();
+	if (!model.storage->DrawAllSample(level, sample, unstructured, data_size) )
+        {
+                cerr << "EffectiveSampleSize():: error occurred when checking convergency.\n";
+                abort();
+        }
+	sort(sample.begin(), sample.end(), compare_CSampleIDWeight_BasedOnID);
+
+	vector<TDenseVector > group_mean, group_variance; 
+	TDenseVector mean;
+	int counter =0; 
+	for (int i=0; i<(int)sample.size(); i++)
+	{
+		if (i == 0)
+		{
+			group_mean.push_back(sample[i].data); 
+			group_variance.push_back(DotMultiply(sample[i].data, sample[i].data)); 
+			counter = 1; 
+			mean = sample[i].data; 
+		}
+		else if (sample[i].id > sample[i-1].id)
+		{
+			group_mean[group_mean.size()-1] = group_mean[group_mean.size()-1] * (1.0/(double)counter); 
+			group_variance[group_variance.size()-1] = group_variance[group_variance.size()-1] * (1.0/(double)counter) - DotMultiply(group_mean[group_mean.size()-1], group_mean[group_mean.size()-1]); 
+			group_mean.push_back(sample[i].data);
+                        group_variance.push_back(DotMultiply(sample[i].data, sample[i].data));
+			counter = 1; 
+			mean = mean + sample[i].data;
+		}
+		else
+		{
+			group_mean[group_mean.size()-1] = group_mean[group_mean.size()-1] + sample[i].data; 
+			group_variance[group_variance.size()-1] = group_variance[group_variance.size()-1]  + DotMultiply(sample[i].data, sample[i].data);
+			counter ++; 
+			mean = mean + sample[i].data;
+		}
+	}
+	group_mean[group_mean.size()-1] = group_mean[group_mean.size()-1] * (1.0/(double)counter);
+        group_variance[group_variance.size()-1] = group_variance[group_variance.size()-1] * (1.0/(double)counter) - DotMultiply(group_mean[group_mean.size()-1], group_mean[group_mean.size()-1]);
+
+	mean = mean * (1.0/(double)sample.size()); 
+
+	TDenseVector B(mean.dim,0.0), W(mean.dim,0.0); 
+	for (int i=0; i<(int)group_mean.size(); i++)
+	{
+		B = B + DotMultiply(group_mean[i]-mean, group_mean[i]-mean); 
+		W = W + group_variance[i]; 
+	}	
+	B = B * ((double)counter/(double)group_mean.size()); 
+	W = W * (1.0/(double)group_mean.size()); 
+
+	vector<double> ESS(B.dim, 0.0); 
+	for (int i=0; i<B.dim; i++)
+		ESS[i] = (double)sample.size()/(B[i]/W[i]); 
+
+	return ESS; 
+}
+
+double CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,  double convergency_previous, double &average_consistency, double &std_consistency, double &LB_ESS)
 {
 	vector<CSampleIDWeight> proposal; 
 
@@ -399,13 +493,13 @@ double CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,
 	for(int i=0; i<(int)proposal.size(); i++)
 	{
 		if (previous_level == model.parameter->number_energy_level)
-			weight[i] = proposal[i].weight/model.parameter->t[level]-(model.StudentT_LogPDF(proposal[i])-convergency_previous);
+			weight[i] = proposal[i].weight/model.parameter->t[level]-model.StudentT_LogPDF(proposal[i]);
 		else 
-			weight[i] = proposal[i].weight/model.parameter->t[level]-(proposal[i].weight/model.parameter->t[previous_level]-convergency_previous); 
+			weight[i] = proposal[i].weight/model.parameter->t[level]-proposal[i].weight/model.parameter->t[previous_level]; 
 	}
 
 	vector<double>group_consistency; 
-	double consistency; 
+	double consistency, sum_weight; 
 	int counter =0; 
 	for (int i=0; i<(int)(proposal.size()); i++)
 	{
@@ -417,7 +511,7 @@ double CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,
 		}
 		else if (proposal[i].id > proposal[i-1].id)
 		{
-			group_consistency[group_consistency.size()-1] -= log((double)counter); 
+			group_consistency[group_consistency.size()-1] = group_consistency[group_consistency.size()-1] + convergency_previous - log((double)counter); 
 			group_consistency.push_back(weight[i]); 
 			counter = 1; 
 			consistency = AddLogs(consistency, weight[i]); 
@@ -428,9 +522,13 @@ double CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,
 			counter ++; 
 			consistency = AddLogs(consistency, weight[i]);
 		}
+		if ( i==0)
+			sum_weight = weight[i]; 
+		else 
+			sum_weight = AddLogs(sum_weight, weight[i]);
 	}
-	group_consistency[group_consistency.size()-1] -= log((double)counter);
-	consistency -= log((double)(proposal.size())); 
+	group_consistency[group_consistency.size()-1] = group_consistency[group_consistency.size()-1] + convergency_previous- log((double)counter);
+	consistency = consistency + convergency_previous- log((double)(proposal.size())); 
 	
 	average_consistency=0.0; 
 	std_consistency=0.0; 
@@ -441,6 +539,12 @@ double CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,
 	}	
 	average_consistency = average_consistency/(double)(group_consistency.size()); 
 	std_consistency = sqrt(std_consistency/(double)(group_consistency.size())-average_consistency*average_consistency); 
+	
+	LB_ESS = 0.0; 
+	for (int i=0; i<(int)proposal.size(); i++)
+		LB_ESS += exp(2.0*(weight[i]-sum_weight)); 
+	LB_ESS = 1.0/LB_ESS;  
+
 	return consistency; 
 }
 
@@ -486,6 +590,54 @@ double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level,  d
 	return logMDD; 
 }
 
+double CheckLogMDDConvergency(CEquiEnergyModel &model, int level, double t, int proposal_type, double &average_logMDD, double &std_logMDD)
+{
+	vector<CSampleIDWeight> sample;
+        bool unstructured = true;
+        int data_size = model.current_sample.GetSize_Data();
+        if (!model.storage->DrawAllSample(level, sample, unstructured, data_size) )
+        {
+                cerr << "CheckConvergency:: error occurred when checking convergency.\n";
+                abort();
+        }
+        sort(sample.begin(), sample.end(), compare_CSampleIDWeight_BasedOnID);
+
+	vector<double>group_logMDD;
+        average_logMDD = 0.0, std_logMDD = 0.0; 
+        int start_index, counter =0;
+        for (int i=0; i<(int)(sample.size()); i++)
+        {
+                if (i==0)
+		{
+			start_index = 0; 
+                        counter = 1;
+		}
+                else if (sample[i].id > sample[i-1].id)
+                {
+			group_logMDD.push_back(LogMDD(vector<CSampleIDWeight>(sample.begin()+start_index, sample.begin()+start_index+counter), model, t, proposal_type));
+			start_index = counter; 
+			counter = 1; 
+                }
+                else
+                        counter ++;
+        }
+	group_logMDD.push_back(LogMDD(vector<CSampleIDWeight>(sample.begin()+start_index, sample.begin()+start_index+counter), model, t, proposal_type)); 
+
+	/*sort(group_logMDD.begin(), group_logMDD.end()); 
+	cout << "logMDD per j" ; 
+	for (int i=0; i<(int)(group_logMDD.size()); i++)
+		cout << "\t" << setprecision(20) << group_logMDD[i]; 
+	cout << endl; */
+        for (int i=0; i<(int)(group_logMDD.size()); i++)
+        {
+                average_logMDD += group_logMDD[i];
+                std_logMDD += group_logMDD[i] * group_logMDD[i];
+        }
+        average_logMDD = average_logMDD/(double)(group_logMDD.size());
+        std_logMDD = sqrt(std_logMDD/(double)(group_logMDD.size())-average_logMDD*average_logMDD);
+        return LogMDD(sample, model, t, proposal_type); 
+}
+
 vector<double>EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type, int nGroup)
 {
 	vector<CSampleIDWeight> posterior; 
@@ -508,7 +660,7 @@ vector<double>EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_ty
 		group_sample.clear(); 
 		for (int j=begin_index; j<end_index; j++)
 			group_sample.push_back(posterior[j]); 
-		logMDD[i] = LogMDD(group_sample, model, level, proposal_type); 
+		logMDD[i] = LogMDD(group_sample, model, model.parameter->t[level], proposal_type); 
 		begin_index = end_index; 
 		end_index = end_index + group_size < (int)(posterior.size()) ? end_index + group_size : (int)(posterior.size()); 
 	}
@@ -538,7 +690,7 @@ vector<double>EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level, int nG
                 group_sample.clear();
                 for (int j=begin_index; j<end_index; j++)
                         group_sample.push_back(posterior[j]);
-                logMDD[i] = LogMDD_gaussian(group_sample, model, level);
+                logMDD[i] = LogMDD_gaussian(group_sample, model, model.parameter->t[level]);
                 begin_index = end_index;
                 end_index = end_index + group_size < (int)(posterior.size()) ? end_index + group_size : (int)(posterior.size());
         }
