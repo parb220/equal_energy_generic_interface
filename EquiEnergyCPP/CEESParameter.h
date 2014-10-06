@@ -30,6 +30,7 @@ public:
 	bool WriteSummaryFile(string) const; 
 	
 	bool SetEnergyBound();
+	bool SetTemperature(int nLevel); 
 	bool SetTemperature(int nGeometricLevel, int nFinerLevel);
 
 	double LogRatio_Level(double energy_x, double energy_y, int level) const; 

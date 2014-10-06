@@ -42,7 +42,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			consistency[level] = CheckConvergency(model, level, level+1, logMDD[level+1][level+1], average_consistency[level], std_consistency[level], LB_ESS[level]); 
 		else if (level < model.parameter->number_energy_level-2)
 			consistency[level] = CheckConvergency(model, level, level+1, consistency[level+1], average_consistency[level], std_consistency[level], LB_ESS[level]); 
-		cout << "Convergency Measure at level " << level << ": " << setprecision(20) << consistency[level] << "\t" << average_consistency[level] << "\t" << std_consistency[level]<< "\t" << LB_ESS[level] << endl; 
+		cout << "Convergency Measure at level " << level << ": " << setprecision(20) << consistency[level] << "\t" << average_consistency[level] << "\t" << std_consistency[level]<< "\t" << LB_ESS[level] << endl;
 
 		sPackage[LEVEL_INDEX] = level; 
 		sPackage[thin_INDEX] = model.parameter->thin; 
@@ -148,9 +148,9 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// logMDD
-	        logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);
+	       	logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);
 		/*for (int j=level+1; j<(int)(logMDD[level].size()); j++)
-			logMDD[level][j] = EstimateLogMDD(model, level, level+1, logMDD[level+1][j]); */
+		logMDD[level][j] = EstimateLogMDD(model, level, level+1, logMDD[level+1][j]); */
 
 		cout << setprecision(20) << "logMDD at level " << level << ": " << logMDD[level][level] << endl; 
 		/*for (int j=level; j<(int)(logMDD[level].size()); j++)
@@ -161,7 +161,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// binning for the lower temperature-level's jump.  
 		// storage.binning(level, parameter.number_energy_level, -log(0.5)/(1.0/parameter.t[level-1]-1.0/parameter.t[level])); 
 		model.storage->ClearStatus(level); 
-		model.storage->binning_equal_size(level, model.parameter->number_energy_level); 
+		// model.storage->binning_equal_size(level, model.parameter->number_energy_level); 
+		model.storage->binning_equal_size(level, 50); // 2*model.parameter->number_energy_level); 
 		model.storage->finalize(level); 
 		model.storage->ClearDepositDrawHistory(level);
 
@@ -177,7 +178,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, BINNING_INFO, MPI_COMM_WORLD, &status);
 
 		// to save space, remove level+1 samples
-		if (save_space_flag  && level > 0 && level+1 < model.parameter->number_energy_level-1 )
+		if (save_space_flag  && level > 0 ) //&& level+1 < model.parameter->number_energy_level-1 )
 		{
 			model.storage->ClearSample(level+1);  
 			convert.str(string());

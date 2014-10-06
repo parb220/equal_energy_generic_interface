@@ -36,7 +36,8 @@ void DispatchGMMSimulationTask(int nNode, CEquiEnergyModel &model, int simulatio
 	// Consolidate partial storage files
 	model.storage->ClearStatus(model.parameter->number_energy_level);  
 	model.storage->consolidate(model.parameter->number_energy_level);
-	model.storage->binning_equal_size(model.parameter->number_energy_level, model.parameter->number_energy_level);
+	// model.storage->binning_equal_size(model.parameter->number_energy_level, model.parameter->number_energy_level);
+	model.storage->binning_equal_size(model.parameter->number_energy_level,50);
 	model.storage->finalize(model.parameter->number_energy_level); 
 	model.storage->ClearDepositDrawHistory(model.parameter->number_energy_level); 
 

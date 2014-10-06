@@ -105,7 +105,20 @@ bool CEESParameter::WriteSummaryFile(string file_name) const
 	return true; 
 }
 
+bool CEESParameter::SetTemperature(int nLevel)
+// t[i+1] = t[i] * r
+{
+	number_energy_level = nLevel; 
+	t.resize(number_energy_level+1); 
+	double r=exp(log(tk_1/t0)/double(nLevel-1)); 
+	t[0] = t0; 
+	for (int i=1; i<(int)(t.size()); i++)
+		t[i] = t[i-1] * r; 
+	return true; 
+}
+
 bool CEESParameter::SetTemperature(int nGeometricLevel, int nFinerLevel)
+// (t[i+1]-t[i])/(t[i]-t[i-1]) = r
 {
 	if (nGeometricLevel) // nGeometricLevel != 0
 	{

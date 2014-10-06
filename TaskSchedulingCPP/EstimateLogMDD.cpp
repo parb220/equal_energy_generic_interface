@@ -414,16 +414,16 @@ double LowerBoundEffectiveSampleSize(CEquiEnergyModel &model, int level, int pre
 	return 1.0/LB_ESS; 
 }
 
-vector<double> EffectiveSampleSize(CEquiEnergyModel &model, int level)
+vector<double> EffectiveSampleSize(vector<CSampleIDWeight> &sample) // CEquiEnergyModel &model, int level, bool if_normalization)
 {
-	vector<CSampleIDWeight> sample; 
+	/*vector<CSampleIDWeight> sample; 
 	bool unstructured = true;
 	int data_size = model.current_sample.GetSize_Data();
 	if (!model.storage->DrawAllSample(level, sample, unstructured, data_size) )
         {
                 cerr << "EffectiveSampleSize():: error occurred when checking convergency.\n";
                 abort();
-        }
+        }*/
 	sort(sample.begin(), sample.end(), compare_CSampleIDWeight_BasedOnID);
 
 	vector<TDenseVector > group_mean, group_variance; 
@@ -590,16 +590,16 @@ double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level,  d
 	return logMDD; 
 }
 
-double CheckLogMDDConvergency(CEquiEnergyModel &model, int level, double t, int proposal_type, double &average_logMDD, double &std_logMDD)
+double CheckLogMDDConvergency(vector<CSampleIDWeight> &sample, CEquiEnergyModel &model, int level, double t, int proposal_type, double &average_logMDD, double &std_logMDD)
 {
-	vector<CSampleIDWeight> sample;
+	/*vector<CSampleIDWeight> sample;
         bool unstructured = true;
         int data_size = model.current_sample.GetSize_Data();
         if (!model.storage->DrawAllSample(level, sample, unstructured, data_size) )
         {
                 cerr << "CheckConvergency:: error occurred when checking convergency.\n";
                 abort();
-        }
+        }*/
         sort(sample.begin(), sample.end(), compare_CSampleIDWeight_BasedOnID);
 
 	vector<double>group_logMDD;
