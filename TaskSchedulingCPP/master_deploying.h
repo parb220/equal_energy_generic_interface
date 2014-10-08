@@ -5,7 +5,7 @@ void DispatchHillClimbTask(int nNode, CEquiEnergyModel &model, int number_hill_c
 
 void DispatchGMMSimulationTask(int nNode, CEquiEnergyModel &model, int simulation_length); 
 
-void DispatchTuneSimulation(int, CEquiEnergyModel &, size_t, bool);
+void DispatchTuneSimulation(int, CEquiEnergyModel &,bool);
 
 double DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t simulation_length, int level, int tag);
 

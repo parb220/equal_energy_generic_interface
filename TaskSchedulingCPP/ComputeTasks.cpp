@@ -5,92 +5,92 @@
 #include "CStorageHead.h"
 #include "CEESParameter.h"
 #include "CSampleIDWeight.h"
+#include "dw_rand.h"
 
 #include "slave_computing.h"
 
 using namespace std; 
 
-void ExecutingTuningTask(CEquiEnergyModel &model, int node)
+/*
+    Normally, model.K(level+1) would have previously been set, but when restarting
+    a job this is not the case.
+*/
+double ExecutingTuningTask(CEquiEnergyModel &model, int level, double Kplus)
 {
-  // prepare storage for obtaining draws from model.energy_level+1
-  model.storage->ClearStatus(model.energy_level); 
-  model.storage->ClearStatus(model.energy_level+1); 
-  model.storage->restore(model.energy_level);
-  model.storage->RestoreForFetch(model.energy_level+1);	
-
   // setup
-  model.ReadInitializationFile(model.energy_level);
-  model.scale=1.0;
-
+  model.Setup(level,Kplus);
+	 
   // tune
-  double scale = model.Tune();
-
-  // write scale
-  model.WriteScale(model.energy_level,node,scale);
-
-  // prepare storage
-  model.storage->ClearStatus(model.energy_level);
-  model.storage->ClearStatus(model.energy_level+1); 
-  model.storage->finalize(model.energy_level);
-  model.storage->ClearDepositDrawHistory(model.energy_level);
-  model.storage->ClearDepositDrawHistory(model.energy_level+1);
+  return model.Tune(true);
 }
 
-void ExecutingInitialTuningTask(CEquiEnergyModel &model, int node)
+void ExecutingSimulationTask(CEquiEnergyModel &model, int node, double scale)
 {
-  // Setup
-  model.ReadInitializationFile(model.energy_level);
-  model.scale=1.0;
-	  cout << "here 1\n";
-  // Draw initial starting point
-  model.InitialDraw(model.current_sample.data);
-  model.current_sample.weight=model.target->LogPosterior(model.current_sample.data);
-  model.current_sample.calculated=true;
-	  cout << "here 2\n";
-  // tune
-  double scale = model.Tune();
-	  cout << "here 3\n";
-  // write scale
-  model.WriteScale(model.energy_level,node,scale);
-}
-
-void ExecutingSimulationTask(CEquiEnergyModel &model, int nNode, int node)
-{
-  // restore partial storage (previously obtained at this node) for updating
-  model.storage->ClearStatus(model.energy_level); 
-  model.storage->ClearStatus(model.energy_level+1); 
-  model.storage->restore(model.energy_level); 
-  model.storage->RestoreForFetch(model.energy_level+1);
+  // setup - in addition to fields set in ExecutingTuningTask()
+  model.scale = scale;
+  model.node = node;
+  model.storage->SetupForOutput(model.energy_level,node);
 
   // simulate
-  model.ReadInitializationFile(model.energy_level);
-  model.SimulateEE(true, string(), model.parameter->Gn, model.parameter->N, false, true);
-  model.WriteSimulationDiagnostic(node);
+  model.SimulateEE(true, model.parameter->Gn, model.parameter->N, false, true);
 
-  // finalze and clear-up storage
-  model.storage->ClearStatus(model.energy_level); 
-  model.storage->finalize(model.energy_level); 
-  model.storage->ClearDepositDrawHistory(model.energy_level);
-  model.storage->ClearDepositDrawHistory(model.energy_level+1); 
+  // clean up
+  model.storage->FlushOutput();
+
+  // write diagnostic information
+  model.WriteSimulationDiagnostic(model.energy_level, node);
 }
 
-void ExecutingInitialSimulationTask(CEquiEnergyModel &model, int nNode, int node)
+void ExecutingInitialIndependentSimulationTask(CEquiEnergyModel &model, int node)
 {
-  // Setup
-  model.ReadInitializationFile(model.energy_level);
+  // setup
+  model.energy_level=model.parameter->number_energy_level;
+  model.ReadInitialDistribution();
+  model.storage->SetupForOutput(model.energy_level,node);
+
+  // simulate
   int number_to_simulate = model.parameter->N * model.parameter->Gn;
-  string external_filename=model.MakeFilename("draws",model.energy_level,node);
+  double log_kernel;
+  TDenseVector x;
+  TDraw y;
+  for (int ii=0; ii < number_to_simulate; ii++)
+    {
+      log_kernel=model.InitialDraw(x);
+      y.Set(x,model.target->LogPosterior(x),log_kernel,node,ii);
+      model.storage->AddDraw(y); 
+    }
 
-  // Draw initial starting point
-  model.InitialDraw(model.current_sample.data);
-  model.current_sample.weight=model.target->LogPosterior(model.current_sample.data);
-  model.current_sample.calculated=true;
+  // clean up
+  model.storage->FlushOutput();
+}
 
-  // Burn-in
-  model.SimulateMH(false,string(),number_to_simulate/5, true);
+double ExecutingInitialTuningTask(CEquiEnergyModel &model)
+{
+  // Setup
+  model.energy_level=model.parameter->number_energy_level-1;
+  model.scale=1.0;
+  model.K(model.energy_level)=model.parameter->max_energy;
+  model.storage->SetupForInput(model.energy_level+1,1,model.parameter->max_energy);
+  model.storage->ComputeVarianceDecomposition(model.OrthonormalDirections,model.SqrtDiagonal);
 
-  // simulate
-  model.SimulateMH(false, external_filename, number_to_simulate, true);
+  // tune
+  return model.Tune(false);
+}
+
+void ExecutingInitialMetropolisSimulationTask(CEquiEnergyModel &model, double scale, int node)
+{
+  // setup - in addition to fields set in ExecutingInitialTuningTask()
+  model.scale=scale;
+  model.node=node;
+  model.storage->SetupForOutput(model.energy_level,node);
+
+  // burn-in and simulate
+  int number_to_simulate = model.parameter->N * model.parameter->Gn;
+  model.SimulateMH(false, number_to_simulate/5, false);
+  model.SimulateMH(true, number_to_simulate, true);
+
+  // clean up
+  model.storage->FlushOutput();
 
   // write diagnostics
   // model.WriteSimulationDiagnostic(node);

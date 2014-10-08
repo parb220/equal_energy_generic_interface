@@ -14,6 +14,9 @@ const int RETURN_INDEX_2 = 8;
 const int RETURN_INDEX_3 = 9; 
 const int RETURN_INDEX_4 = 10; 
 const int RETURN_INDEX_5 = 11; 
+const int SCALE_INDEX = 12;
+const int KPLUS_INDEX = 14;
+const int K_INDEX = 14;
 const int RESERVE_INDEX = 100; 
 
 const int BURN_IN_LENGTH = 5000; 
@@ -48,7 +51,8 @@ const int TRACKING_TAG_SIMULATION_MULTIPLE_BLOCK = 51;
 const int SIMULATION_TAG = 60; 
 const int NP_SOL_TAG = 61; 
 const int SIMULATION_TAG_MULTIPLE_BLOCK = 62; 
-const int SIMULATION_TAG_INITIAL = 63;                       // added 9/19/2014
+const int SIMULATION_TAG_INITIAL_METROPOLIS = 63;                       // added 9/19/2014
+const int SIMULATION_TAG_INITIAL_INDEPENDENT = 64;          // added 9/26/2014
 
 const int HILL_CLIMB_TAG = 70; 
 const int GMM_SIMULATION_TAG = 71; 

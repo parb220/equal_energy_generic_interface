@@ -25,7 +25,6 @@ void slave_computing(CEquiEnergyModel &model)
 
   while (1)
     {
-      cout << "Beginning poll loop" << endl;
       MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status); 
       if (status.MPI_TAG == END_TAG)
 	{
@@ -34,52 +33,50 @@ void slave_computing(CEquiEnergyModel &model)
 	  delete []sPackage; 
 	  exit(0); 
 	}		
-      else if (status.MPI_TAG == BINNING_INFO)
+      else if (status.MPI_TAG == SIMULATION_TAG_INITIAL_INDEPENDENT)
 	{
-	  cout << "Received BINNING message" << endl;
-	  model.energy_level = (int)(rPackage[LEVEL_INDEX]); 
-	  int number_ring = (int)(rPackage[RESERVE_INDEX]); 
-	  model.storage-> ResizeBin(model.energy_level, number_ring); 
-	  for (int i=0; i<number_ring; i++)
-	    model.storage->SetEnergyLowerBound(model.energy_level, i, rPackage[RESERVE_INDEX+i+1]);
-	  if (model.energy_level+1 <= model.parameter->number_energy_level)
-	    model.storage->ClearBin(model.energy_level+1); 
-	  sPackage[RETURN_INDEX_1] = (double)(false); 
+	  cout << "Received SIMULATION_TAG_INITIAL_INDEPENDENT message" << endl;
+
+	  int node = (int)(rPackage[GROUP_INDEX]);
+
+	  ExecutingInitialIndependentSimulationTask(model, node);
 	}		
       else if (status.MPI_TAG == TUNE_TAG_INITIAL)
 	{
 	  cout << "Received TUNE_TAG_INITIAL message" << endl;
-	  model.energy_level = (int)(rPackage[LEVEL_INDEX]);
-	  model.node = (int)(rPackage[GROUP_INDEX]);
 
-	  ExecutingInitialTuningTask(model, model.node);
+	  sPackage[SCALE_INDEX] = ExecutingInitialTuningTask(model);
 	}		
-      else if (status.MPI_TAG == SIMULATION_TAG_INITIAL)
+      else if (status.MPI_TAG == SIMULATION_TAG_INITIAL_METROPOLIS)
 	{
-	  cout << "Received SIMULATION_TAG_INITIAL message" << endl;
-	  model.energy_level = (int)(rPackage[LEVEL_INDEX]);
-	  model.node = (int)(rPackage[GROUP_INDEX]);
+	  cout << "Received SIMULATION_TAG_INITIAL_METROPOLIS message" << endl;
 
-	  ExecutingInitialSimulationTask(model, nNode, model.node);
+	  int node = (int)(rPackage[GROUP_INDEX]);
+	  double scale = rPackage[SCALE_INDEX];
+
+	  ExecutingInitialMetropolisSimulationTask(model, scale, node);
 	}
       else if (status.MPI_TAG == TUNE_TAG)
 	{
-	  cout << "Received TUNE message" << endl;
-	  model.energy_level = (int)(rPackage[LEVEL_INDEX]);
-	  model.node = (int)(rPackage[GROUP_INDEX]); 
+	  cout << "Received TUNE_TAG message" << endl;
 
-	  ExecutingTuningTask(model, model.node);
+	  int level = (int)(rPackage[LEVEL_INDEX]);
+	  double Kplus = rPackage[KPLUS_INDEX];
+
+	  sPackage[SCALE_INDEX] = ExecutingTuningTask(model, level, Kplus);
 	}
       else if (status.MPI_TAG == SIMULATION_TAG) 
 	{	
-	  cout << "Received SIMULATION message" << endl;
-	  model.energy_level = (int)(rPackage[LEVEL_INDEX]);
-	  model.node = (int)(rPackage[GROUP_INDEX]); 
+	  cout << "Received SIMULATION_TAG message" << endl;
 
-	  ExecutingSimulationTask(model, nNode, model.node); 
+	  int node = (int)(rPackage[GROUP_INDEX]); 
+	  double scale = rPackage[SCALE_INDEX];
+
+	  ExecutingSimulationTask(model, node, scale); 
 	}
-      cout << "Ending poll loop" << endl;
       MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD); 
     }
+  delete[] rPackage;
+  delete[] sPackage;
 }
 

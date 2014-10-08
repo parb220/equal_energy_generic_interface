@@ -18,32 +18,19 @@ public:
 	string run_id; 
 	size_t number_energy_level;	// number of energy levels
 	double pee; 	// probability of equi-energy-jump
-	//double t0; 	// temperature for the lowest energy level
-	//double tk_1; 	// temperature for the highest energy level
 
-	//vector <double> t; 	// temperature for all levels
 public:
 	CEESParameter(); 
 	~CEESParameter(); 
 	bool LoadParameterFromFile(string); 
 	bool SaveParameterToFile(string) const;
 	bool WriteSummaryFile(string) const; 
-	
-	//bool SetEnergyBound();
-	//bool SetTemperature(int nGeometricLevel, int nFinerLevel);
-
-	//double LogRatio_Level(double energy_x, double energy_y, int level) const; 
 
 public: // parameters that are not saved, just for purpose of encapsulation
 	int highest_level; 
 	int lowest_level; 
-	//size_t thin;	// thinning factor for the entire sample
-	//size_t THIN;  	// thinning factor for MH samples
 	size_t simulation_length; 
-	//size_t burn_in_length; 
-	//size_t max_energy_tuning_time; 
-	//size_t shuffle_frequency;
-        //size_t size_per_block;
+
 
 public:
         double expected_block_size;  // p_select = expected_block_size/NParameters.  If less than or equal to zero, p_select = 1.0.
@@ -56,6 +43,7 @@ public:
 	double min_ess;              // min_ess minimum desired effective sample size
 	int number_rings;            // number of rings at each level
 	int nu;                      // degrees of freedom for initial t-distribuion
+	double geometric;            // if positive, multiplier for temperatures, if one or greater, is set by number of temperature levels
 
 	int desired_G;               // desired number of groups, actual number of groups will be at least his
 	int N;                       // number to simulate for each group

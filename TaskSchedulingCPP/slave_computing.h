@@ -3,23 +3,14 @@
 
 void slave_computing(CEquiEnergyModel &model);
 
-bool GetCommunicationParameter(const double *, size_t, CEESParameter *); 
-// CEESParameter cannot be const, because its h and t will be altered upon the received message
+void ExecutingInitialIndependentSimulationTask(CEquiEnergyModel &model, int node);
 
-void ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergyModel &model, int my_rank, int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag); 
-// target cannot be const, because its model will be changed logically
-// // storage cannot be const, because its bins will be altered constantly for deposition and drawing
-//
-bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, int group_index); 
+double ExecutingInitialTuningTask(CEquiEnergyModel &model);
 
-bool ExecutingTuningTask_AfterSimulation(size_t period, size_t max_period, CEquiEnergyModel &model, int group_index); 
+void ExecutingInitialMetropolisSimulationTask(CEquiEnergyModel &model,double scale, int node);
 
-void ExecutingInitialTuningTask(CEquiEnergyModel &model, int node);
+double ExecutingTuningTask(CEquiEnergyModel &model, int level, double Kplus);
 
-void ExecutingInitialSimulationTask(CEquiEnergyModel &model, int nNode, int node);
-
-void ExecutingTuningTask(CEquiEnergyModel &model, int node);
-
-void ExecutingSimulationTask(CEquiEnergyModel &model, int nNode, int node);
+void ExecutingSimulationTask(CEquiEnergyModel &model, int node, double scale);
 
 #endif
