@@ -4,7 +4,8 @@
 #include <vector>
 #include <fstream>
 #include "dw_dense_matrix.hpp"
-#include "CSampleIDWeight.h"
+
+using namespace std; 
 
 class TDraw
 {

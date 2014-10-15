@@ -1,7 +1,6 @@
 #include <fstream>
 #include <cmath>
 
-#include "CSampleIDWeight.h"
 #include "CEESParameter.h"
 
 using namespace std; 
