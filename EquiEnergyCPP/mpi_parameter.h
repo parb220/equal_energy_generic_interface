@@ -3,7 +3,8 @@
 
 const size_t N_MESSAGE = 1000; // to be safe
 const int LENGTH_INDEX = 0; 
-const int LEVEL_INDEX = 1; 
+const int LEVEL_INDEX = 1;
+const int STAGE_INDEX = 1;
 const int BURN_INDEX = 2; 
 const int thin_INDEX = 3;
 const int THIN_INDEX = 4; 
@@ -16,6 +17,7 @@ const int RETURN_INDEX_4 = 10;
 const int RETURN_INDEX_5 = 11; 
 const int SCALE_INDEX = 12;
 const int KPLUS_INDEX = 14;
+const int LAMBDA_MIN_INDEX = 14;
 const int K_INDEX = 14;
 const int RESERVE_INDEX = 100; 
 

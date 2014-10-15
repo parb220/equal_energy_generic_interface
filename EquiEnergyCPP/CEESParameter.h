@@ -16,7 +16,7 @@ public:
 	string storage_dir;	// fold to store all relevant information
 	size_t storage_marker;		// number of samples stored in memory for retrieve 
 	string run_id; 
-	size_t number_energy_level;	// number of energy levels
+	//size_t number_energy_level;	// number of energy levels
 	double pee; 	// probability of equi-energy-jump
 
 public:
@@ -27,21 +27,22 @@ public:
 	bool WriteSummaryFile(string) const; 
 
 public: // parameters that are not saved, just for purpose of encapsulation
-	int highest_level; 
-	int lowest_level; 
+	//int highest_level; 
+	//int lowest_level; 
 	size_t simulation_length; 
 
 
 public:
+	int first_stage;             // first stage to simulate.  If first_stage > 0, then prefix.draws.0, prefix.info.0, and prefix.MH-info.0 must exist. 
         double expected_block_size;  // p_select = expected_block_size/NParameters.  If less than or equal to zero, p_select = 1.0.
         double p_select;             // probability of selecting an independent direction to make a full size jump in that direction
         double p_save;               // probability saving draw.  must be greater than pee.
 	double pee_divided_psave;    // pee/p_save
 	double tiny;                 // scale factor when not making a full sized jump
         int nImportanceSamples;      // number of random importance weighted previous samples to carry
-	double max_energy;           // highest temperature level
+	double min_lambda;           // smallest lambda
 	double min_ess;              // min_ess minimum desired effective sample size
-	int number_rings;            // number of rings at each level
+	int number_striations;       // number of striations at each level
 	int nu;                      // degrees of freedom for initial t-distribuion
 	double geometric;            // if positive, multiplier for temperatures, if one or greater, is set by number of temperature levels
 

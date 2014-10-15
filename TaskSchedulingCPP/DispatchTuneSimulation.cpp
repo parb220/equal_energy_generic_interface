@@ -21,24 +21,25 @@ void DispatchTuneSimulation(int nNode, CEquiEnergyModel &model, bool save_space_
   // If model.parameter->highest_level is less than  model.parameter->number_energy_level-1, 
   // then K(level+1) will not be properly set. This is a bug if a warm restart is performed.
 
-  for (int level=model.parameter->highest_level; level>=model.parameter->lowest_level; level--)
+  double lambda=0.0;
+  for (int stage=1; lambda < 1.0; stage++)
     {
       ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       // Send out tuning jobs
-      cout << "Dispatching tuning tasks to nodes - level " << level << endl;
+      cout << "Dispatching tuning tasks to nodes - stage " << stage << endl;
       double scale=0.0;
 
       for (int i=1; i<nNode; i++)
 	{
-	  sPackage[LEVEL_INDEX]=(double)level;
-	  sPackage[KPLUS_INDEX] = model.K(level+1);
+	  sPackage[STAGE_INDEX]=(double)stage;
+	  sPackage[LAMBDA_MIN_INDEX] = model.lambda(stage);
 	  MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, TUNE_TAG, MPI_COMM_WORLD);		
 	}
 
       ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       // Setup master while compute nodes tune
-      model.Setup(level, model.K(level+1));
-      model.ESS(level) = model.storage->ComputeEffectiveSampleSize();
+      //model.Setup(level, model.K(level+1));
+      //model.ESS(level) = model.storage->ComputeEffectiveSampleSize();
 
       for (int i=1; i<nNode; i++)
 	{
@@ -49,7 +50,7 @@ void DispatchTuneSimulation(int nNode, CEquiEnergyModel &model, bool save_space_
 
       ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       // simulation
-      cout << "Dispatching simulation tasks to nodes - level " << level << endl; 
+      cout << "Dispatching simulation tasks to nodes - stage " << stage << endl; 
 	
       for (int i=1; i<nNode; i++)
 	{
@@ -61,8 +62,8 @@ void DispatchTuneSimulation(int nNode, CEquiEnergyModel &model, bool save_space_
 	{
 	  MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, SIMULATION_TAG, MPI_COMM_WORLD, &status);
 	}
-      model.storage->ConsolidateDraws(level, level);
-      model.WriteSimulationDiagnostic(level);
+      //      model.storage->Consolidate(level);
+      //      model.WriteSimulationDiagnostic(level);
 
       ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       // // to save space, remove level+1 samples
@@ -76,7 +77,7 @@ void DispatchTuneSimulation(int nNode, CEquiEnergyModel &model, bool save_space_
       // 	remove(remove_file.c_str()); 
       // }
 
-      if (model.K(model.energy_level) < 1.0000001) break;
+      //if (model.K(model.energy_level) < 1.0000001) break;
     }
 
   delete []sPackage; 

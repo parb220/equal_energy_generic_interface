@@ -1,12 +1,10 @@
-#ifndef _CLASS_STORAGE_TAIL
-#define _CLASS_STORAGE_TAIL
+#ifndef _CLASS_STORAGE_TAIL_
+#define _CLASS_STORAGE_TAIL_
 
 #include <vector>
 #include <fstream>
 #include "dw_dense_matrix.hpp"
 #include "CSampleIDWeight.h"
-
-int UpperBound(const TDenseVector &v, double u);
 
 class TDraw
 {
@@ -35,7 +33,7 @@ class TDraw
 
 
 /*
-   There are n_parameters + 2 elements in each row of the matrices in or out.
+   There are n_parameters + 4 elements in each row of the matrices in or out.
      (1) 0 : n_parameters-1 - parameters 
      (2) n_parameters       - log posterior
      (3) n_parameters+1     - log kernel 
@@ -44,70 +42,72 @@ class TDraw
 */
 class TStorage
 {
-  //protected:
- public:
+ protected:
+  // common parameters
   int n_parameters;
   int size;
   string storage_directory;
   string run_id;
+  int node;
 
+  // output
   TDenseMatrix out;
   int idx_out;
-  int node_out;
+  int stage_out;
   int file_number_out;
-  int level_out;
 
-  TDenseMatrix in;
-  TDenseVector cumulative_importance_weights;
-  TDenseVector importance_weights;
-  vector<int> ring_offset;
-  vector<int> ring_width;
-  TDenseVector ring_boundary;
-  double K_level_in_minus_one;
-  double LogIntegralKernel;
-  int level_in;
+  // cumulative importance weights                        
+  TDenseVector weights;     
 
-  void SetupForInput(int level, int number_rings);
+  // striations
+  int n_striations;
+  vector<int> striation_offset;
+  vector<int> striation_width;
+  TDenseVector striation_boundary;
+
+  // input
+  TDenseMatrix in_weighted;
+  int idx_in_weighted;
+  vector<TDenseMatrix> in;
+  vector<int> idx_in;
+
+  void Reset(void);
   void WriteDraws(void);
-  void SetupWeights(void);
-  void SetTemperature(double K_max, double min_ess);
+  void FetchEqualWeightedDraws(int striation);
+  void FetchImportanceWeightedDraws(void);
 
- public:
-  TStorage(int NumberParameters, const string &StorageDirectory, const string &RunId);
+ public:  
+  TStorage(int NumberParameters, const string &StorageDirectory, const string &RunId, int Node);
   ~TStorage() {};
 
+  void Setup(int stage, int number_striations, double lambda);
+
+  void FinalizeComputeNode(void);
+  void FinalizeMasterNode(int stage);
+
+  void ReadInfo(int stage, TDenseVector &log_posterior, TDenseVector &log_density);
+
   // output (storing draws)
-  void SetupForOutput(int level, int node);
   void AddDraw(const TDraw &x);
-  void FlushOutput(void) { WriteDraws(); level_out=-1; };
 
   // input (getting draws)
-  void SetupForInput(int level, int number_rings, double temperature);
-  void EqualWeightedDraw(TDraw &x, int ring);
+  void EqualWeightedDraw(TDraw &x, int striation);
   void ImportanceWeightedDraw(TDraw &x);
-  double SetupForInput(int level, int number_rings, double K_max, double min_ess);
-  void FreeInput(void);
 
-  void ConsolidateDraws(int level_in, int level_out);
-  void DeleteDraws(int level);
+  // striations
+  int NumberStriations(void) { return n_striations; };
+  int Striation(double log_posterior);
+  double UpperStriationBoundary(int striation);
+  double LowerStriationBoundary(int striation);
+  double WeightedStriationProbability(int striation);
 
-  int NumberRings(void) { return ring_offset.size(); };
-  int Ring(double posterior) { return UpperBound(ring_boundary,posterior); };
-
-  double ComputeEffectiveSampleSize(void);
-  double ComputeLogIntegralKernel(void) { return LogIntegralKernel; };
-  void ComputeWeightedVarianceDecomposition(TDenseMatrix &U, TDenseVector &d);
-  void ComputeVarianceDecomposition(TDenseMatrix &U, TDenseVector &d);
-  void ComputeMean(TDenseVector &m);
-  double ComputeWeightedStriationProbability(int ring) { return cumulative_importance_weights[ring_offset[ring]+ring_width[ring]-1]-cumulative_importance_weights[ring_offset[ring]]; };
-
+  // creating files
   string MakeFullFileName(string id, int level=-1, int node=-1, int file_number=-1);
-  string OpenFile(fstream &file, bool output_file, const string &id, int level=-1, int node=-1, int file_number=-1);
+  void OpenFile(fstream &file, bool output_file, const string &id, int level=-1, int node=-1, int file_number=-1);
 
-  double UpperRingBoundary(int ring) { return (ring < (int)ring_boundary.dim) ? ring_boundary[ring] : 1E300; };
-  double LowerRingBoundary(int ring) { return (ring == 0) ? -1.0E300 : ring_boundary[ring-1]; };
+  void WriteASCIIDraws(int stage);
 
-  void PrintWeights(void);
+  void CheckClass(void);
 };
 
 

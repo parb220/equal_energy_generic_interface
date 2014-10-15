@@ -12,73 +12,68 @@ using namespace std;
 
 class CEquiEnergyModel
 {
-private:
-	CEquiEnergyModel(const CEquiEnergyModel &);
+ public:
+  TTimeSeries *target;	
+  TStorage *storage;
+  CEESParameter *parameter;
 
-public:
-///////////////////////////////////////////////////////////////
-	
-public:
-	TTimeSeries *target;	
-	//CStorageHead *storage; 
-	TStorage *storage;
-	CEESParameter *parameter;
+  int nParameters;
+  int nNodes;
+  int node;             
 
-	int nParameters;
-	int nNodes;
-	int node;               // used by SimulateEE() to set group index
- 	int energy_level;
-	TDraw current_sample; 
+  int stage;
+  TDraw current_sample; 
+  TDenseVector lambda;
+  TDenseVector LogIntegralKernel;
+  TDenseVector ESS;
+  double scale;
 
-///////////////////////////////////////////////////////////////////////////////////////////
-// Construction & Destruction functions here
-public:
-	CEquiEnergyModel(int nNode, int _rank, TTimeSeries *_target, CEESParameter *_parameter);
-	virtual ~CEquiEnergyModel() { delete storage; }; 
+  // Metropolis jumping kernel
+  TDenseMatrix OrthonormalDirections;
+  TDenseVector SqrtDiagonal;
 
-//////////////////////////////////////////////////////////////////////////////////////////
-// Sampling and Tuning - added by DW 9/10/2014
-public:
-	TDenseVector K;
-	TDenseVector LogKernelIntegral;
-	double scale;
+  // initial distributions
+  TDenseMatrix InitialOrthonormalDirections;
+  TDenseVector InitialSqrtDiagonal;
+  TDenseVector InitialCenter;
 
-	//double density_constant;
+  // diagnostics
+  TDenseVector nEEJumps, nEEProposed, nMHJumps, nMHProposed, nSaved, nStarts, striation_count, striation_up, striation_down;
 
-	int nMHJumps, nMHProposed, nRestarts, nSaved;
-	vector<int> nEEJumps, nEEProposed;
-	vector<int> ring_counts, ring_changes_up, ring_changes_down;
+  // Constructors/Destructors
+  CEquiEnergyModel(int _nNode, int _node, TTimeSeries *_target, CEESParameter *_parameter);
+  virtual ~CEquiEnergyModel() { delete storage; };
 
-	void Setup(int level, double Kplus);
-        double Tune(bool use_EE, double mid=0.3, int period=10, int max_period=0, bool verbose=true);
-	void SimulateEE(bool store, int G, int N, bool start_from_current_sample=false, bool verbose=true);
-	void SimulateMH(bool store, int number_to_save, bool start_from_current_sample=false, bool verbose=true);
-        double GetMetropolisProposal(TDraw &x_new);
+  // Setup
+  void WriteMHInfo(void);
+  void ReadMHInfo(int Stage);
+  void SetupComputeNode(int Stage);
+  void SetupMasterNode(const TDenseVector &mean, const TDenseMatrix &variance);
+  void SetupMasterNode(int Stage);
 
-	TDenseVector ESS;
-	void WriteSimulationDiagnostic(int level, int node);
-	void WriteSimulationDiagnostic(int level);
+  void ComputeUnweightedMeanVariance(int stage, TDenseVector &mean, TDenseMatrix &variance);
+  void ComputeWeightedMeanVariance(int stage, const TDenseVector &importance_weights, TDenseVector &mean, TDenseMatrix &variance);
 
-	/////////////////////////////////////////////////////////////////////////
-	TDenseMatrix OrthonormalDirections;
-	TDenseVector SqrtDiagonal;
+  double Tune(bool use_EE, double mid=0.3, int period=10, int max_period=0, bool verbose=true);
+  void SimulateEE(bool store, int G, int N, bool start_from_current_sample=false, bool verbose=true);
+  void SimulateMH(bool store, int number_to_save, bool start_from_current_sample=false, bool verbose=true);
+  double GetMetropolisProposal(TDraw &x_new);
 
-	// initial distributions
-	TDenseMatrix InitialOrthonormalDirections;
-	TDenseVector InitialSqrtDiagonal;
-	TDenseVector InitialCenter;
+  void ResetDiagnostics(int number_striations);
+  void WriteDiagnosticComputeNode(void);
+  void WriteDiagnosticMasterNode(int stage);
 
-	double InitialDraw(TDenseVector &x);
-	double LogInitialDensity(const TDenseVector &x);
+  double InitialDraw(TDenseVector &x);
+  double LogInitialDensity(const TDenseVector &x);
 
-	// seting up filename
-	string MakeFilename(const string &id, int level=-1, int node=-1);
-	void OpenFile(fstream &file, bool output_file, const string &id, int level=-1, int node=-1);
+  // seting up filename
+  string MakeFilename(const string &id, int level=-1, int node=-1);
+  void OpenFile(fstream &file, bool output_file, const string &id, int level=-1, int node=-1);
 
-	// initialization
-	void WriteParameters(void);
-	void WriteInitialDistribution(void);
-	void ReadInitialDistribution(void);
+  // initialization
+  void WriteParameters(void);
+  void WriteInitialDistribution(void);
+  void ReadInitialDistribution(void);
 };
 
 #endif

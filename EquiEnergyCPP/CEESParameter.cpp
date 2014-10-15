@@ -10,13 +10,10 @@ CEESParameter::CEESParameter() :
 	storage_dir(string()), 
 	storage_marker(0), 
 	run_id(string()), 
-	number_energy_level(0), 
-	pee(0.0),
+	pee(0.0)
 	//t0(0.0), 
 	//tk_1(0.0), 
 	//t(vector<double>(0)),
-	highest_level(0), 
-	lowest_level(0) 
 	//thin(0),
 	//THIN(0), 
 	//simulation_length(0), 

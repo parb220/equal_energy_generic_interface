@@ -15,38 +15,34 @@ using namespace std;
     Normally, model.K(level+1) would have previously been set, but when restarting
     a job this is not the case.
 */
-double ExecutingTuningTask(CEquiEnergyModel &model, int level, double Kplus)
+double ExecutingTuningTask(CEquiEnergyModel &model, int stage)
 {
   // setup
-  model.Setup(level,Kplus);
+  model.SetupComputeNode(stage);
 	 
   // tune
   return model.Tune(true);
 }
 
-void ExecutingSimulationTask(CEquiEnergyModel &model, int node, double scale)
+void ExecutingSimulationTask(CEquiEnergyModel &model, double scale)
 {
-  // setup - in addition to fields set in ExecutingTuningTask()
+  // setup
   model.scale = scale;
-  model.node = node;
-  model.storage->SetupForOutput(model.energy_level,node);
 
   // simulate
   model.SimulateEE(true, model.parameter->Gn, model.parameter->N, false, true);
 
   // clean up
-  model.storage->FlushOutput();
+  model.storage->FinalizeComputeNode();
 
   // write diagnostic information
-  model.WriteSimulationDiagnostic(model.energy_level, node);
+  model.WriteSimulationDiagnostic(model.stage, model.node);
 }
 
 void ExecutingInitialIndependentSimulationTask(CEquiEnergyModel &model, int node)
 {
   // setup
-  model.energy_level=model.parameter->number_energy_level;
-  model.ReadInitialDistribution();
-  model.storage->SetupForOutput(model.energy_level,node);
+  model.SetupComputeNode(0);
 
   // simulate
   int number_to_simulate = model.parameter->N * model.parameter->Gn;
@@ -61,17 +57,13 @@ void ExecutingInitialIndependentSimulationTask(CEquiEnergyModel &model, int node
     }
 
   // clean up
-  model.storage->FlushOutput();
+  //model.storage->FlushOutput();
 }
 
 double ExecutingInitialTuningTask(CEquiEnergyModel &model)
 {
   // Setup
-  model.energy_level=model.parameter->number_energy_level-1;
-  model.scale=1.0;
-  model.K(model.energy_level)=model.parameter->max_energy;
-  model.storage->SetupForInput(model.energy_level+1,1,model.parameter->max_energy);
-  model.storage->ComputeVarianceDecomposition(model.OrthonormalDirections,model.SqrtDiagonal);
+  model.SetupComputeNode(1);
 
   // tune
   return model.Tune(false);
@@ -82,7 +74,7 @@ void ExecutingInitialMetropolisSimulationTask(CEquiEnergyModel &model, double sc
   // setup - in addition to fields set in ExecutingInitialTuningTask()
   model.scale=scale;
   model.node=node;
-  model.storage->SetupForOutput(model.energy_level,node);
+  //model.storage->SetupForOutput(1,node);
 
   // burn-in and simulate
   int number_to_simulate = model.parameter->N * model.parameter->Gn;
@@ -90,8 +82,8 @@ void ExecutingInitialMetropolisSimulationTask(CEquiEnergyModel &model, double sc
   model.SimulateMH(true, number_to_simulate, true);
 
   // clean up
-  model.storage->FlushOutput();
+  //model.storage->FlushOutput();
 
   // write diagnostics
-  // model.WriteSimulationDiagnostic(node);
+  model.WriteSimulationDiagnostic(node);
 }
