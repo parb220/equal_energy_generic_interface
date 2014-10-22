@@ -137,8 +137,8 @@ void DispatchTuneSimulation(int nNode, CEquiEnergyModel &model, bool save_space_
   double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];  
   MPI_Status status; 
 
-  double lambda=0.0;
-  for (int stage=(model.parameter->first_stage == 0) ? 1 : model.parameter->first_stage; lambda < 0.9999999; stage++)
+  int stage=(model.parameter->first_stage == 0) ? 1 : model.parameter->first_stage;
+  for (double lambda=0.0; lambda < 0.9999999; lambda=model.lambda(stage++))
     {
       ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       // Send out tuning jobs
@@ -184,9 +184,9 @@ void DispatchTuneSimulation(int nNode, CEquiEnergyModel &model, bool save_space_
       //         string remove_file = model.parameter->storage_dir + convert.str();
       // 	remove(remove_file.c_str()); 
       // }
-
-      lambda=model.lambda(stage);
     }
+
+  model.storage->WriteASCII_draws(stage-1);
 
   delete []sPackage; 
   delete []rPackage; 

@@ -5,13 +5,21 @@
 #include <fstream>
 #include "dw_dense_matrix.hpp"
 
+#define LOG_WEIGHTS(log_prior, log_likelihood, log_density, lambda) ((log_prior + log_likelihood)*lambda - log_density)
+#define LOG_DENSITY(log_prior, log_likelihood, log_integral, lambda) ((log_prior + log_likelihood)*lambda - log_integral)
+
+//#define LOG_WEIGHTS(log_prior, log_likelihood, log_density, lambda) (log_prior + log_likelihood*lambda - log_density)
+//#define LOG_DENSITY(log_prior, log_likelihood, log_integral, lambda) (log_prior + log_likelihood*lambda - log_integral)
+
 using namespace std; 
 
 class TDraw
 {
  protected:
-  double log_posterior;
-  double log_kernel;
+  double log_prior;
+  double log_likelihood;
+  double log_density;
+  double log_density_previous;
   int group;
   int index;
   TDenseVector parameters;
@@ -20,26 +28,36 @@ class TDraw
   TDraw(void) {};
   ~TDraw() {};
 
-  void Set(const TDenseVector &x, double Log_Posterior, double Log_Kernel, int Group, int Index) { parameters=x; log_posterior=Log_Posterior; log_kernel=Log_Kernel; group=Group; index=Index; };
-  void Set(const TDenseVector &x, double Log_Posterior, double Log_Kernel) { parameters=x; log_posterior=Log_Posterior; log_kernel=Log_Kernel; group=-1; index=-1; };
+  TDraw& operator=(const TDraw &x) 
+    { log_prior=x.log_prior, log_likelihood=x.log_likelihood; log_density=x.log_density; log_density_previous=x.log_density_previous; group=x.group; index=x.index; parameters=x.parameters; return *this; };
+
+  void Set(const TDenseVector &x, double Log_Prior, double Log_Likelihood, double Log_Density, int Group, int Index) 
+    { parameters=x; log_prior=Log_Prior; log_likelihood=Log_Likelihood; log_density=Log_Density; log_density_previous=0.0; group=Group; index=Index; };
+  void Set(const TDenseVector &x, double Log_Prior, double Log_Likelihood) 
+    { parameters=x; log_prior=Log_Prior; log_likelihood=Log_Likelihood; log_density=log_density_previous=0.0; group=index=-1; };
   void SetInfo(double Group, double Index) { group=Group; index=Index; };
-  void SetLogKernel(double Log_Kernel) { log_kernel=Log_Kernel; };
+  void SetLogDensity(double Log_Density) { log_density=Log_Density; };
+  void SetLogDensityPrevious(double Log_Density_Previous) { log_density_previous=Log_Density_Previous; };
 
   const TDenseVector& Parameters(void) const { return parameters; };
-  double LogPosterior(void) const { return log_posterior; };
-  double LogKernel(void) const { return log_kernel; };
+  double LogPrior(void) const { return log_prior; };
+  double LogLikelihood(void) const { return log_likelihood; };
+  double LogPosterior(void) const { return log_prior+log_likelihood; };
+  double LogDensity(void) const { return log_density; };
+  double LogDensityPrevious(void) const { return log_density_previous; };
   int Group(void) const { return group; };
   int Index(void) const { return index; };
 };
 
 
 /*
-   There are n_parameters + 4 elements in each row of the matrices in or out.
+   There are n_parameters + 5 elements in each row of the matrices in or out.
      (1) 0 : n_parameters-1 - parameters 
-     (2) n_parameters       - log posterior
-     (3) n_parameters+1     - log kernel 
-     (4) n_parameters+2     - group index
-     (5) n_parameters+3     - sequence index
+     (2) n_parameters       - log prior
+     (3) n_parameters+1     - log likelihood
+     (4) n_parameters+2     - log kernel 
+     (5) n_parameters+3     - group index
+     (6) n_parameters+4     - sequence index
 */
 class TStorage
 {
@@ -72,6 +90,7 @@ class TStorage
   vector<TDenseMatrix> in;
   vector<int> idx_in;
 
+  void CumulativeImportanceWeights(double lambda, const TDenseVector &log_prior, const TDenseVector &log_likelihood, const TDenseVector &log_density);
   void Reset(void);
   void WriteDraws(void);
   void FetchEqualWeightedDraws(int striation);
@@ -86,7 +105,7 @@ class TStorage
   void FinalizeComputeNode(void);
   void FinalizeMasterNode(int stage);
 
-  void ReadInfo(int stage, TDenseVector &log_posterior, TDenseVector &log_density);
+  void ReadInfo(int stage, TDenseVector &log_prior, TDenseVector &log_likelihood, TDenseVector &log_density);
 
   // output (storing draws)
   void AddDraw(const TDraw &x);
@@ -96,8 +115,8 @@ class TStorage
   void ImportanceWeightedDraw(TDraw &x);
 
   // striations
-  int NumberStriations(void) { return n_striations; };
-  int Striation(double log_posterior);
+  int NumberStriations(void) const { return n_striations; };
+  int Striation(const TDraw &x);
   double UpperStriationBoundary(int striation);
   double LowerStriationBoundary(int striation);
   double WeightedStriationProbability(int striation);
@@ -106,8 +125,10 @@ class TStorage
   string MakeFullFileName(string id, int level=-1, int node=-1, int file_number=-1);
   void OpenFile(fstream &file, bool output_file, const string &id, int level=-1, int node=-1, int file_number=-1);
 
-  void WriteASCIIDraws(int stage);
+  void WriteASCII_draws(int stage);
+  void WriteASCII_info(int stage);
 
+  void ErrorClass(void);
   void CheckClass(void);
 };
 

@@ -163,7 +163,7 @@ void ExecutingInitialIndependentSimulationTask(CEquiEnergyModel &model, int stag
   for (int ii=0; ii < number_to_simulate; ii++)
     {
       log_kernel=model.InitialDraw(x);
-      y.Set(x,model.target->LogPosterior(x),log_kernel,model.node,ii);
+      y.Set(x,model.target->LogPrior(x),model.target->LogLikelihood(x),log_kernel,model.node,ii);
       model.storage->AddDraw(y); 
     }
 

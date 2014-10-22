@@ -57,14 +57,17 @@ class CEquiEnergyModel
   double Tune(bool use_EE, double mid=0.3, int period=10, int max_period=0, bool verbose=true);
   void SimulateEE(bool store, int G, int N, bool start_from_current_sample=false, bool verbose=true);
   void SimulateMH(bool store, int number_to_save, bool start_from_current_sample=false, bool verbose=true);
-  double GetMetropolisProposal(TDraw &x_new);
+
+  void ImportanceWeightedDraw(TDraw &x);
+  void EqualWeightedDraw(TDraw &x, int striation);
+  double GetMetropolisProposal(TDraw &x);
+  double LogDensity(TDraw &x, int stage);
 
   void ResetDiagnostics(int number_striations);
   void WriteDiagnosticComputeNode(void);
   void WriteDiagnosticMasterNode(int stage);
 
   double InitialDraw(TDenseVector &x);
-  double LogInitialDensity(const TDenseVector &x);
 
   // seting up filename
   string MakeFilename(const string &id, int level=-1, int node=-1);

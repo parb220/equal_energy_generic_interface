@@ -16,16 +16,16 @@
 
 using namespace std;
 
-static double EffectiveSampleSize(double lambda, TDenseVector log_posterior, TDenseVector log_density)
+static double EffectiveSampleSize(double lambda, TDenseVector &log_prior, TDenseVector &log_likelihood, TDenseVector &log_density)
 {
-  double sum=log_posterior.vector[0]*lambda - log_density.vector[0];
-  for (int i=1; i < log_posterior.dim; i++)
-    sum=AddLogs(sum,log_posterior.vector[i]*lambda - log_density.vector[i]);
+  double sum=LOG_WEIGHTS(log_prior.vector[0],log_likelihood.vector[0],log_density.vector[0],lambda);
+  for (int i=1; i < log_density.dim; i++)
+    sum=AddLogs(sum,LOG_WEIGHTS(log_prior.vector[i],log_likelihood.vector[i],log_density.vector[i],lambda));
 
   double weight, sum2=0;
-  for (int i=0; i < log_posterior.dim; i++)
+  for (int i=0; i < log_density.dim; i++)
     {
-      weight=exp(log_posterior.vector[i]*lambda - log_density.vector[i] - sum);
+      weight=exp(LOG_WEIGHTS(log_prior.vector[i],log_likelihood.vector[i],log_density.vector[i],lambda) - sum);
       sum2+=weight*weight;
     }
 
@@ -33,17 +33,17 @@ static double EffectiveSampleSize(double lambda, TDenseVector log_posterior, TDe
 }
 
 
-static double SetLambda(double lambda_min, double min_ess, TDenseVector log_posterior, TDenseVector log_density)
+static double SetLambda(double lambda_min, double min_ess, TDenseVector &log_prior, TDenseVector &log_likelihood, TDenseVector log_density)
 {
   // lambda = 1.0?
-  if (EffectiveSampleSize(1.0,log_posterior,log_density) >= min_ess) return 1.0;
+  if (EffectiveSampleSize(1.0,log_prior,log_likelihood,log_density) >= min_ess) return 1.0;
 
   // bisection
   double lambda, lambda_max=1.0;
   for (int i=0; i < 40; i++)
     {
       lambda=0.5*(lambda_max + lambda_min);
-      if (EffectiveSampleSize(lambda,log_posterior,log_density) >= min_ess) 
+      if (EffectiveSampleSize(lambda,log_prior,log_likelihood,log_density) >= min_ess) 
 	lambda_min=lambda;
       else
 	lambda_max=lambda;
@@ -52,19 +52,19 @@ static double SetLambda(double lambda_min, double min_ess, TDenseVector log_post
   return 0.5*(lambda_max + lambda_min);
 }
 
-static double ComputeLogNormalization(double lambda, const TDenseVector &log_posterior, const TDenseVector &log_density)
+static double ComputeLogNormalization(double lambda, const TDenseVector &log_prior, const TDenseVector &log_likelihood, const TDenseVector &log_density)
 {
-  double sum=log_posterior.vector[0]*lambda - log_density.vector[0];
-  for (int i=1; i < log_posterior.dim; i++)
-    sum=AddLogs(sum,log_posterior.vector[i]*lambda - log_density.vector[i]);
+  double sum=LOG_WEIGHTS(log_prior.vector[0],log_likelihood.vector[0],log_density.vector[0],lambda);
+  for (int i=1; i < log_density.dim; i++)
+    sum=AddLogs(sum,LOG_WEIGHTS(log_prior.vector[i],log_likelihood.vector[i],log_density.vector[i],lambda));
   return sum;
 }
 
-static TDenseVector ComputeImportanceWeights(double lambda, const TDenseVector &log_posterior, const TDenseVector &log_density, double log_normalization)
+static TDenseVector ComputeImportanceWeights(double lambda, const TDenseVector &log_prior, const TDenseVector &log_likelihood, const TDenseVector &log_density, double log_normalization)
 {
-  TDenseVector importance_weights(log_posterior.dim);
+  TDenseVector importance_weights(log_density.dim);
   for (int i=importance_weights.dim-1; i >= 0; i--)
-    importance_weights.vector[i]=exp(log_posterior.vector[i]*lambda - log_density.vector[i] - log_normalization);
+    importance_weights.vector[i]=exp(LOG_WEIGHTS(log_prior.vector[i],log_likelihood.vector[i],log_density.vector[i],lambda) - log_normalization);
   return importance_weights;
 }
 
@@ -124,7 +124,7 @@ void CEquiEnergyModel::ComputeUnweightedMeanVariance(int stage, TDenseVector &me
       variance+=OuterProduct(v,v);
     }
   mean=(1.0/(double)rows)*mean;
-  variance=(1.0/(double)rows)*variance;
+  variance=(1.0/(double)rows)*variance - OuterProduct(mean,mean);
 
   file.close();
 }
@@ -150,6 +150,7 @@ void CEquiEnergyModel::ComputeWeightedMeanVariance(int stage, const TDenseVector
       mean+=w;
       variance+=OuterProduct(w,v);
     }
+  variance-=OuterProduct(mean,mean);
 
   file.close();
 }
@@ -245,8 +246,8 @@ void CEquiEnergyModel::SetupMasterNode(int Stage)
   // sets InitialCenter, InitialSqrtDiagonal, and InitialOrthonormalDirections 
   // sets initial segments of lambda, LogIntegralKernel, and ESS
   ReadMHInfo(Stage-1);
-  TDenseVector log_posterior, log_density;
-  storage->ReadInfo(Stage-1,log_posterior,log_density);
+  TDenseVector log_prior, log_likelihood, log_density;
+  storage->ReadInfo(Stage-1,log_prior,log_likelihood,log_density);
 
   // sets stage
   stage=Stage;
@@ -255,10 +256,10 @@ void CEquiEnergyModel::SetupMasterNode(int Stage)
   if (stage == 1)
     lambda=Cat(lambda,parameter->min_lambda);
   else
-    lambda=Cat(lambda,SetLambda(lambda(stage-1),parameter->min_ess,log_posterior,log_density));
+    lambda=Cat(lambda,SetLambda(lambda(stage-1),parameter->min_ess,log_prior,log_likelihood,log_density));
 
-  double log_normalization=ComputeLogNormalization(lambda(stage),log_posterior,log_density);
-  TDenseVector importance_weights=ComputeImportanceWeights(lambda(stage),log_posterior,log_density,log_normalization);
+  double log_normalization=ComputeLogNormalization(lambda(stage),log_prior,log_likelihood,log_density);
+  TDenseVector importance_weights=ComputeImportanceWeights(lambda(stage),log_prior,log_likelihood,log_density,log_normalization);
 
   // sets LogIntegralKernel(stage)
   LogIntegralKernel=Cat(LogIntegralKernel,log_normalization - log(importance_weights.dim));
@@ -293,6 +294,9 @@ void CEquiEnergyModel::SetupMasterNode(int Stage)
 
   // setup storage
   storage->Setup(stage,parameter->number_striations,lambda.vector[stage]);
+
+  // Uncomment to check storage
+  // storage->CheckClass();
 }
 
 void CEquiEnergyModel::SetupComputeNode(int Stage)
@@ -418,11 +422,11 @@ void CEquiEnergyModel::SimulateEE(bool store, int G, int N, bool start_from_curr
   // initial value
   if (!start_from_current_sample)
     {
-      storage->ImportanceWeightedDraw(current_sample);
-      nStarts[current_striation=storage->Striation(current_sample.LogPosterior())]+=1;
+      ImportanceWeightedDraw(current_sample);
+      nStarts[current_striation=storage->Striation(current_sample)]+=1;
     }
   else
-    current_striation=storage->Striation(current_sample.LogPosterior());
+    current_striation=storage->Striation(current_sample);
 
 
   // simulation runs
@@ -442,8 +446,8 @@ void CEquiEnergyModel::SimulateEE(bool store, int G, int N, bool start_from_curr
 	{
 	  if (++g < G)
 	    {
-	      storage->ImportanceWeightedDraw(current_sample);
-	      nStarts[current_striation=storage->Striation(current_sample.LogPosterior())]+=1;
+	      ImportanceWeightedDraw(current_sample);
+	      nStarts[current_striation=storage->Striation(current_sample)]+=1;
 	      count=N;
 	    }
 	  continue;
@@ -462,27 +466,12 @@ void CEquiEnergyModel::SimulateEE(bool store, int G, int N, bool start_from_curr
 	  if (dw_uniform_rnd() <= parameter->pee_divided_psave)  
 	    {
 	      nEEProposed[current_striation]+=1;
-	      storage->EqualWeightedDraw(x_new, current_striation);
-	      if (stage > 1)
+	      EqualWeightedDraw(x_new, current_striation);
+	      if (log(dw_uniform_rnd()) <= (x_new.LogDensity() - current_sample.LogDensity()) - (x_new.LogDensityPrevious() - current_sample.LogDensityPrevious()))
 		{
-		  if (log(dw_uniform_rnd()) <= (x_new.LogPosterior() - current_sample.LogPosterior())*(lambda(stage) - lambda(stage-1)))
-		    {
-		      nEEJumps[current_striation]+=1;
-		      x_new.SetLogKernel(x_new.LogPosterior()*lambda(stage) - LogIntegralKernel(stage));
-		      current_sample = x_new; 			  
-		    }
+		  nEEJumps[current_striation]+=1;
+		  current_sample = x_new;
 		}
-	      else
-		{
-		  if (log(dw_uniform_rnd()) <= (x_new.LogPosterior() - current_sample.LogPosterior())*lambda(stage) 
-		      - (x_new.LogKernel() - LogInitialDensity(current_sample.Parameters())))
-		    {
-		      nEEJumps[current_striation]+=1;
-		      x_new.SetLogKernel(x_new.LogPosterior()*lambda(stage) - LogIntegralKernel(stage));
-		      current_sample = x_new; 
-		    }
-		}
-
 	      striation_count[current_striation]+=1;
 	      continue;
 	    }   
@@ -491,11 +480,11 @@ void CEquiEnergyModel::SimulateEE(bool store, int G, int N, bool start_from_curr
       // make MH jump
       nMHProposed[current_striation]+=1;
       GetMetropolisProposal(x_new);
-      if (log(dw_uniform_rnd()) <= (x_new.LogPosterior() - current_sample.LogPosterior())*lambda(stage))
+      if (log(dw_uniform_rnd()) <= x_new.LogDensity() - current_sample.LogDensity())
 	{
 	  nMHJumps[current_striation]+=1;
 	  current_sample = x_new; 
-	  new_striation=storage->Striation(current_sample.LogPosterior());
+	  new_striation=storage->Striation(current_sample);
 	  if (new_striation > current_striation)
 	    {
 	      striation_up[current_striation]+=1;
@@ -529,7 +518,7 @@ void CEquiEnergyModel::SimulateMH(bool store, int number_to_save, bool start_fro
   // initial value
   if (!start_from_current_sample)
     {
-      storage->ImportanceWeightedDraw(current_sample);
+      ImportanceWeightedDraw(current_sample);
     }
 
   // simulation runs
@@ -558,7 +547,7 @@ void CEquiEnergyModel::SimulateMH(bool store, int number_to_save, bool start_fro
       // make MH jump
       nMHProposed(0)+=1;
       GetMetropolisProposal(x_new);
-      if (log(dw_uniform_rnd()) <= (x_new.LogPosterior() - current_sample.LogPosterior())*lambda(stage))
+      if (log(dw_uniform_rnd()) <= x_new.LogDensity() - current_sample.LogDensity())
 	{
 	  nMHJumps(0)+=1;
 	  current_sample = x_new; 
@@ -571,6 +560,27 @@ void CEquiEnergyModel::SimulateMH(bool store, int number_to_save, bool start_fro
     }	
 }
 
+// The following fields must be properly set:
+//   stage
+//   storage
+void CEquiEnergyModel::ImportanceWeightedDraw(TDraw &x) 
+{ 
+  storage->ImportanceWeightedDraw(x);
+  x.SetLogDensityPrevious(x.LogDensity());
+  x.SetLogDensity(LogDensity(x,stage));
+}
+
+// The following fields must be properly set:
+//   stage
+//   storage
+void CEquiEnergyModel::EqualWeightedDraw(TDraw &x, int striation)
+{
+  storage->EqualWeightedDraw(x, striation);
+  x.SetLogDensityPrevious(x.LogDensity());
+  x.SetLogDensity(LogDensity(x,stage));
+}
+
+//
 // The following fields must be set:
 //   stage
 //   SqrtDiagonal
@@ -582,37 +592,52 @@ void CEquiEnergyModel::SimulateMH(bool store, int number_to_save, bool start_fro
 //   parameter->p_select
 //   parameter->tiny  
 //
-// If stage == 0, in addition to the above, the following fields must be set:
+// If stage is either 0 or 1, in addition to the above, the following fields must be set:
 //     InitialCenter
 //     InitialSqrtDiagonal
 //     InitialOrthonormalDirections
 //     parameter->nu
-double CEquiEnergyModel::GetMetropolisProposal(TDraw &new_x)
+//
+// If stage > 1, in addition to the above, the fillowing fields must be set:
+//     lambda(stage-1)
+//     LogIntegralKernel(stage-1)
+//
+double CEquiEnergyModel::GetMetropolisProposal(TDraw &x)
 {
   int n=OrthonormalDirections.cols;
   TDenseVector v(n);
-
   for (int i=n-1; i >= 0; i--)
     v.vector[i]=scale*SqrtDiagonal(i)*((dw_uniform_rnd() <= parameter->p_select) ? dw_gaussian_rnd() : parameter->tiny * dw_gaussian_rnd());  
   v=current_sample.Parameters() + OrthonormalDirections*v;   
-  double log_posterior=target->LogPosterior(v), log_kernel=(stage > 0) ? log_posterior*lambda(stage) - LogIntegralKernel(stage) : LogInitialDensity(v);
-  new_x.Set(v,log_posterior,log_kernel);
-
+  x.Set(v,target->LogPrior(v), target->LogLikelihood(v));
+  x.SetLogDensity(LogDensity(x,stage));
+  if (stage > 0) x.SetLogDensityPrevious(LogDensity(x,stage-1));
   return 0.0;
 }
 
-// The following fields must be set:
-//   InitialCenter
-//   InitialSqrtDiagonal
-//   InitialOrthonormalDirections
-//   parameter->nu
-double CEquiEnergyModel::LogInitialDensity(const TDenseVector &x)
+// The following fields must be set
+//   stage > 0
+//      lambda(stage)
+//      LogIntegralKernel(stage)
+//   stage = 0
+//      InitialCenter
+//      InitialOrthonormalDirections
+//      InitialSqrtDiagonal
+//      parameter->nu      
+double CEquiEnergyModel::LogDensity(TDraw &x, int stage)
 {
-  double log_density=0.0;
-  TDenseVector y=TransposeMultiply(InitialOrthonormalDirections,x-InitialCenter);
-  for (int j=nParameters-1; j >= 0; j--)	
-    log_density+=log(dw_tdistribution_pdf(y(j)/InitialSqrtDiagonal(j),parameter->nu)/InitialSqrtDiagonal(j));		
-  return log_density;
+  if (stage > 0)
+    {
+      return LOG_DENSITY(x.LogPrior(),x.LogLikelihood(),LogIntegralKernel.vector[stage],lambda.vector[stage]);
+    }
+  else
+    {
+      double log_density=0.0;
+      TDenseVector y=TransposeMultiply(InitialOrthonormalDirections,x.Parameters()-InitialCenter);
+      for (int j=nParameters-1; j >= 0; j--)	
+	log_density+=log(dw_tdistribution_pdf(y(j)/InitialSqrtDiagonal(j),parameter->nu)/InitialSqrtDiagonal(j));		
+      return log_density;
+    }
 }
 
 // The following fields must be set:
@@ -717,7 +742,7 @@ void CEquiEnergyModel::WriteDiagnosticMasterNode(int stage)
   for (int i=0; i < storage->NumberStriations(); i++) file << "  " << 100*storage->WeightedStriationProbability(i);
   file << endl;
   file << "Striation counts (fractions):" << endl;
-  for (int i=0; i < parameter->number_striations; i++) file << "  " << 100*striation_count(i)/nMHProposed.Sum();
+  for (int i=0; i < parameter->number_striations; i++) file << "  " << 100*striation_count(i)/(nMHProposed.Sum() + nEEProposed.Sum());
   file << endl;
   file << "Striation counts (raw):" << endl << "  " << striation_count;
   file << "Striation changes up:" << endl << "  " << striation_up;
