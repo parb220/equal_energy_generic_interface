@@ -23,7 +23,6 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 	
 	double *rPackage = new double [N_MESSAGE], *sPackage = new double [N_MESSAGE];    
 	int group_index; 
-	bool if_within, if_write_file, if_storage;   
 
 	while (1)
 	{
@@ -36,13 +35,13 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		}
 		else if (status.MPI_TAG == BINNING_INFO)
 		{
-			model.energy_level = (int)(rPackage[LEVEL_INDEX]); 
+			model.energy_stage = (int)(rPackage[LEVEL_INDEX]); 
 			int number_ring = (int)(rPackage[RESERVE_INDEX]); 
-			model.storage-> ResizeBin(model.energy_level, number_ring); 
+			model.storage-> ResizeBin(model.energy_stage, number_ring); 
 			for (int i=0; i<number_ring; i++)
-				model.storage->SetEnergyLowerBound(model.energy_level, i, rPackage[RESERVE_INDEX+i+1]);
-			if (model.energy_level+1 <= model.parameter->number_energy_level)
-				model.storage->ClearBin(model.energy_level+1); 
+				model.storage->SetEnergyLowerBound(model.energy_stage, i, rPackage[RESERVE_INDEX+i+1]);
+			if (model.energy_stage+1 <= model.parameter->number_energy_stage)
+				model.storage->ClearBin(model.energy_stage+1); 
 			sPackage[RETURN_INDEX_1] = (double)(false); 
 		}		
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
@@ -62,7 +61,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		}
 		else if (status.MPI_TAG == GMM_SIMULATION_TAG)
 		{
-			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
+			model.energy_stage = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]);
 			model.timer_when_started = group_index; 
                         if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
@@ -73,7 +72,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 
 			stringstream convert;
                         convert.str(string());
-                        convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE; 
+			convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_stage;
 			string gm_file = model.parameter->storage_dir + convert.str(); 
 			if (!model.ReadGaussianMixtureModelParameters(gm_file) )
 			{
@@ -81,14 +80,14 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 				abort(); 
 			}
 			model.GMM_Simulation(rPackage[LENGTH_INDEX]); 
-			model.storage->ClearStatus(model.energy_level); 
-			model.storage->finalize(model.energy_level);
-        		model.storage->ClearDepositDrawHistory(model.energy_level);
+			model.storage->ClearStatus(model.energy_stage); 
+			model.storage->finalize(model.energy_stage);
+        		model.storage->ClearDepositDrawHistory(model.energy_stage);
 			sPackage[RETURN_INDEX_1] = (double)(false); 
 		}
-		else if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION || status.MPI_TAG == TUNE_TAG_AFTER_SIMULATION) 
+		else if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION) 
 		{
-			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
+			model.energy_stage = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]); 
 			model.timer_when_started = group_index; 
 			if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
@@ -96,28 +95,17 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 				cerr << "GetCommunicationParameter() : Error occurred.\n"; 
 				abort(); 
 			}
-			model.t_bound = model.parameter->t[model.energy_level];
+			model.t_bound = model.parameter->t[model.energy_stage];
 			
-			if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION)
+			if (!ExecutingTuningTask_BeforeSimulation(period, max_period, model, group_index) )
 			{
-				if (!ExecutingTuningTask_BeforeSimulation(period, max_period, model, group_index) )
-				{
-					cerr << "ExecutingTuningTask_BeforeSimulation() : Error occurred :: sample file reading or block_file writing or start_tune_point writing error.\n"; 
-					abort(); 
-				}
-			}
-			else if (status.MPI_TAG == TUNE_TAG_AFTER_SIMULATION)
-			{
-				if (!ExecutingTuningTask_AfterSimulation(period, max_period, model, group_index) )
-                                {
-                                        cerr << "ExecutingTuningTask_AfterSimulation() : Error occurred :: start_tune_point file reading or sample file reading or block_file writing error.\n";
-                                        abort();
-                                }
+				cerr << "ExecutingTuningTask_BeforeSimulation() : Error occurred :: sample file reading or block_file writing or start_tune_point writing error.\n"; 
+				abort(); 
 			}
 		}
-		else if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == TUNE_TAG_SIMULATION_SECOND || status.MPI_TAG == SIMULATION_TAG) 
+		else if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == SIMULATION_TAG) 
 		{	
-			model.energy_level = (int)(rPackage[LEVEL_INDEX]);
+			model.energy_stage = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]); 
 			model.timer_when_started = group_index; 
 			if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
@@ -125,24 +113,9 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 				cout << "GetCommunicationParameter() : Error occurred.\n"; 
 				abort(); 
 			}
-			model.t_bound = model.parameter->t[model.energy_level];
+			model.t_bound = model.parameter->t[model.energy_stage];
 
-			if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST)
-				if_within = false; 
-			else 
-				if_within = false; 
-	
-			if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == TUNE_TAG_SIMULATION_SECOND)
-				if_write_file = true; 
-			else 
-				if_write_file = false; 
-
-			if (status.MPI_TAG == TUNE_TAG_SIMULATION_SECOND || status.MPI_TAG == SIMULATION_TAG)
-				if_storage = true;
-			else 
-				if_storage = false; 	
-
-			ExecutingSimulationTask(if_within, if_write_file, if_storage, model, my_rank, group_index, 100*n_initial, mode, status.MPI_TAG); 
+			ExecutingSimulationTask(model, my_rank, group_index, mode, status.MPI_TAG); 
 		}
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD); 
 	}

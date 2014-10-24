@@ -1,6 +1,5 @@
 #include <cmath>
 #include <cstdio>
-#include <glob.h>
 #include <algorithm>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -11,6 +10,8 @@
 
 #include "CSampleIDWeight.h"
 #include "CPutGetBin.h"
+
+vector<string> glob(const string &pattern); 
 
 string CPutGetBin::GetFileNameForDump() const
 {
@@ -30,19 +31,17 @@ void CPutGetBin::GetFileNameForFetchConsolidate()
 	filename_fetch.clear(); 
 	filename_consolidate.clear(); 
 
-        glob_t glob_result;
-        glob(filename_pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
-	if (glob_result.gl_pathc > 0)
+        vector<string>filename = glob(filename_pattern); 
+	if (!filename.empty())
 	{
-		for (int i=0; i<(int)glob_result.gl_pathc; i++)
+		for (int i=0; i<(int)filename.size(); i++)
 		{
-			if (NumberRecord(string(glob_result.gl_pathv[i])) >= (int)capacity)
-				filename_fetch.push_back(string(glob_result.gl_pathv[i])); 
+			if (NumberRecord(filename[i]) >= (int)capacity)
+				filename_fetch.push_back(filename[i]); 
 			else 
-				filename_consolidate.push_back(string(glob_result.gl_pathv[i])); 
+				filename_consolidate.push_back(filename[i]); 
 		}
 	}
-        globfree(&glob_result);
 	check_file_fetch_consolidate = true; 
 }
 
@@ -302,11 +301,8 @@ size_t CPutGetBin::GetNumberFileForDump() const
 
 	string filename_pattern = filename_prefix + convert.str(); 
 	
-	glob_t glob_result; 
-	glob(filename_pattern.c_str(), GLOB_TILDE, NULL, &glob_result); 
-	size_t final_result = glob_result.gl_pathc; 
-	globfree(&glob_result); 
-	return final_result; 
+	vector<string> filename = glob(filename_pattern); 
+	return filename.size(); 
 }
 
 size_t CPutGetBin::GetNumberFileForConsolidate()
@@ -615,16 +611,11 @@ bool CPutGetBin::empty() const
 
         	string filename_pattern = filename_prefix + convert.str();
 
-        	glob_t glob_result;
-        	glob(filename_pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
-		bool return_result; 
-        	if (glob_result.gl_pathc > 0)
-			return_result = false; 
+		vector<string> filename = glob(filename_pattern); 
+        	if (filename.empty())
+			return true; 
 		else 
-			return_result = true; 
-
-        	globfree(&glob_result);
-		return return_result; 
+			return false; 
 	}
 }
 
@@ -660,11 +651,10 @@ size_t CPutGetBin::GetTotalNumberRecord() const
         convert << id << ".*.*.record"; 
 	string filename_pattern = filename_prefix + convert.str();
 
-        glob_t glob_result;
-        glob(filename_pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
+	vector<string> filename = glob(filename_pattern); 
 	int nRecord=0; 
-        for (int i=0; i<(int)glob_result.gl_pathc; i++)
-        	nRecord += NumberRecord(string(glob_result.gl_pathv[i]));
+        for (int i=0; i<(int)filename.size(); i++)
+        	nRecord += NumberRecord(filename[i]);
 	return nRecord; 
 }
 

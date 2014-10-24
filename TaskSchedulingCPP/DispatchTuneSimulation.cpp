@@ -1,26 +1,28 @@
 #include <cmath>
 #include <vector>
 #include <mpi.h>
-#include <glob.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include "dw_rand.h"
 #include "CSampleIDWeight.h"
 #include "CEquiEnergyModel.h"
+#include "CMetropolis.h"
 #include "storage_parameter.h"
 #include "mpi_parameter.h"
 #include "dw_matrix.h"
 #include "mdd.hpp"
 #include "mdd_function.h"
+#include "master_deploying.h"
 
 using namespace std; 
 
-void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t simulation_length, int level, int message_tag); 
+vector<string> glob(const string &pattern);
 
-double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level, double logMDD_previous);
-double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type);
-double  CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,  double convergency_previous, double &average, double &std, double &LB_ESS); 
+double EstimateLogMDD(CEquiEnergyModel &model, int stage, int previous_stage, double logMDD_previous);
+double EstimateLogMDD(CEquiEnergyModel &model, int stage, int proposal_type);
+double  CheckConvergency (CEquiEnergyModel &model, int stage, int previous_stage,  double convergency_previous, double &average, double &std, double &LB_ESS); 
 
 void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
 {
@@ -29,39 +31,39 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 	size_t estimation_length; 
 
-	// start point for tuning
-	vector<CSampleIDWeight> start_points(nInitial); 
-	vector<vector<double> > logMDD(model.parameter->number_energy_level, vector<double>(model.parameter->number_energy_level, 0.0)); 
-	vector<double> consistency(model.parameter->number_energy_level, 0.0);
-	vector<double> average_consistency(model.parameter->number_energy_level, 0.0); 
-	vector<double> std_consistency(model.parameter->number_energy_level, 0.0);
-	vector<double> LB_ESS(model.parameter->number_energy_level, 0.0); 
-	for (int level=model.parameter->highest_level; level>=model.parameter->lowest_level; level--)
+	// diagnostic statistics
+	vector<vector<double> > logMDD(model.parameter->number_energy_stage+1, vector<double>(model.parameter->number_energy_stage+1, 0.0)); 
+	vector<double> consistency(model.parameter->number_energy_stage, 0.0);
+	vector<double> average_consistency(model.parameter->number_energy_stage, 0.0); 
+	vector<double> std_consistency(model.parameter->number_energy_stage, 0.0);
+	vector<double> LB_ESS(model.parameter->number_energy_stage, 0.0); 
+
+	for (int stage=model.parameter->highest_stage; stage>=model.parameter->lowest_stage; stage--)
 	{
-		if (level == model.parameter->number_energy_level-2)
-			consistency[level] = CheckConvergency(model, level, level+1, logMDD[level+1][level+1], average_consistency[level], std_consistency[level], LB_ESS[level]); 
-		else if (level < model.parameter->number_energy_level-2)
-			consistency[level] = CheckConvergency(model, level, level+1, consistency[level+1], average_consistency[level], std_consistency[level], LB_ESS[level]); 
-		cout << "Convergency Measure at level " << level << ": " << setprecision(20) << consistency[level] << "\t" << average_consistency[level] << "\t" << std_consistency[level]<< "\t" << LB_ESS[level] << endl;
+		/////////////////////////////////////////////////////////////////////////////////
+		// Highest +1 stage 
+		if (stage == model.parameter->number_energy_stage-1)
+		{
+			HighestPlus1Stage(nNode, nInitial, model);
+			logMDD[stage+1][stage+1] = EstimateLogMDD(model, stage+1, USE_TRUNCATED_POWER);
+			consistency[stage] = CheckConvergency(model, stage, stage+1, logMDD[stage+1][stage+1], average_consistency[stage], std_consistency[stage], LB_ESS[stage]); 
+		}
+		else 
+			consistency[stage] = CheckConvergency(model, stage, stage+1, consistency[stage+1], average_consistency[stage], std_consistency[stage], LB_ESS[stage]); 
+		cout << "Convergency Measure at Stage " << stage << ": " << setprecision(20) << consistency[stage] << "\t" << average_consistency[stage] << "\t" << std_consistency[stage]<< "\t" << LB_ESS[stage] << endl;
 
-		sPackage[LEVEL_INDEX] = level; 
-		sPackage[thin_INDEX] = model.parameter->thin; 
-		sPackage[THIN_INDEX] = model.parameter->THIN; 
-		sPackage[PEE_INDEX] = model.parameter->pee; 
-
-		model.storage->ClearStatus(level+1); 
-		model.storage->RestoreForFetch(level+1); 
 
 		////////////////////////////////////////////////////////////////////////////////
 		// Starting points
-		if (model.storage->empty(level+1) || !model.Initialize_WeightedSampling(nInitial, level+1, start_points))
-		// if (model.storage->empty(level+1) || !model.Initialize_MostDistant_WithinPercentile(nInitial, level+1, start_points, 0.30) ) 
-		// !model.Initialize_KMeansClustering(nInitial, level+1, start_points) )
+		vector<CSampleIDWeight> start_points(nInitial); 
+		if (model.storage->empty(stage+1) || !model.Initialize_WeightedSampling(nInitial, stage+1, start_points))
 		{
 			for (int i=0; i<nInitial; i++)
 				start_points[i] = mode; 
 		} 
-		model.storage->ClearDepositDrawHistory(level+1); 
+		model.storage->ClearDepositDrawHistory(stage+1); 
+		model.storage->ClearStatus(stage+1); 
+		model.storage->RestoreForFetch(stage+1); 
 
 		stringstream convert; 
 		string start_point_file; 
@@ -69,7 +71,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		for (int i=0; i<nInitial; i++)
 		{
         		convert.str(string());
-        		convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << level << "." << i;
+        		convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << stage << "." << i;
         		start_point_file = model.parameter->storage_dir + convert.str();
         		output_file.open(start_point_file.c_str(), ios::binary|ios::out);
         		if (!output_file)
@@ -84,119 +86,71 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 		/////////////////////////////////////////////////////////////////////////////////
 		// Send out tuning jobs
-		vector <int> availableNode(nNode-1); 
+		// Only need to tune on each slave node noce, because the results will be aggregated
+		sPackage[LEVEL_INDEX] = stage; 
+		sPackage[thin_INDEX] = model.parameter->thin; 
+		sPackage[THIN_INDEX] = model.parameter->THIN; 
+		sPackage[PEE_INDEX] = model.parameter->pee/(model.parameter->THIN/model.parameter->thin); 
 		for (int i=1; i<nNode; i++)
-			availableNode[i-1] = i; 
-		
-		int iInitial = 0; 
-		while (iInitial < nInitial)
 		{
-			if (availableNode.empty())
-			{
-				MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD, &status);
-				availableNode.push_back(status.MPI_SOURCE); 
-			}
-			// Assigns the last node in availableNode to iInitial, and remove the last node of availableNode
-			sPackage[GROUP_INDEX] = iInitial; 
-			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, availableNode.back(), TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD); 
-			availableNode.pop_back(); 
-			iInitial ++; 
+			sPackage[GROUP_INDEX] = dw_uniform_int(nInitial); 
+			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD); 
 		}
 		
-		for (int i=0; i<nNode-1-(int)availableNode.size(); i++)
+		for (int i=1; i<nNode; i++)
 			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD, &status);
 
-		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// Simulation to estimate group-specific covariance matrix
-		estimation_length = 5000; 
-		DispatchSimulation(nNode, nInitial, model, estimation_length, level, TUNE_TAG_SIMULATION_FIRST); 
-
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// Tune after simulation
-		availableNode.clear(); 
-		availableNode.resize(nNode-1); 
-		for (int i=1; i<nNode; i++)
-			availableNode[i-1] = i; 
-
-		iInitial = 0; 
-		while (iInitial < nInitial)
-		{
-			if(availableNode.empty())
-			{
-				MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_AFTER_SIMULATION, MPI_COMM_WORLD, &status);
-				availableNode.push_back(status.MPI_SOURCE); 
-			}
-			// Assigns the last node in availableNode to iInitial, and remove the last node of availableNode
-
-			sPackage[GROUP_INDEX] = iInitial;
-                        MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, availableNode.back(), TUNE_TAG_AFTER_SIMULATION, MPI_COMM_WORLD);
-			availableNode.pop_back(); 
-			iInitial ++; 
-		}
-		for (int i=0; i<nNode-1-(int)availableNode.size(); i++)
-			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_AFTER_SIMULATION, MPI_COMM_WORLD, &status);
+	
+		/////////////////////////////////////////////////////////////////////////////////
+		// Aggregate the scales obtained from computing nodes
+		convert.str(string()); 
+		convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << stage << ".*";
+		string block_file_pattern = model.parameter->storage_dir + convert.str();
+	        vector<string> block_file = glob(block_file_pattern);
+		
+		convert.str(string());
+        	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << stage;
+       	 	string block_file_name = model.parameter->storage_dir + convert.str();
+		if (!model.metropolis->AggregateBlocksAndRemoveFiles(block_file, block_file_name))
+        	{
+                	cerr << "Error in reading " << block_file_pattern << " or writing " << block_file_name << endl;
+                	abort();
+        	}
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simualtion
-		cout << "Simulation at " << level << " for " << model.parameter->simulation_length << endl; 
-		DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length, level, SIMULATION_TAG);
+		cout << "Simulation at " << stage << " for " << model.parameter->simulation_length << endl; 
+		DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length, stage, SIMULATION_TAG);
 		
-		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// simualtion for the not-group-specific covariance of the lower temp level
-		estimation_length = 5000;
-		DispatchSimulation(nNode, nInitial, model, estimation_length, level, TUNE_TAG_SIMULATION_SECOND);
-
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// logMDD
-	       	logMDD[level][level] = EstimateLogMDD(model, level, USE_TRUNCATED_POWER);
-		/*for (int j=level+1; j<(int)(logMDD[level].size()); j++)
-		logMDD[level][j] = EstimateLogMDD(model, level, level+1, logMDD[level+1][j]); */
+	       	logMDD[stage][stage] = EstimateLogMDD(model, stage, USE_TRUNCATED_POWER);
+		/*for (int j=stage+1; j<(int)(logMDD[stage].size()); j++)
+		logMDD[stage][j] = EstimateLogMDD(model, stage, stage+1, logMDD[stage+1][j]); */
 
-		cout << setprecision(20) << "logMDD at level " << level << ": " << logMDD[level][level] << endl; 
-		/*for (int j=level; j<(int)(logMDD[level].size()); j++)
-			cout << logMDD[level][j] << "\t"; 
+		cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][stage] << endl; 
+		/*for (int j=stage; j<(int)(logMDD[stage].size()); j++)
+			cout << logMDD[stage][j] << "\t"; 
 		cout << endl; */
 		
-		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// binning for the lower temperature-level's jump.  
-		// storage.binning(level, parameter.number_energy_level, -log(0.5)/(1.0/parameter.t[level-1]-1.0/parameter.t[level])); 
-		model.storage->ClearStatus(level); 
-		// model.storage->binning_equal_size(level, model.parameter->number_energy_level); 
-		model.storage->binning_equal_size(level, 50); // 2*model.parameter->number_energy_level); 
-		model.storage->finalize(level); 
-		model.storage->ClearDepositDrawHistory(level);
-
-		sPackage[LEVEL_INDEX] = (double)level; 
-		sPackage[RESERVE_INDEX] = (double)(model.storage->GetNumber_Bin(level)); 
-		for (int i=0; i<model.storage->GetNumber_Bin(level); i++)
-			sPackage[RESERVE_INDEX + i + 1] = model.storage->GetEnergyLowerBound(level, i); 
-		
-		for (int i=1; i<nNode; i++)
-			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, BINNING_INFO, MPI_COMM_WORLD); 
-
-		for (int i=1; i<nNode; i++)
-			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, BINNING_INFO, MPI_COMM_WORLD, &status);
-
-		// to save space, remove level+1 samples
-		if (save_space_flag  && level > 0 ) //&& level+1 < model.parameter->number_energy_level-1 )
+		// to save space, remove stage+1 samples
+		if (save_space_flag  && stage > 0 ) //&& stage+1 < model.parameter->number_energy_stage-1 )
 		{
-			model.storage->ClearSample(level+1);  
-			convert.str(string());
-                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << level+1 << ".*";;
-                        string remove_file = model.parameter->storage_dir + convert.str();
-			glob_t glob_result1, glob_result2;
-        		glob(remove_file.c_str(), GLOB_TILDE, NULL, &glob_result1);
-                	for (int i=0; i<(int)glob_result1.gl_pathc; i++)
-                        	remove(glob_result1.gl_pathv[i]);
-			convert.str(string());
-                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*.sample." << level+1;
-			remove_file = model.parameter->storage_dir + convert.str();
-                        glob(remove_file.c_str(), GLOB_TILDE, NULL, &glob_result2);
-                        for (int i=0; i<(int)glob_result2.gl_pathc; i++)
-                                remove(glob_result2.gl_pathv[i]);
-                        globfree(&glob_result1);
-                        globfree(&glob_result2);
+			model.storage->ClearSample(stage+1);  
 			
+			convert.str(string());
+                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << stage+1 << ".*";;
+                        string remove_file_pattern = model.parameter->storage_dir + convert.str();
+			vector<string> remove_file = glob(remove_file_pattern); 
+                	for (int i=0; i<(int)remove_file.size(); i++)
+                        	remove(remove_file[i].c_str());
+			
+			convert.str(string());
+                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*.sample." << stage+1;
+			remove_file_pattern = model.parameter->storage_dir + convert.str();
+			remove_file = glob(remove_file_pattern); 
+                        for (int i=0; i<(int)remove_file.size(); i++)
+                                remove(remove_file[i].c_str());
 		}
 	}
 

@@ -38,7 +38,7 @@ bool CEquiEnergyModel::StudentT_DrawSample(CSampleIDWeight &y)
 	int dim = current_sample.data.dim;
 	TDenseVector x(dim,0.0);
 	for (int i=0; i<dim; i++)
-		x[i] = dw_tdistribution_rnd(5.0); // degree of freedom by default = 5.0 
+		x[i] = dw_tdistribution_rnd(30.0); // degree of freedom by default = 30.0 
 	x = gmm_covariance_sqrt[0]*x+gmm_mean[0];
 	double log_posterior = log_posterior_function(x.vector, x.dim);
 	if (log_posterior > MINUS_INFINITY)
@@ -104,7 +104,7 @@ double CEquiEnergyModel::StudentT_LogPDF(const CSampleIDWeight &x) const
 	TDenseVector rotatedError = gmm_covariance_sqrt_inverse[0] * (x.data-gmm_mean[0]); 
 	double log_element = gmm_covariance_sqrt_log_determinant[0] ; 
 	for (int i=0; i<rotatedError.dim; i++)
-		log_element += log(dw_tdistribution_pdf(rotatedError[i], 5.0)); // by default, degree of freedom = 5.0 
+		log_element += log(dw_tdistribution_pdf(rotatedError[i], 30.0)); // by default, degree of freedom = 30.0 
 
 	return log_element ; 
 }
@@ -153,6 +153,64 @@ double CEquiEnergyModel::GMM_LogRatio(const CSampleIDWeight &x, const CSampleIDW
 		return log_pdf_x - log_pdf_y; 
 	else 
 		return MINUS_INFINITY; 
+}
+
+bool CEquiEnergyModel::ConsolidateSampleForCovarianceEstimation(const vector<string> &sample_file, const string &variance_file)
+{
+	vector<CSampleIDWeight> Y; 
+	TDenseVector mean; 
+	TDenseMatrix variance; 
+	int totalNumberSample = 0; 
+	for (int i=0; i<(int)sample_file.size(); i++)
+	{
+		Y.clear(); 
+		if (!LoadSampleFromFile(sample_file[i], Y) )
+                	return false;
+
+		totalNumberSample += (int)Y.size(); 
+		for (int j=0; j<(int)Y.size(); j++)
+		{
+			if (i == 0 && j == 0)
+			{
+				mean.Resize(Y[0].data.dim); 
+				variance.Resize(Y[0].data.dim, Y[0].data.dim); 
+				mean = Y[i].data; 
+				variance = Multiply(Y[i].data,Y[i].data); 
+			}
+			else 
+			{
+				mean = mean + Y[i].data; 
+				variance = variance + Multiply(Y[i].data,Y[i].data);
+			}
+		}
+		remove(sample_file[i].c_str()); 
+	}
+	mean = 1.0/(double)totalNumberSample*mean; 
+	gmm_mean.clear(); 
+	gmm_mean.push_back(mean); 
+	
+	variance = 1.0/(double)totalNumberSample*variance - Multiply(mean, mean); 
+	variance = 0.5*(variance+Transpose(variance));
+	TDenseVector d_vector;
+	TDenseMatrix U_matrix, V_matrix; 
+	SVD(U_matrix, d_vector, V_matrix, variance);
+
+	double covariance_sqrt_log_determinant = 0.0;  
+	TDenseVector inverse_d_vector(d_vector.dim);  
+	for (int i=0; i<d_vector.dim; i++)
+	{
+		d_vector[i] = sqrt(d_vector[i]); 
+		covariance_sqrt_log_determinant += log(d_vector[i]); 
+		inverse_d_vector[i] = 1.0/d_vector[i]; 
+	}
+	gmm_covariance_sqrt.clear(); 
+	gmm_covariance_sqrt.push_back(U_matrix*DiagonalMatrix(d_vector));
+	gmm_covariance_sqrt_inverse.clear();
+	gmm_covariance_sqrt_inverse.push_back(U_matrix*DiagonalMatrix(inverse_d_vector)); 
+	gmm_covariance_sqrt_log_determinant.clear(); 
+	gmm_covariance_sqrt_log_determinant.push_back(covariance_sqrt_log_determinant); 
+
+	return WriteGaussianMixtureModelParameters(variance_file);
 }
 
 bool CEquiEnergyModel::WriteGaussianMixtureModelParameters(const string &file_name) const

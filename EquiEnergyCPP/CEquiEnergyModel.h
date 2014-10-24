@@ -51,11 +51,8 @@ private:
 public:
 ///////////////////////////////////////////////////////////////
 // Parameters for equi-energy sampling
-// 	energy_level: i
-// 	energy_bound: h[i]
-// 	temperature_bound: t[i]
 	bool if_bounded; 
- 	int energy_level;		
+ 	int energy_stage;		
 	double t_bound; 
 
 //////////////////////////////////////////////////////////////
@@ -80,18 +77,20 @@ public:
 	int EE_Draw(int MH_thin); 	// equi-energy draw
 public:
 	double BurnIn(int burn_in_length);		// returns the maximum posteior during burn-in
-	bool Initialize(int desired_pool_size, int level);	// Initialize model (setting values for current_sample) using bins indexed from start_bin through (including) end_bin. 
-	bool InitializeWithBestSample(int level); 		// Initialize model using the best sample in the bins indexed from start_bin to end_bin
-	bool InitializeWith_Kth_BestSample(int K, int level_index);
-	bool Initialize_RandomlyPickFrom_K_BestSample(int K, int level_index); 
-	bool Initialize_KMeansClustering(int K, int level_index, vector<CSampleIDWeight> &centers) const; 
-	bool Initialize_MostDistant_WithinPercentile(int K, int level_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
-	bool Initialize_MostDistant_WithinPercentileBand(int K, int level_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
-	bool Initialize_WeightedSampling(int K, int level_index, vector<CSampleIDWeight> &starters) const; 
+	bool Initialize(int desired_pool_size, int stage);	// Initialize model (setting values for current_sample) using bins indexed from start_bin through (including) end_bin. 
+	bool InitializeWithBestSample(int stage); 		// Initialize model using the best sample in the bins indexed from start_bin to end_bin
+	bool InitializeWith_Kth_BestSample(int K, int stage_index);
+	bool Initialize_RandomlyPickFrom_K_BestSample(int K, int stage_index); 
+	bool Initialize_KMeansClustering(int K, int stage_index, vector<CSampleIDWeight> &centers) const; 
+	bool Initialize_MostDistant_WithinPercentile(int K, int stage_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
+	bool Initialize_MostDistant_WithinPercentileBand(int K, int stage_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
+	bool Initialize_WeightedSampling(int K, int stage_index, vector<CSampleIDWeight> &starters) const; 
 	bool InitializeFromFile(const string &file_name); 
 
-	void Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy level (no jumping across levels). Returns the maximum posterior during simulation
-	void Simulation_Cross(bool if_storage, const string &sample_file_name=string()); 	// Simulation across levels. Returns the maximum posterior during simulation 	
+	void Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy stage (no jumping across stages). Returns the maximum posterior during simulation
+	void Simulation_Cross(bool if_storage, const string &sample_file_name=string()); 	// Simulation across stages. Returns the maximum posterior during simulation 	
+	// Reweight samples
+	vector<double> Reweight(const vector<CSampleIDWeight> &samples, int current_stage, int previous_stage) const; 
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // 	make a equi-energy jump
@@ -131,7 +130,12 @@ public:
 	bool AggregateGaussianMixtureModelParameters(const string &file_name);
 	void ClearGaussianMixtureModelParameters(); 
 	void KeepOptimalGaussianMixtureModelParameters(); 
-
+	bool ConsolidateSampleForCovarianceEstimation(const vector<string> &filenames_merge, const string &variance_file); 
+	const TDenseVector & GetGMM_Mean(int i) const { return gmm_mean[i]; }
+	const TDenseMatrix & GetGMM_CovarianceSqrt(int i) const { return gmm_covariance_sqrt[i]; }
+	double GetGMM_CovarianceSqrtLogDeterminant(int i) const { return gmm_covariance_sqrt_log_determinant[i]; }
+	const TDenseMatrix & GetGMM_CovarianceSqrtInverse(int i) const { return gmm_covariance_sqrt_inverse[i]; }
+	
 friend class MinusLogPosterior_NPSOL; 
 // friend class MinusLogPosterior_CSMINWEL; 
 };

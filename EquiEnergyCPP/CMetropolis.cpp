@@ -1,6 +1,6 @@
 #include <cmath>
-#include "dw_rand.h"
 #include <fstream>
+#include "dw_rand.h"
 #include "CSampleIDWeight.h"
 #include "CEquiEnergyModel.h"
 #include "CMetropolis.h"
@@ -342,6 +342,44 @@ bool CMetropolis::WriteBlocks(const string &file_name)
 	return true;
 }
 
+bool CMetropolis::AggregateBlocksAndRemoveFiles(const vector<string> &read_file_name, const string &write_file_name)
+{
+	if (read_file_name.size() == 1)
+		rename(read_file_name[0].c_str(), write_file_name.c_str());	
+	else 
+	{
+		vector<TDenseMatrix> sum_blocks; 
+		for (int i=0; i<(int)read_file_name.size(); i++)
+		{
+			if (!ReadBlocks(read_file_name[i]) )
+				return false; 
+			if (i == 0)
+			{
+				sum_blocks.resize(blocks.size()); 
+				for (int j=0; j<(int)blocks.size(); j++)
+					sum_blocks[j] = blocks[j]; 
+			}
+			else 
+			{
+				try { 
+					for (int j=0; j<(int)(blocks.size()); j++)
+						sum_blocks[j] = sum_blocks[j] + blocks[j]; 
+				}
+				catch(...) { return false; }
+			}
+			remove(read_file_name[i].c_str()); 
+		}
+		for (int j=0; j<(int)(sum_blocks.size()); j++)
+		{
+			sum_blocks[j] = sum_blocks[j] * (1.0/(double)read_file_name.size()); 
+			blocks[j] = sum_blocks[j]; 
+		}
+		if (!WriteBlocks(write_file_name))
+			return false; 
+	}
+	return true; 
+}
+
 bool CMetropolis::AdaptiveBeforeSimulation(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name, bool if_eejump)
 // There are two passes before simulations
 // first pass
@@ -628,6 +666,53 @@ bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptiv
 	
 		mean = (1.0/(double)Y.size()) * mean; 
 		variance = (1.0/(double)Y.size())*variance - Multiply(mean, mean); 
+		variance = 0.5 * (variance+Transpose(variance)); 
+ 
+		SVD(U_matrix, d_vector, V_matrix, variance); 
+		for (int i=0; i<d_vector.dim; i++)
+			d_vector[i] = sqrt(d_vector[i]); 
+		D_matrix = DiagonalMatrix(d_vector); 
+		U_matrix = U_matrix *D_matrix; 
+
+		B_matrix[i_block]=Zeros(Y[0].data.dim, block_scheme[i_block].size); 
+		B_matrix[i_block].Insert(block_scheme[i_block], TIndex(0,block_scheme[i_block].size-1), U_matrix); 
+	}
+	CSampleIDWeight x=adaptive_start_point; 
+
+	// double accP=1.0- exp(log(1.0-0.25)/(double)block_scheme.size());
+	double accP = 0.234; 
+	BlockAdaptive(x, B_matrix, accP, period, max_period, if_eejump); 
+
+	if (block_file_name.empty())
+		return true; 
+	else 
+	{
+		bool return_value = WriteBlocks(block_file_name); 
+		return return_value; 
+	}
+}
+
+bool CMetropolis::AdaptiveAfterSimulation_WeightedSampling_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const vector<CSampleIDWeight> &Y, const vector<double> &weight, const string &block_file_name, bool if_eejump, const string &block_scheme_file)
+{
+	block_scheme = ReadBlockScheme(block_scheme_file); 
+	if (block_scheme.empty())
+		block_scheme.push_back(TIndex(0, Y[0].data.dim-1)); 
+
+	vector<TDenseMatrix>B_matrix(block_scheme.size()); 
+	TDenseVector mean, d_vector; 
+	TDenseMatrix variance, U_matrix, V_matrix, D_matrix; 
+	for (int i_block=0; i_block<(int)block_scheme.size(); i_block++)
+	{
+		// Compute variance and mean
+		mean = Zeros(block_scheme[i_block].size);
+		variance = Zeros(block_scheme[i_block].size, block_scheme[i_block].size); 
+		for (int i=0; i<(int)Y.size(); i++)
+		{
+			mean = mean + weight[i] * Y[i].data.SubVector(block_scheme[i_block]);  
+			variance = variance + weight[i] * Multiply(Y[i].data.SubVector(block_scheme[i_block]),Y[i].data.SubVector(block_scheme[i_block]));
+		}
+	
+		variance = variance - Multiply(mean, mean); 
 		variance = 0.5 * (variance+Transpose(variance)); 
  
 		SVD(U_matrix, d_vector, V_matrix, variance); 

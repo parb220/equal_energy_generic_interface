@@ -7,7 +7,6 @@
 using namespace std; 
 
 class CSampleIDWeight; 
-bool Solve_Polynomial_Equation(vector<double> &, size_t n, double t0, double tk_1); 
 
 class CEESParameter 
 {
@@ -16,12 +15,13 @@ public:
 	string storage_dir;	// fold to store all relevant information
 	size_t storage_marker;		// number of samples stored in memory for retrieve 
 	string run_id; 
-	size_t number_energy_level;	// number of energy levels
+	size_t number_energy_stage;	// number of energy stages
+	size_t number_striation; 	// number of rings
 	double pee; 	// probability of equi-energy-jump
-	double t0; 	// temperature for the lowest energy level
-	double tk_1; 	// temperature for the highest energy level
+	double t0; 	// temperature for the lowest energy stage 
+	double tN_1; 	// temperature for the highest energy stage 
 
-	vector <double> t; 	// temperature for all levels
+	vector <double> t; 	// temperature for all stage 
 public:
 	CEESParameter(); 
 	~CEESParameter(); 
@@ -30,14 +30,13 @@ public:
 	bool WriteSummaryFile(string) const; 
 	
 	bool SetEnergyBound();
-	bool SetTemperature(int nLevel); 
-	bool SetTemperature(int nGeometricLevel, int nFinerLevel);
+	bool SetTemperature(); 
 
-	double LogRatio_Level(double energy_x, double energy_y, int level) const; 
+	double LogRatio_Stage(double energy_x, double energy_y, int stage) const; 
 
 public: // parameters that are not saved, just for purpose of encapsulation
-	int highest_level; 
-	int lowest_level; 
+	int highest_stage; 
+	int lowest_stage; 
 	size_t thin;	// thinning factor for the entire sample
 	size_t THIN;  	// thinning factor for MH samples
 	size_t simulation_length; 

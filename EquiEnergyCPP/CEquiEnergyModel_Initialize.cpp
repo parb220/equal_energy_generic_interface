@@ -7,14 +7,29 @@
 #include "dataanalysis.h"
 #include "CEquiEnergyModel.h"
 
-bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int level_index, vector<CSampleIDWeight> &starters) const
+vector<double> CEquiEnergyModel::Reweight(const vector<CSampleIDWeight> &samples, int current_stage, int previous_stage) const
+{
+	vector<double> log_weight(samples.size(),0.0); 
+	// log_weight = weight*(1.0/t[current_stage]-1.0/([previous_stage]))
+	for (int i=0; i<(int)(samples.size()); i++)
+	{
+		log_weight[i] = samples[i].weight * 1.0/parameter->t[current_stage]; 
+		// if (previous_stage == parameter->number_energy_stage)
+		//	log_weight[i] = log_weight[i] - StudentT_LogPDF(samples[i]); 
+		// else 
+			log_weight[i] = log_weight[i] - samples[i].weight * 1.0/parameter->t[previous_stage]; 
+	}
+	return log_weight; 
+}
+
+bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int stage_index, vector<CSampleIDWeight> &starters) const
 {
 	if (starters.size() != K)
 		starters.resize(K);
 
-	// Get all previous level's samples out
+	// Get all previous stage's samples out
 	vector<CSampleIDWeight> samples;  
-	if (!storage->DrawAllSample(level_index, samples) || samples.size() < K)
+	if (!storage->DrawAllSample(stage_index, samples) || samples.size() < K)
                 return false;
         if (samples.size() == K)
         {
@@ -23,40 +38,45 @@ bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int level_index, vecto
                 return true;
         }
 
-	// Cumulative sum of importance weights
-	vector<double> log_weight_sum(samples.size()), weight_sum(samples.size()); 
-	// log(importance) = weight*(1.0/K-1.0/(K+1))
-	log_weight_sum[0] = samples[0].weight*(1.0/parameter->t[level_index-1]-1.0/parameter->t[level_index]); 
-	for (int i=1; i<(int)samples.size(); i++)
-		log_weight_sum[i] = AddLogs(log_weight_sum[i-1], samples[i].weight*(1.0/parameter->t[level_index-1]-1.0/parameter->t[level_index]));
-	for (int i=0; i<(int)samples.size(); i++) // Normalize
-		weight_sum[i] = exp(log_weight_sum[i] -log_weight_sum.back()); 
-
-	for (int i=0; i<K; i++)
+	if (!samples.empty())
 	{
-		double random_number = dw_uniform_rnd(); 
-		int position = std::lower_bound(weight_sum.begin(), weight_sum.end(), random_number)-weight_sum.begin(); 
-		starters[i] = samples[position]; 	
-	} 
-	return true; 
+		// Cumulative sum of importance weights
+		vector<double> log_weight = Reweight(samples, stage_index-1, stage_index); 
+		vector<double> log_weight_sum(samples.size()), weight_sum(samples.size()); 
+		log_weight_sum[0] = log_weight[0];  
+		for (int i=1; i<(int)samples.size(); i++)
+			log_weight_sum[i] = AddLogs(log_weight_sum[i-1], log_weight[i]); 
+		for (int i=0; i<(int)samples.size(); i++) // Normalize
+			weight_sum[i] = exp(log_weight_sum[i] -log_weight_sum.back()); 
+
+		for (int i=0; i<K; i++)
+		{
+			double random_number = dw_uniform_rnd(); 
+			int position = std::lower_bound(weight_sum.begin(), weight_sum.end(), random_number)-weight_sum.begin(); 
+			starters[i] = samples[position]; 	
+		} 
+		return true; 
+	}
+	else 
+		return false; 
 }
 
-bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(int K, int level_index, vector<CSampleIDWeight > &starters, double percentile) const
+bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(int K, int stage_index, vector<CSampleIDWeight > &starters, double percentile) const
 {
         if (starters.size() != K)
                 starters.resize(K);
 	int nSample=0; 
-	for (int ii=0; ii<storage->Number_Bin(level_index); ii++)
-		nSample += (int)storage->GetNumberRecrod(level_index, ii); 
+	for (int ii=0; ii<storage->Number_Bin(stage_index); ii++)
+		nSample += (int)storage->GetNumberRecrod(stage_index, ii); 
 	if (nSample < K)
 		return false; 
 	
 	vector<CSampleIDWeight> samples; 
 	int nDraw = ceil(percentile*nSample) < K ? K : ceil(percentile*nSample); 
 	int bin = 0;
-       	while (bin < storage->Number_Bin(level_index) && samples.size() < nDraw)
+       	while (bin < storage->Number_Bin(stage_index) && samples.size() < nDraw)
        	{
-               	storage->Draw_K_MostWeightSample(nDraw, level_index, bin, samples);
+               	storage->Draw_K_MostWeightSample(nDraw, stage_index, bin, samples);
                	bin ++;
        	}
 	if (nDraw == K)
@@ -95,22 +115,22 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(int K, int level_
 	return true; 
 }
 
-bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentileBand(int K, int level_index, vector<CSampleIDWeight > &starters, double percentile) const
+bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentileBand(int K, int stage_index, vector<CSampleIDWeight > &starters, double percentile) const
 {
         if (starters.size() != K)
                 starters.resize(K);
 	int nSample=0; 
-	for (int ii=0; ii<storage->Number_Bin(level_index); ii++)
-		nSample += (int)storage->GetNumberRecrod(level_index, ii); 
+	for (int ii=0; ii<storage->Number_Bin(stage_index); ii++)
+		nSample += (int)storage->GetNumberRecrod(stage_index, ii); 
 	if (nSample < K)
 		return false; 
 	
 	vector<CSampleIDWeight> samples; 
 	int nDraw = ceil(percentile*nSample) < K ? K : ceil(percentile*nSample); 
 	int bin = 0;
-       	while (bin < storage->Number_Bin(level_index) && samples.size() < nDraw)
+       	while (bin < storage->Number_Bin(stage_index) && samples.size() < nDraw)
        	{
-               	storage->Draw_K_MostWeightSample(nDraw, level_index, bin, samples);
+               	storage->Draw_K_MostWeightSample(nDraw, stage_index, bin, samples);
                	bin ++;
        	}
 	if (nDraw == K)
@@ -152,12 +172,12 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentileBand(int K, int le
 }
 
 
-bool CEquiEnergyModel::Initialize_KMeansClustering(int K, int level_index, vector<CSampleIDWeight> & centers) const
+bool CEquiEnergyModel::Initialize_KMeansClustering(int K, int stage_index, vector<CSampleIDWeight> & centers) const
 {
 	if (centers.size() != K)
 		centers.resize(K); 
 	vector <CSampleIDWeight> samples; 
-	if (!storage->DrawAllSample(level_index, samples) || samples.size() < K)
+	if (!storage->DrawAllSample(stage_index, samples) || samples.size() < K)
 		return false; 
 	if (samples.size() == K)
 	{
@@ -214,14 +234,14 @@ bool CEquiEnergyModel::InitializeFromFile(const string &file_name)
 }
 
 // A sample is randomly taken from a pool (with size desired_pool_size) of samples where the pool is formed by samples with higher log-posteriors. Note that samples with higher log-posterior values are stored in smaller-indexed bins. So, if the desired pool size is 10 while the size of the first bin is 100, then only the first bin will be used. In contrast, if the desired pool size is 100 while the total number of samples in the first 3 bins is barely greater than 100, then the first 3 bins will be used. 
-bool CEquiEnergyModel::Initialize(int desiredPoolSize, int level_index)
+bool CEquiEnergyModel::Initialize(int desiredPoolSize, int stage_index)
 {
-        int N=storage->Number_Bin(level_index);
+        int N=storage->Number_Bin(stage_index);
         int nSample_Total=0;
         vector<int>nSample_Bin(N,0);
         for (int bin_index=0;  bin_index<N; bin_index++)
         {
-                nSample_Bin[bin_index] = storage->GetNumberRecrod(level_index, bin_index);
+                nSample_Bin[bin_index] = storage->GetNumberRecrod(stage_index, bin_index);
                 nSample_Total += nSample_Bin[bin_index];
         }
 
@@ -234,7 +254,7 @@ bool CEquiEnergyModel::Initialize(int desiredPoolSize, int level_index)
         }
         if (random_index >= nLumSum && random_index < nLumSum + nSample_Bin[bin_index])
         {
-                if(storage->DrawSample(level_index, bin_index, current_sample))
+                if(storage->DrawSample(stage_index, bin_index, current_sample))
                 {
                         current_sample.id = timer_when_started;
 			// Because all samples stored in storage have had their log-posterior calculated and stored 
@@ -245,37 +265,37 @@ bool CEquiEnergyModel::Initialize(int desiredPoolSize, int level_index)
         return false;
 }
 
-bool CEquiEnergyModel::InitializeWithBestSample(int level_index)
+bool CEquiEnergyModel::InitializeWithBestSample(int stage_index)
 {
         int bin_index=0;
-        while (bin_index<storage->Number_Bin(level_index) && !(storage->DrawMostWeightSample(level_index, bin_index, current_sample) ) )
+        while (bin_index<storage->Number_Bin(stage_index) && !(storage->DrawMostWeightSample(stage_index, bin_index, current_sample) ) )
                 bin_index ++;
-        if (bin_index >= storage->Number_Bin(level_index))
+        if (bin_index >= storage->Number_Bin(stage_index))
                 return false;
         current_sample.id = timer_when_started;
         return true;
 }
 
-bool CEquiEnergyModel::InitializeWith_Kth_BestSample(int K, int level_index)
+bool CEquiEnergyModel::InitializeWith_Kth_BestSample(int K, int stage_index)
 {
         vector<CSampleIDWeight> sample;
         int bin=0;
-        while (bin < storage->Number_Bin(level_index) && sample.size() < K)
+        while (bin < storage->Number_Bin(stage_index) && sample.size() < K)
         {
-                storage->Draw_K_MostWeightSample(K, level_index, bin, sample);
+                storage->Draw_K_MostWeightSample(K, stage_index, bin, sample);
                 bin ++;
         }
 	Take_Sample_Just_Drawn_From_Storage(sample.back());
         return true;
 }
 
-bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(int K, int level_index)
+bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(int K, int stage_index)
 {
         vector<CSampleIDWeight> sample;
         int bin = 0;
-        while (bin < storage->Number_Bin(level_index) && sample.size() < K)
+        while (bin < storage->Number_Bin(stage_index) && sample.size() < K)
         {
-                storage->Draw_K_MostWeightSample(K, level_index, bin, sample);
+                storage->Draw_K_MostWeightSample(K, stage_index, bin, sample);
                 bin ++;
         }
         //if (sample.size() < K)

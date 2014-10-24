@@ -34,12 +34,15 @@ public:
 	bool AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name=string(), bool if_eejump=false, const string &block_scheme_file_name=string());
 	bool AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name=string(), bool if_eejump=false, const string &block_scheme_file_name=string());
 
+	bool AdaptiveAfterSimulation_WeightedSampling_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const vector<CSampleIDWeight> &samples, const vector<double> &weights, const string &block_file_name=string(), bool if_eejump=false, const string &block_scheme_file_name=string()); 
+
 	// draw one sample
 	bool BlockRandomWalkMetropolis(double &, CSampleIDWeight &, const CSampleIDWeight &x, size_t thin=1); 
 
 	// IO: blocks
 	bool WriteBlocks(const string &file_name); 
 	bool ReadBlocks(const string &file_name);
+	bool AggregateBlocksAndRemoveFiles(const vector<string> &read_file, const string &write_file_name); 
 
 public: 
 	// Constructions destructions

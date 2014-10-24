@@ -15,33 +15,14 @@ extern "C" {
 }
 
 CEquiEnergyModel* MinusLogPosterior_NPSOL::model; 
-// CEquiEnergyModel* MinusLogPosterior_CSMINWEL::model; 
 
 void *MinusLogPosterior_NPSOL::function(int *mode, int *n, double *x, double *f, double *g, int *nstate)
 {
 	*f = -model->log_posterior_function(x,*n); 
 }
 
-/*double MinusLogPosterior_CSMINWEL::function(double *x, int n, double **args, int *dims)
-{
-	double return_value = -model->log_posterior_function(x, n); 
-	return return_value; 
-}*/
-
-// HillClimb is always one on the original model. Therefore, if_bounded will be set as false temperoraly
-// so that all calculation can be perfomed on the original model. After HillClimb is finished, if_bounded
-// will be set as its original value. 
-// Samples generated during HillClimb will be saved into storage but always at the level of number_energy_level
-// (the extra level)
-//
-// Revision on 09/22/2014, HillClimb is on the heated model. Therefore, if_bounded will not be changed
-// during hillclimb; and Hessian matrix will not be scaled either.
 double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iteration, int perturbation_iteration, double perturbation_scale, double scale)
 {
-	// energy_level = parameter->number_energy_level; 
-	// bool if_bounded_old = if_bounded; 
-	// if_bounded = false;	// temperarily set if_bounded as false so hill-climbing is with respect to original model
- 
 	const string COLD_START = string("Cold Start");
         const string NO_PRINT_OUT = string("Major print level = 0");
         const string DERIVATIVE_LEVEL = string("Derivative level = 0");
@@ -182,7 +163,6 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 	}	
 	catch(...)
 	{
-		// if_bounded = if_bounded_old; 
 		delete [] g; 
 		delete [] c;
 		delete [] w; 
@@ -209,59 +189,6 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 	delete [] cJac; 
 	delete [] A; 
 
-	// storage->finalize(energy_level); 
-	// storage->ClearDepositDrawHistory(energy_level);
-
-	// if_bounded = if_bounded_old; 
 	return (double)nAccpt/(double)nSolution; 
 }
 
-/*double CEquiEnergy_TState::HillClimb_CSMINWEL(size_t nSolution)
-{
-	energy_level = parameter->number_energy_level;
-        bool if_bounded_old = if_bounded;
-        if_bounded = false; 
-
-	MinusLogPosterior_CSMINWEL::model = this;	
-
-	int n = current_sample.data.dim;
-	double *H=new double[n*n], *g=new double[n], *x=new double[n], crit = 1.0e-3, fh; 
-	int nit=50, itct, fcount; 
-	int retcodeh; 
-	const double IniHCsminwel=1.0e-5; 
-	double max_log_posterior = MINUS_INFINITY; 
-	
-	for (int iSolution=0; iSolution < nSolution; iSolution ++)
-	{
-		InitializeParameter(x, n); 
-		for (int i=0; i<n; i++)
-			for (int j=0; j<n; j++)
-				H[i*n+j] = IniHCsminwel; 
-		for (int i=0; i<n; i++)
-			g[i] = 0.0; 
-	
-		dw_csminwel(MinusLogPosterior_CSMINWEL::function, x, n, H, g, NULL, &fh, crit, &itct, nit, &fcount, &retcodeh, NULL, NULL);
-		if (retcodeh == 0)
-		{
-			CSampleIDWeight sample;
-                        sample.data.Resize(n);
-                        for (int i=0; i<n; i++)
-                                sample.data[i] = x[i];
-                        sample.DataChanged();
-                        sample.id = timer_when_started;
-                        log_posterior_function(sample);
-
-			SaveSampleToStorage(sample); 
-			max_log_posterior = sample.weight > max_log_posterior ? sample.weight : max_log_posterior; 
-		}
-	}
-
-	delete []x; 
-	delete []g; 
-	delete []H; 
-	
-	storage->finalize(energy_level); 
-        storage->ClearDepositDrawHistory(energy_level); 
-	if_bounded = if_bounded_old; 
-	return max_log_posterior; 
-}*/

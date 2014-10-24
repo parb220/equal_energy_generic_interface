@@ -17,12 +17,12 @@ using namespace std;
 
 bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSampleIDWeight &j); 
 bool compare_CSampleIDWeight_BasedOnID(const CSampleIDWeight &i, const CSampleIDWeight &j); 
-double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level, double logMDD_previous); 
-double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type);
-double EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level); 
+double EstimateLogMDD(CEquiEnergyModel &model, int stage, int previous_stage, double logMDD_previous); 
+double EstimateLogMDD(CEquiEnergyModel &model, int stage, int proposal_type);
+double EstimateLogMDD_gaussian(CEquiEnergyModel &model, int stage); 
 
-vector<double>EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type, int nGroup); 
-vector<double>EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level, int nGroup);
+vector<double>EstimateLogMDD(CEquiEnergyModel &model, int stage, int proposal_type, int nGroup); 
+vector<double>EstimateLogMDD_gaussian(CEquiEnergyModel &model, int stage, int nGroup);
  
 double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t, int proposal_type); 
 double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t); 
@@ -251,17 +251,17 @@ bool GetCenterScaleFromSample(const vector<CSampleIDWeight> &sample, TDenseVecto
 	return true; ; 
 }
 
-double EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level)
+double EstimateLogMDD_gaussian(CEquiEnergyModel &model, int stage)
 {
 	vector<CSampleIDWeight > posterior;
         bool unstructured = true;
         int data_size = model.current_sample.GetSize_Data();
-        if (!model.storage->DrawAllSample(level, posterior, unstructured, data_size))
+        if (!model.storage->DrawAllSample(stage, posterior, unstructured, data_size))
         {
                 cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
                 abort();
         }
-	return LogMDD_gaussian(posterior, model, model.parameter->t[level]); 
+	return LogMDD_gaussian(posterior, model, model.parameter->t[stage]); 
 }
 
 double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t)
@@ -292,17 +292,17 @@ double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyMode
 	return mdd_bridge; 
 }
 
-double EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type)
+double EstimateLogMDD(CEquiEnergyModel &model, int stage, int proposal_type)
 {
 	vector<CSampleIDWeight > posterior; 
 	bool unstructured = true; 
 	 int data_size = model.current_sample.GetSize_Data(); 
-	if (!model.storage->DrawAllSample(level, posterior, unstructured, data_size)) 
+	if (!model.storage->DrawAllSample(stage, posterior, unstructured, data_size)) 
         {
                 cerr << "EstimateLogMDD:: error occurred when loading all samples.\n"; 
                 abort();
         }
-	return LogMDD(posterior, model, model.parameter->t[level], proposal_type); 
+	return LogMDD(posterior, model, model.parameter->t[stage], proposal_type); 
 }
 
 double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t,  int proposal_type)
@@ -380,13 +380,13 @@ double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model,
 	return mdd_bridge; 
 }
 
-double LowerBoundEffectiveSampleSize(CEquiEnergyModel &model, int level, int previous_level)
+double LowerBoundEffectiveSampleSize(CEquiEnergyModel &model, int stage, int previous_stage)
 {
 	vector<CSampleIDWeight> proposal; 
 
 	bool unstructured = true; 
 	int data_size = model.current_sample.GetSize_Data();
-	if (!model.storage->DrawAllSample(previous_level, proposal, unstructured, data_size) ) 
+	if (!model.storage->DrawAllSample(previous_stage, proposal, unstructured, data_size) ) 
 	{
 		cerr << "LowerBoundEffectiveSampleSize():: error occurred when checking convergency.\n"; 
 		abort(); 
@@ -396,10 +396,10 @@ double LowerBoundEffectiveSampleSize(CEquiEnergyModel &model, int level, int pre
 	double sum_weight=0.0; 
 	for(int i=0; i<(int)proposal.size(); i++)
 	{
-		if (previous_level == model.parameter->number_energy_level)
-			weight[i] = proposal[i].weight/model.parameter->t[level]-model.StudentT_LogPDF(proposal[i]);
+		if (previous_stage == model.parameter->number_energy_stage)
+			weight[i] = proposal[i].weight/model.parameter->t[stage]-model.StudentT_LogPDF(proposal[i]);
 		else 
-			weight[i] = proposal[i].weight/model.parameter->t[level]-proposal[i].weight/model.parameter->t[previous_level]; 
+			weight[i] = proposal[i].weight/model.parameter->t[stage]-proposal[i].weight/model.parameter->t[previous_stage]; 
 		if (i==0)
 			sum_weight = weight[i]; 
 		else
@@ -414,12 +414,12 @@ double LowerBoundEffectiveSampleSize(CEquiEnergyModel &model, int level, int pre
 	return 1.0/LB_ESS; 
 }
 
-vector<double> EffectiveSampleSize(vector<CSampleIDWeight> &sample) // CEquiEnergyModel &model, int level, bool if_normalization)
+vector<double> EffectiveSampleSize(vector<CSampleIDWeight> &sample) // CEquiEnergyModel &model, int stage, bool if_normalization)
 {
 	/*vector<CSampleIDWeight> sample; 
 	bool unstructured = true;
 	int data_size = model.current_sample.GetSize_Data();
-	if (!model.storage->DrawAllSample(level, sample, unstructured, data_size) )
+	if (!model.storage->DrawAllSample(stage, sample, unstructured, data_size) )
         {
                 cerr << "EffectiveSampleSize():: error occurred when checking convergency.\n";
                 abort();
@@ -476,13 +476,13 @@ vector<double> EffectiveSampleSize(vector<CSampleIDWeight> &sample) // CEquiEner
 	return ESS; 
 }
 
-double CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,  double convergency_previous, double &average_consistency, double &std_consistency, double &LB_ESS)
+double CheckConvergency (CEquiEnergyModel &model, int stage, int previous_stage,  double convergency_previous, double &average_consistency, double &std_consistency, double &LB_ESS)
 {
 	vector<CSampleIDWeight> proposal; 
 
 	bool unstructured = true; 
 	int data_size = model.current_sample.GetSize_Data();
-	if (!model.storage->DrawAllSample(previous_level, proposal, unstructured, data_size) ) 
+	if (!model.storage->DrawAllSample(previous_stage, proposal, unstructured, data_size) ) 
 	{
 		cerr << "CheckConvergency:: error occurred when checking convergency.\n"; 
 		abort(); 
@@ -492,10 +492,10 @@ double CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,
 	vector<double> weight(proposal.size(), 0.0); 
 	for(int i=0; i<(int)proposal.size(); i++)
 	{
-		if (previous_level == model.parameter->number_energy_level)
-			weight[i] = proposal[i].weight/model.parameter->t[level]-model.StudentT_LogPDF(proposal[i]);
+		if (previous_stage == model.parameter->number_energy_stage)
+			weight[i] = proposal[i].weight/model.parameter->t[stage]-model.StudentT_LogPDF(proposal[i]);
 		else 
-			weight[i] = proposal[i].weight/model.parameter->t[level]-proposal[i].weight/model.parameter->t[previous_level]; 
+			weight[i] = proposal[i].weight/model.parameter->t[stage]-proposal[i].weight/model.parameter->t[previous_stage]; 
 	}
 
 	vector<double>group_consistency; 
@@ -549,13 +549,13 @@ double CheckConvergency (CEquiEnergyModel &model, int level, int previous_level,
 }
 
 
-double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level,  double logMDD_previous)
+double EstimateLogMDD(CEquiEnergyModel &model, int stage, int previous_stage,  double logMDD_previous)
 {
 	vector<CSampleIDWeight> proposal, posterior; 
 
 	bool unstructured = true; 
 	int data_size = model.current_sample.GetSize_Data();
-	if (!model.storage->DrawAllSample(previous_level, proposal, unstructured, data_size) || !model.storage->DrawAllSample(level, posterior, unstructured, data_size)) 
+	if (!model.storage->DrawAllSample(previous_stage, proposal, unstructured, data_size) || !model.storage->DrawAllSample(stage, posterior, unstructured, data_size)) 
 	{
 		cerr << "EstimateLogMDD:: error occurred when loading all samples.\n"; 
 		abort(); 
@@ -568,15 +568,15 @@ double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level,  d
 
 	for(int i=0; i<(int)proposal.size(); i++)
 	{
-		ElementM(proposal_value, i, 0) = proposal[i].weight/model.parameter->t[previous_level]-logMDD_previous; 
-        	ElementM(proposal_value, i, 1) = proposal[i].weight/model.parameter->t[level];
+		ElementM(proposal_value, i, 0) = proposal[i].weight/model.parameter->t[previous_stage]-logMDD_previous; 
+        	ElementM(proposal_value, i, 1) = proposal[i].weight/model.parameter->t[stage];
 		// ElementM(proposal_value, i, 0) = proposal[i].weight-logMDD_previous; 
         	// ElementM(proposal_value, i, 1) = proposal[i].weight;
 	}
 	for(int i=0; i<(int)posterior.size(); i++)
 	{
-		ElementM(posterior_value, i, 0) = posterior[i].weight/model.parameter->t[previous_level]-logMDD_previous; 
-                ElementM(posterior_value, i, 1) = posterior[i].weight/model.parameter->t[level];
+		ElementM(posterior_value, i, 0) = posterior[i].weight/model.parameter->t[previous_stage]-logMDD_previous; 
+                ElementM(posterior_value, i, 1) = posterior[i].weight/model.parameter->t[stage];
 		// ElementM(posterior_value, i, 0) = posterior[i].weight-logMDD_previous; 
                 // ElementM(posterior_value, i, 1) = posterior[i].weight;
 	}
@@ -585,17 +585,17 @@ double EstimateLogMDD(CEquiEnergyModel &model, int level, int previous_level,  d
 	double logmdd = ComputeLogMarginalDensity_Bridge(proposal_value, posterior_value); 
 	double logMDD = ComputeLogMarginalDensity_Mueller(proposal_value, posterior_value, &in_P1, &in_P2); 
 	
-	// cout << "logMDD mueller at level " << level <<  " using draws of level " << previous_level << " as proposal is " << logMDD << endl; 
-	// cout << "logMDD bridge at level " << level << " using draws of previuos level " << previous_level << " as proposal is " << logmdd << endl; 
+	// cout << "logMDD mueller at stage " << stage <<  " using draws of stage " << previous_stage << " as proposal is " << logMDD << endl; 
+	// cout << "logMDD bridge at stage " << stage << " using draws of previuos stage " << previous_stage << " as proposal is " << logmdd << endl; 
 	return logMDD; 
 }
 
-double CheckLogMDDConvergency(vector<CSampleIDWeight> &sample, CEquiEnergyModel &model, int level, double t, int proposal_type, double &average_logMDD, double &std_logMDD)
+double CheckLogMDDConvergency(vector<CSampleIDWeight> &sample, CEquiEnergyModel &model, int stage, double t, int proposal_type, double &average_logMDD, double &std_logMDD)
 {
 	/*vector<CSampleIDWeight> sample;
         bool unstructured = true;
         int data_size = model.current_sample.GetSize_Data();
-        if (!model.storage->DrawAllSample(level, sample, unstructured, data_size) )
+        if (!model.storage->DrawAllSample(stage, sample, unstructured, data_size) )
         {
                 cerr << "CheckConvergency:: error occurred when checking convergency.\n";
                 abort();
@@ -638,12 +638,12 @@ double CheckLogMDDConvergency(vector<CSampleIDWeight> &sample, CEquiEnergyModel 
         return LogMDD(sample, model, t, proposal_type); 
 }
 
-vector<double>EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_type, int nGroup)
+vector<double>EstimateLogMDD(CEquiEnergyModel &model, int stage, int proposal_type, int nGroup)
 {
 	vector<CSampleIDWeight> posterior; 
 	bool unstructured = true;
         int data_size = model.current_sample.GetSize_Data();
-	if(!model.storage->DrawAllSample(level, posterior, unstructured, data_size))
+	if(!model.storage->DrawAllSample(stage, posterior, unstructured, data_size))
         {
                 cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
                 abort();
@@ -660,7 +660,7 @@ vector<double>EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_ty
 		group_sample.clear(); 
 		for (int j=begin_index; j<end_index; j++)
 			group_sample.push_back(posterior[j]); 
-		logMDD[i] = LogMDD(group_sample, model, model.parameter->t[level], proposal_type); 
+		logMDD[i] = LogMDD(group_sample, model, model.parameter->t[stage], proposal_type); 
 		begin_index = end_index; 
 		end_index = end_index + group_size < (int)(posterior.size()) ? end_index + group_size : (int)(posterior.size()); 
 	}
@@ -668,12 +668,12 @@ vector<double>EstimateLogMDD(CEquiEnergyModel &model, int level, int proposal_ty
 	return logMDD; 
 }
 
-vector<double>EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level, int nGroup)
+vector<double>EstimateLogMDD_gaussian(CEquiEnergyModel &model, int stage, int nGroup)
 {
 	vector<CSampleIDWeight> posterior;
         bool unstructured = true;
         int data_size = model.current_sample.GetSize_Data();
-        if(!model.storage->DrawAllSample(level, posterior, unstructured, data_size))
+        if(!model.storage->DrawAllSample(stage, posterior, unstructured, data_size))
         {
                 cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
                 abort();
@@ -690,7 +690,7 @@ vector<double>EstimateLogMDD_gaussian(CEquiEnergyModel &model, int level, int nG
                 group_sample.clear();
                 for (int j=begin_index; j<end_index; j++)
                         group_sample.push_back(posterior[j]);
-                logMDD[i] = LogMDD_gaussian(group_sample, model, model.parameter->t[level]);
+                logMDD[i] = LogMDD_gaussian(group_sample, model, model.parameter->t[stage]);
                 begin_index = end_index;
                 end_index = end_index + group_size < (int)(posterior.size()) ? end_index + group_size : (int)(posterior.size());
         }

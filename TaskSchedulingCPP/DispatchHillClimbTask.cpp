@@ -1,8 +1,8 @@
 #include <vector>
 #include <cmath>
 #include <mpi.h>
-#include <glob.h>
 #include <sstream>
+#include "dw_rand.h"
 #include "CEquiEnergyModel.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
@@ -11,17 +11,19 @@
 
 using namespace std; 
 
-void DispatchHillClimbTask(int nNode, CEquiEnergyModel &model, int number_hill_climb)
+vector<string> glob(const string &pattern); 
+
+void DispatchHillClimbTask(int nNode, int nInitial, CEquiEnergyModel &model, int number_hill_climb)
 {
 	int nFeasibleSolutionPerNode = ceil((double)number_hill_climb/(double)(nNode-1));
 
 	double *sPackage = new double [N_MESSAGE]; 
 	sPackage[LENGTH_INDEX] = nFeasibleSolutionPerNode; 
-	sPackage[LEVEL_INDEX] = model.parameter->number_energy_level ; 
+	sPackage[LEVEL_INDEX] = model.parameter->number_energy_stage ; 
 
 	for (int i=1; i<nNode; i++)
 	{
-		sPackage[GROUP_INDEX] = i; 
+		sPackage[GROUP_INDEX] = dw_uniform_int(nInitial);  
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, HILL_CLIMB_TAG, MPI_COMM_WORLD);		
 	}
 	delete [] sPackage; 
@@ -39,25 +41,24 @@ void DispatchHillClimbTask(int nNode, CEquiEnergyModel &model, int number_hill_c
 	convert.str(string()); 
 	convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE << ".*"; 
 	string filename_pattern =  model.parameter->storage_dir + convert.str(); 
-	glob_t glob_result; 
 	convert.str(string()); 
 	convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE; 
 	string filename = model.parameter->storage_dir + convert.str(); 
 	
-	glob(filename_pattern.c_str(), GLOB_TILDE, NULL, &glob_result); 
-	if (glob_result.gl_pathc == 1)
-		rename(glob_result.gl_pathv[0], filename.c_str()); 
+	vector<string> merge_file_name = glob(filename_pattern); 
+	if (merge_file_name.size() == 1)
+		rename(merge_file_name[0].c_str(), filename.c_str()); 
 	else 
 	{
 		model.ClearGaussianMixtureModelParameters(); 
-		for (int i=0; i<(int)glob_result.gl_pathc; i++)
+		for (int i=0; i<(int)merge_file_name.size(); i++)
 		{
-			if( !model.AggregateGaussianMixtureModelParameters(string(glob_result.gl_pathv[i])) )
+			if( !model.AggregateGaussianMixtureModelParameters(merge_file_name[i]) )
 			{
-				cerr << "Error occurred while reading Gaussian mixture model parameters from " << glob_result.gl_pathv[i] << endl; 
+				cerr << "Error occurred while reading Gaussian mixture model parameters from " << merge_file_name[i] << endl; 
 				abort(); 
 			}
-			remove(glob_result.gl_pathv[i]);
+			remove(merge_file_name[i].c_str());
 		}
 		model.KeepOptimalGaussianMixtureModelParameters(); 
 		if (!model.WriteGaussianMixtureModelParameters(filename))
@@ -66,8 +67,4 @@ void DispatchHillClimbTask(int nNode, CEquiEnergyModel &model, int number_hill_c
                		abort();
 		}
 	}
-	globfree(&glob_result);
-
-	// Consolidate partial storage files
-	// model.storage->consolidate(model.parameter->number_energy_level);
 }

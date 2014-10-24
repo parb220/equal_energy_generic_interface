@@ -10,30 +10,29 @@
 
 using namespace std; 
 
-void ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_storage, CEquiEnergyModel &model, int my_rank, int group_index, size_t initialPoolSize, const CSampleIDWeight &mode, int message_tag)
+void ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_index, const CSampleIDWeight &mode, int message_tag)
 {
 	// restore partial storage (previously obtained at this node) for updating
-	model.storage->ClearStatus(model.energy_level); 
-	model.storage->ClearStatus(model.energy_level+1); 
-	model.storage->restore(model.energy_level); 
-	// Since the samples will be drawn from the higher level
-	// the higher level needs to be restored for fetch (for partial record file)
-	model.storage->RestoreForFetch(model.energy_level+1);
+	model.storage->ClearStatus(model.energy_stage); 
+	model.storage->restore(model.energy_stage); 
+	// Since the samples will be drawn from the higher stage 
+	// the higher stage needs to be restored for fetch (for partial record file)
+	if (model.energy_stage < model.parameter->number_energy_stage)
+	{
+		model.storage->ClearStatus(model.energy_stage+1); 
+		model.storage->RestoreForFetch(model.energy_stage+1);
+	}
 	
-	// model::current_sample
+	// start_point 
 	stringstream convert;
-        convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_level << "." << group_index;
+        convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_stage << "." << group_index;
         string start_point_file = model.parameter->storage_dir + convert.str();
-        if (!model.InitializeFromFile(start_point_file) && (model.storage->empty(model.energy_level+1) || !model.Initialize_RandomlyPickFrom_K_BestSample(initialPoolSize, model.energy_level+1) ) )
+        if (!model.InitializeFromFile(start_point_file) )
 		model.current_sample = mode;
 
 	// metropolis
         convert.str(string());
-        if (message_tag == TUNE_TAG_SIMULATION_FIRST)
-        	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << model.energy_level << "." << group_index;
-        else
-        	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_2ND << model.energy_level << "." << group_index; 
-        
+       	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << model.energy_stage; 
        	string block_file_name = model.parameter->storage_dir + convert.str();
        	if (!model.metropolis->ReadBlocks(block_file_name) )
        	{
@@ -45,26 +44,25 @@ void ExecutingSimulationTask(bool if_within, bool if_write_sample_file, bool if_
 	model.BurnIn(model.parameter->burn_in_length); 
 
 	// whether to write dw output file
-	string sample_file_name; 
-	if (if_write_sample_file)
+	if (message_tag == TUNE_TAG_SIMULATION_FIRST)
 	{
+		string sample_file_name; 
 		convert.str(string()); 
-		convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_level << "." << group_index << "." << my_rank; 
+		convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_stage << "." << group_index << "." << my_rank; 
 		sample_file_name = model.parameter->storage_dir + convert.str(); 
+		model.Simulation_Within(false, sample_file_name); 
 	}
+	else if (model.energy_stage == model.parameter->number_energy_stage)
+		model.Simulation_Within(true, string()); 
 	else 
-		sample_file_name = string(); 
-
-	// simulation 
-	if (if_within)
-		model.Simulation_Within(if_storage, sample_file_name); 
-	else
-		model.Simulation_Cross(if_storage, sample_file_name); 
+		model.Simulation_Cross(true, string()); 
 
 	// finalze and clear-up storage
-	model.storage->ClearStatus(model.energy_level); 
-	model.storage->finalize(model.energy_level); 
-	model.storage->ClearDepositDrawHistory(model.energy_level);
-	model.storage->ClearDepositDrawHistory(model.energy_level+1); 
-
+	model.storage->ClearStatus(model.energy_stage); 
+	model.storage->finalize(model.energy_stage); 
+	if (model.energy_stage < model.parameter->number_energy_stage)
+	{
+		model.storage->ClearDepositDrawHistory(model.energy_stage);
+		model.storage->ClearDepositDrawHistory(model.energy_stage+1); 
+	}
 }
