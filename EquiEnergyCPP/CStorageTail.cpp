@@ -216,17 +216,18 @@ void TStorage::Setup(int stage, int number_striations, double lambda)
       striation_boundary.Resize(n_striations-1);
 
       // striation offset and width
-      for (int m=1+(log_posterior.dim)/number_striations, hi=log_posterior.dim, i=n_striations-1; i >= 0; i--)
+      for (int div=0, i=0; i < n_striations; i++)
 	{
-	  if (hi == 0)
+	  striation_offset[i]=div;
+	  int j=(log_posterior.dim - div)/(n_striations - i);
+	  if (j <= 0)
 	    {
-	      cerr << "SetupForInput(): No draws in some striations" << endl;
+	      cerr << "SetupForInput(): No draws in some striation" << endl;
 	      abort();
 	    }
-	  int j = (hi > m) ? hi-m : 0;
-	  for ( ; (j > 0) && (log_posterior.vector[j] == log_posterior.vector[j-1]); j--);
-	  striation_width[i]=hi-j;
-	  striation_offset[i]=hi=j;
+	  for ( ; (div+j < log_posterior.dim-1) && (log_posterior.vector[div+j] == log_posterior.vector[div+j-1]); j++);
+	  striation_width[i]=j;
+	  div+=j;
 	}
 
       // striation boundary
@@ -406,13 +407,13 @@ void TStorage::CheckClass(void)
     }
 
   // check weights
-  if (weights(0) <= 0)
+  if (weights(0) < 0)
     {
       cerr << "non-positive weight: " << weights(0) << endl;
       abort();
     }
   for (int i=1; i < weights.dim; i++)
-    if (weights(i) <= weights(i-1))
+    if (weights(i) < weights(i-1))
       {
 	cerr << "cumulative weights not ascending" << weights(i) << " " << weights(i+1) << endl;
 	abort();

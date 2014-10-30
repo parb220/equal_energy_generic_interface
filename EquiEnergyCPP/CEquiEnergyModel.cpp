@@ -293,6 +293,9 @@ void CEquiEnergyModel::SetupMasterNode(int Stage)
 
   // setup storage
   storage->Setup(stage,parameter->number_striations,lambda.vector[stage]);
+
+  // check storage
+  // storage->CheckClass();
 }
 
 void CEquiEnergyModel::SetupComputeNode(int Stage)
