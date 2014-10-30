@@ -176,6 +176,18 @@ void TStorage::FinalizeMasterNode(int stage)
   file.close();
 }
 
+void TStorage::RemoveRecords(int stage)
+{
+	string filename=MakeFullFileName("draws",stage);
+	remove(filename.c_str()); 
+	filename = MakeFullFileName("info", stage); 
+	remove(filename.c_str()); 
+	filename = MakeFullFileName("Diagnostic", stage); 
+	remove(filename.c_str());
+	filename = MakeFullFileName("MH-info", stage); 
+	remove(filename.c_str()); 
+}
+
 void TStorage::ReadInfo(int stage, TDenseVector &log_posterior, TDenseVector &log_density)
 {
   fstream file;
