@@ -109,6 +109,9 @@ class TStorage
   void WriteASCIIDraws(int stage);
 
   void CheckClass(void);
+
+  // Removing file
+  void RemoveRecords(int stage); 
 };
 
 

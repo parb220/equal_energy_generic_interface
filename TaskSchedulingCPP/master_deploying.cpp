@@ -10,7 +10,7 @@
 
 using namespace std;
 
-void master_deploying(int nNode, CEquiEnergyModel &model)
+void master_deploying(int nNode, CEquiEnergyModel &model, bool save_space_flag)
 {	
   time_t start_time=time((time_t*)NULL);
 
@@ -24,7 +24,7 @@ void master_deploying(int nNode, CEquiEnergyModel &model)
 	DispatchInitialSimulation(nNode, model);
 
       // Simulation
-      DispatchTuneSimulation(nNode, model, false); 
+      DispatchTuneSimulation(nNode, model, save_space_flag); 
     }
 
   cout << "Ellapsed time: " << difftime(time((time_t*)NULL),start_time) << " seconds " << endl;
@@ -172,6 +172,8 @@ void DispatchTuneSimulation(int nNode, CEquiEnergyModel &model, bool save_space_
 	}
       model.storage->FinalizeMasterNode(stage);
       model.WriteDiagnosticMasterNode(stage);
+      if (save_space_flag)
+	model.storage->RemoveRecords(stage-1); 
 
       ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
       // // to save space, remove level+1 samples
