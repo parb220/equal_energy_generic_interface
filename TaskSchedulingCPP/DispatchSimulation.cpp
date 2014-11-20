@@ -60,7 +60,7 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t
 		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status);
 
 	// binning
-	if (message_tag == SIMULATION_TAG)
+	if (message_tag != TUNE_TAG_SIMULATION_FIRST) 
 	{
 		model.storage->ClearStatus(stage);	
 		model.storage->consolidate(stage); 
@@ -79,7 +79,7 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t
         	for (int i=1; i<nNode; i++)
         		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, BINNING_INFO, MPI_COMM_WORLD, &status);
 	}
-	else if (message_tag == TUNE_TAG_SIMULATION_FIRST) // Consolidate variance file
+	else // Consolidate variance file
 	{
 		stringstream convert; 
 		string input_file_pattern, output_file_name;

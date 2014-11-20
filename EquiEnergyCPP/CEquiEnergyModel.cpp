@@ -93,6 +93,40 @@ double CEquiEnergyModel::BurnIn(int burn_in_length)
 	return max_posterior;  
 }
 
+void CEquiEnergyModel::Simulation_Prior(bool if_storage, const string &sample_file_name)
+{
+	CSampleIDWeight x_new(TDenseVector(current_sample.data.dim));   
+	double bounded_log_posterior_new;
+        bool if_write_file = false;
+        ofstream output_file;
+        if (!sample_file_name.empty() )
+        {
+                output_file.open(sample_file_name.c_str(), ios::binary | ios::out);
+                if (output_file)
+                        if_write_file = true;
+        }
+
+	for (int i=0; i<parameter->simulation_length; i++)
+	{
+		if (DrawParametersFromPrior(x_new.data.vector))
+		{
+			x_new.DataChanged(); 
+			log_posterior_function(x_new); 
+			if (x_new.weight > MINUS_INFINITY)
+			{
+				current_sample = x_new; 
+				current_sample.id = timer_when_started;			
+				if (if_storage)
+                        		SaveSampleToStorage(current_sample);
+                		if (if_write_file)
+                        		write(output_file, &current_sample);
+			}
+		}		
+	}
+	if (if_write_file)
+                output_file.close();
+}
+
 void CEquiEnergyModel::Simulation_Within(bool if_storage, const string &sample_file_name)
 {
 	CSampleIDWeight x_new; 

@@ -47,6 +47,7 @@ const int TRACKING_TAG_SIMULATION_MULTIPLE_BLOCK = 51;
 const int SIMULATION_TAG = 60; 
 const int NP_SOL_TAG = 61; 
 const int SIMULATION_TAG_MULTIPLE_BLOCK = 62; 
+const int SIMULATION_PRIOR_TAG = 63; 
 
 const int HILL_CLIMB_TAG = 70; 
 const int GMM_SIMULATION_TAG = 71; 

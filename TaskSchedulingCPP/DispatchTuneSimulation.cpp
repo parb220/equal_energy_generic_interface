@@ -32,7 +32,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	size_t estimation_length; 
 
 	// diagnostic statistics
-	vector<vector<double> > logMDD(model.parameter->number_energy_stage+1, vector<double>(model.parameter->number_energy_stage+1, 0.0)); 
+	vector<vector<double> > logMDD(model.parameter->number_energy_stage, vector<double>(model.parameter->number_energy_stage, 0.0)); 
 	vector<double> consistency(model.parameter->number_energy_stage, 0.0);
 	vector<double> average_consistency(model.parameter->number_energy_stage, 0.0); 
 	vector<double> std_consistency(model.parameter->number_energy_stage, 0.0);
@@ -43,14 +43,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		/////////////////////////////////////////////////////////////////////////////////
 		// Highest +1 stage 
 		if (stage == model.parameter->number_energy_stage-1)
-		{
-			HighestPlus1Stage(nNode, nInitial, model);
-			logMDD[stage+1][stage+1] = EstimateLogMDD(model, stage+1, USE_TRUNCATED_POWER);
-			consistency[stage] = CheckConvergency(model, stage, stage+1, logMDD[stage+1][stage+1], average_consistency[stage], std_consistency[stage], LB_ESS[stage]); 
-		}
-		else 
-			consistency[stage] = CheckConvergency(model, stage, stage+1, consistency[stage+1], average_consistency[stage], std_consistency[stage], LB_ESS[stage]); 
-		cout << "Convergency Measure at Stage " << stage << ": " << setprecision(20) << consistency[stage] << "\t" << average_consistency[stage] << "\t" << std_consistency[stage]<< "\t" << LB_ESS[stage] << endl;
+			// HighestPlus1Stage(nNode, nInitial, model);
+			HighestPlus1Stage_Prior(nNode, nInitial, model); 
 
 
 		////////////////////////////////////////////////////////////////////////////////
@@ -124,14 +118,19 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// logMDD
-	       	logMDD[stage][stage] = EstimateLogMDD(model, stage, USE_TRUNCATED_POWER);
-		/*for (int j=stage+1; j<(int)(logMDD[stage].size()); j++)
-		logMDD[stage][j] = EstimateLogMDD(model, stage, stage+1, logMDD[stage+1][j]); */
-
+			
+	       	/*logMDD[stage][stage] = EstimateLogMDD(model, stage, USE_TRUNCATED_POWER);
 		cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][stage] << endl; 
-		/*for (int j=stage; j<(int)(logMDD[stage].size()); j++)
-			cout << logMDD[stage][j] << "\t"; 
-		cout << endl; */
+		if (stage == model.parameter->number_energy_stage-1 )
+			consistency[stage-1] = CheckConvergency(model, stage-1, stage, logMDD[stage][stage], average_consistency[stage-1], std_consistency[stage-1], LB_ESS[stage-1]);
+		else
+			consistency[stage-1] = CheckConvergency(model, stage-1, stage, consistency[stage], average_consistency[stage-1], std_consistency[stage-1], LB_ESS[stage-1]); 
+                cout << "Convergency Measure at Stage " << stage-1 << ": " << setprecision(20) << consistency[stage-1] << "\t" << average_consistency[stage-1] << "\t" << std_consistency[stage-1]<< "\t" << LB_ESS[stage-1] << endl;  */
+		if (stage == 0)
+		{
+			logMDD[stage][stage] = EstimateLogMDD(model, stage, USE_TRUNCATED_POWER);
+			cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][stage] << endl; 
+		}
 		
 		// to save space, remove stage+1 samples
 		if (save_space_flag  && stage > 0 ) //&& stage+1 < model.parameter->number_energy_stage-1 )
@@ -152,6 +151,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
                         for (int i=0; i<(int)remove_file.size(); i++)
                                 remove(remove_file[i].c_str());
 		}
+
 	}
 
 	delete []sPackage; 

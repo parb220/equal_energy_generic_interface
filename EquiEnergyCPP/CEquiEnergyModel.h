@@ -89,6 +89,7 @@ public:
 
 	void Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy stage (no jumping across stages). Returns the maximum posterior during simulation
 	void Simulation_Cross(bool if_storage, const string &sample_file_name=string()); 	// Simulation across stages. Returns the maximum posterior during simulation 	
+	void Simulation_Prior(bool if_storage, const string &sample_file_name); 		// Simulation from prior
 	// Reweight samples
 	vector<double> Reweight(const vector<CSampleIDWeight> &samples, int current_stage, int previous_stage) const; 
 

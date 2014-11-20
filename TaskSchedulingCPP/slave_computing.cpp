@@ -103,7 +103,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 				abort(); 
 			}
 		}
-		else if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == SIMULATION_TAG) 
+		else if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == SIMULATION_TAG || status.MPI_TAG == SIMULATION_PRIOR_TAG) 
 		{	
 			model.energy_stage = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]); 

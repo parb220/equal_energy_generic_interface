@@ -18,6 +18,11 @@ using namespace std;
 
 vector<string> glob(const string &pattern); 
 
+void HighestPlus1Stage_Prior(int nNode, int nInitial, CEquiEnergyModel &model)
+{
+	DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length,  model.parameter->number_energy_stage, SIMULATION_PRIOR_TAG);
+}
+
 void HighestPlus1Stage(int nNode, int nInitial, CEquiEnergyModel &model)
 {
 	// HillClimb to aquire an appropriate starting point

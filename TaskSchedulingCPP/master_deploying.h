@@ -2,6 +2,7 @@
 #define _MASTER_DEPLOY_HEADER_
 
 void HighestPlus1Stage(int nNode, int nInitial, CEquiEnergyModel &model); 
+void HighestPlus1Stage_Prior(int nNode, int nInitial, CEquiEnergyModel &model);
 
 void DispatchHillClimbTask(int nNode, int nInitial, CEquiEnergyModel &model, int number_hill_climb);
 
