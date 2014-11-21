@@ -24,9 +24,11 @@ public:
 	// from target_model, where the returning value is the bounded log_posterior
 	// that is, return value = if_bounded ? x.weight/t_bound : x.weight; 
 	virtual double log_likelihood_function(const CSampleIDWeight &x); 
+	virtual double log_prior_function(const CSampleIDWeight &x); 
 	// returning value is the real log_likelihood calculated from target_model
 	virtual double log_posterior_function(const double *x, int n);
         virtual double log_likelihood_function(const double *x, int n);
+        virtual double log_prior_function(const double *x, int n);
 
 	using CEquiEnergyModel::HillClimb_NPSOL;
         // using CEquiEnergyModel:: HillClimb_CSMINWEL;

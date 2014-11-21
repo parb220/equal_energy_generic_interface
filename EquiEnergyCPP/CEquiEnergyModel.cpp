@@ -26,11 +26,14 @@ bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleI
 	{
 		// calculate log_ratio in the current and the higher stages
 		double log_ratio; 
-		//if (energy_stage == parameter->number_energy_stage-1)
-		//	log_ratio = StudentT_LogRatio(y_initial, y_end); //Cauchy_LogRatio(y_initial, y_end);
-		//else 
-			log_ratio = parameter->LogRatio_Stage(-y_initial.weight, -y_end.weight, energy_stage+1);
-		log_ratio += parameter->LogRatio_Stage(-y_end.weight, -y_initial.weight, energy_stage); 
+		double log_prior_initial = log_prior_function(y_initial); 
+		double log_prior_end = log_prior_function(y_end); 
+
+		if (energy_stage == parameter->number_energy_stage-1)
+			log_ratio = 0.0; 
+		else 
+			log_ratio = parameter->LogRatio_Stage(-(y_initial.weight-log_prior_initial), -(y_end.weight-log_prior_end), energy_stage+1);
+		log_ratio += parameter->LogRatio_Stage(-(y_end.weight-log_prior_end), -(y_initial.weight-log_prior_initial), energy_stage); 
 		if (log(dw_uniform_rnd()) <= log_ratio)
 			return true; 
 	}
@@ -149,7 +152,6 @@ void CEquiEnergyModel::Simulation_Within(bool if_storage, const string &sample_f
                 	{
                         	current_sample = x_new;
                         	current_sample.id = timer_when_started;
-                        	// max_posterior = current_sample.weight > max_posterior ? current_sample.weight : max_posterior;
                         	nJump ++;
                 	}
 		}
@@ -187,8 +189,6 @@ void CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_fi
 				nEEJump++; 
 			else if (jump_code == METROPOLIS_JUMP)
 				nMHJump++; 
-			// if (jump_code == EQUI_ENERGY_JUMP || jump_code == METROPOLIS_JUMP)
-			//	max_posterior = max_posterior > current_sample.weight ? max_posterior : current_sample.weight; 
 		}	
 	
 		if (if_storage)

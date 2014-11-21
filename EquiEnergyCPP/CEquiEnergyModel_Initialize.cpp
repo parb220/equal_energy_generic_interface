@@ -7,22 +7,21 @@
 #include "dataanalysis.h"
 #include "CEquiEnergyModel.h"
 
-vector<double> CEquiEnergyModel::Reweight(const vector<CSampleIDWeight> &samples, int current_stage, int previous_stage) const
+vector<double> CEquiEnergyModel::Reweight(const vector<CSampleIDWeight> &samples, int current_stage, int previous_stage) 
 {
 	vector<double> log_weight(samples.size(),0.0); 
 	// log_weight = weight*(1.0/t[current_stage]-1.0/([previous_stage]))
 	for (int i=0; i<(int)(samples.size()); i++)
 	{
-		log_weight[i] = samples[i].weight * 1.0/parameter->t[current_stage]; 
-		// if (previous_stage == parameter->number_energy_stage)
-		//	log_weight[i] = log_weight[i] - StudentT_LogPDF(samples[i]); 
-		// else 
-			log_weight[i] = log_weight[i] - samples[i].weight * 1.0/parameter->t[previous_stage]; 
+		double log_prior = log_prior_function(samples[i]); 
+		log_weight[i] = (samples[i].weight-log_prior)  * 1.0/parameter->t[current_stage] ; 
+		if (previous_stage < parameter->number_energy_stage)
+			log_weight[i] = log_weight[i] - (samples[i].weight-log_prior) * 1.0/parameter->t[previous_stage] ; 
 	}
 	return log_weight; 
 }
 
-bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int stage_index, vector<CSampleIDWeight> &starters) const
+bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int stage_index, vector<CSampleIDWeight> &starters)
 {
 	if (starters.size() != K)
 		starters.resize(K);

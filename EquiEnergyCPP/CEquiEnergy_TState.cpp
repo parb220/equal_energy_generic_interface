@@ -102,6 +102,15 @@ double CEquiEnergy_TState::log_likelihood_function(const CSampleIDWeight &x)
 	return log_likelihood;
 }
 
+double CEquiEnergy_TState::log_prior_function(const CSampleIDWeight &x)
+{
+	ConvertFreeParametersToTheta(target_model, x.data.vector);
+        ConvertFreeParametersToQ(target_model, x.data.vector+NumberFreeParametersTheta(target_model) );
+        double log_prior = LogPrior(target_model);
+	
+	return log_prior; 
+}
+
 double CEquiEnergy_TState::log_posterior_function(const double *x, int n)
 {
 	//double *old_x = new double[n];
@@ -134,6 +143,15 @@ double CEquiEnergy_TState::log_likelihood_function(const double *x, int n)
 	// ConvertFreeParametersToQ(target_model, old_x+NumberFreeParametersTheta(target_model) );
 	// delete [] old_x;
 	return log_likelihood;
+}
+
+double CEquiEnergy_TState::log_prior_function(const double *x, int n)
+{
+	ConvertFreeParametersToTheta(target_model, (double *)x);
+        ConvertFreeParametersToQ(target_model, (double *)x+NumberFreeParametersTheta(target_model) );
+        double log_prior = LogPrior(target_model); 
+	
+	return log_prior; 
 }
 
 bool CEquiEnergy_TState::DrawParametersFromPrior(double *x) const

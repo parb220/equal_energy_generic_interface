@@ -70,8 +70,10 @@ public:
 	CStorageHead *storage; 		// pointer to CStorageHead
 	virtual double log_posterior_function(CSampleIDWeight &x)=0;
         virtual double log_likelihood_function(const CSampleIDWeight &x)=0;
+	virtual double log_prior_function(const CSampleIDWeight &x) = 0; 
 	virtual double log_posterior_function(const double *x, int n)=0; 
-        virtual double log_likelihood_function(const double *x, int n)=0; 
+        virtual double log_likelihood_function(const double *x, int n)=0;
+	virtual double log_prior_function(const double *x, int n) = 0;  
 
 	// Draw samples
 	int EE_Draw(int MH_thin); 	// equi-energy draw
@@ -84,14 +86,14 @@ public:
 	bool Initialize_KMeansClustering(int K, int stage_index, vector<CSampleIDWeight> &centers) const; 
 	bool Initialize_MostDistant_WithinPercentile(int K, int stage_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
 	bool Initialize_MostDistant_WithinPercentileBand(int K, int stage_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
-	bool Initialize_WeightedSampling(int K, int stage_index, vector<CSampleIDWeight> &starters) const; 
+	bool Initialize_WeightedSampling(int K, int stage_index, vector<CSampleIDWeight> &starters); 
 	bool InitializeFromFile(const string &file_name); 
 
 	void Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy stage (no jumping across stages). Returns the maximum posterior during simulation
 	void Simulation_Cross(bool if_storage, const string &sample_file_name=string()); 	// Simulation across stages. Returns the maximum posterior during simulation 	
 	void Simulation_Prior(bool if_storage, const string &sample_file_name); 		// Simulation from prior
 	// Reweight samples
-	vector<double> Reweight(const vector<CSampleIDWeight> &samples, int current_stage, int previous_stage) const; 
+	vector<double> Reweight(const vector<CSampleIDWeight> &samples, int current_stage, int previous_stage); 
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // 	make a equi-energy jump
