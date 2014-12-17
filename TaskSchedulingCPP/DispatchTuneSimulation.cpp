@@ -64,7 +64,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
         	ofstream output_file;
 		for (int i=0; i<nInitial; i++)
 		{
-        		convert.str(string());
+			convert.str(string());
         		convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << stage << "." << i;
         		start_point_file = model.parameter->storage_dir + convert.str();
         		output_file.open(start_point_file.c_str(), ios::binary|ios::out);
