@@ -16,4 +16,5 @@ const string SCALE_N = string(".scale_n.");
 const string RANDOM_BLOCK_SCALE = string(".random.block.scale."); 
 const string BLOCK_SCHEME = string(".block_scheme"); 
 const string GM_MEAN_COVARIANCE = string(".gm_mean_covariance"); 
+const string BMATRIX = string(".bmatrix"); 
 #endif

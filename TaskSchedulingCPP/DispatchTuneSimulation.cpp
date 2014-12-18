@@ -6,6 +6,7 @@
 #include <sstream>
 #include <iomanip>
 #include "dw_rand.h"
+#include "dw_math.h"
 #include "CSampleIDWeight.h"
 #include "CEquiEnergyModel.h"
 #include "CMetropolis.h"
@@ -81,6 +82,48 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		/////////////////////////////////////////////////////////////////////////////////
 		// Send out tuning jobs
 		// Only need to tune on each slave node noce, because the results will be aggregated
+		if (stage != model.parameter->number_energy_stage)
+		{
+			// Calculate B for AdaptiveAfterSimulation_WeightedSampling_OnePass
+			
+			// samples
+			vector<CSampleIDWeight> samples;
+                	if (!model.storage->DrawAllSample(stage+1, samples) || samples.empty() )
+                	{
+                        	cerr << "DispatchTuneSimulation() : Error in loading samples of previous stage.\n";
+                        	abort();
+                	}
+
+			// weight
+			vector<double> log_weight = model.Reweight(samples, stage, stage+1);
+        		double log_weight_sum = log_weight[0];
+        		for (int i=1; i<(int)log_weight.size(); i++)
+                		log_weight_sum = AddLogs(log_weight_sum, log_weight[i]);
+        		vector<double> weight(log_weight.size(), 0.0);
+        		for (int i=0; i<(int)log_weight.size(); i++)
+                		weight[i] = exp(log_weight[i] - log_weight_sum);
+			
+			// block_scheme
+			convert.str(string());
+        		convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_SCHEME;
+        		string block_scheme_file_name = model.parameter->storage_dir  + convert.str();
+			std::vector<TIndex> block_scheme = ReadBlockScheme(block_scheme_file_name);
+			if (block_scheme.empty())
+		                block_scheme.push_back(TIndex(0, samples[0].data.dim-1));
+			
+			vector<TDenseMatrix>B_matrix = GetBlockMatrix_WeightedSampling(samples, weight, block_scheme); 
+
+			// Bmatrix file
+			convert.str(string());
+                        convert << model.parameter->run_id << "/" << model.parameter->run_id << BMATRIX; 
+			string bmatrix_file_name = model.parameter->storage_dir  + convert.str();
+			if (!WriteBMatrixFile(bmatrix_file_name, B_matrix))
+			{
+				cerr << "DispatchTuneSimulation() : Error in writing BMatrix file.\n"; 
+				abort(); 
+			}
+		}
+
 		sPackage[LEVEL_INDEX] = stage; 
 		sPackage[thin_INDEX] = model.parameter->thin; 
 		sPackage[THIN_INDEX] = model.parameter->THIN; 
@@ -110,6 +153,14 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
                 	cerr << "Error in reading " << block_file_pattern << " or writing " << block_file_name << endl;
                 	abort();
         	}
+
+		if (stage != model.parameter->number_energy_stage)
+		{
+			convert.str(string());
+                        convert << model.parameter->run_id << "/" << model.parameter->run_id << BMATRIX;
+                        string bmatrix_file_name = model.parameter->storage_dir  + convert.str();
+			remove(bmatrix_file_name.c_str()); 
+		}
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simualtion

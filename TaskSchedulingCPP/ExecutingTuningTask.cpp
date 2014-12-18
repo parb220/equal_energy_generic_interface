@@ -43,31 +43,27 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 		if_eejump=false; 
 		if (!model.metropolis->AdaptiveBeforeSimulation_OnePass(model.current_sample, period, max_period, block_file_name, if_eejump, block_scheme_file_name))
 		{
-                	cerr << "CMetropolis::AdaptiveBeforeSimulation() : Error in writing " << block_file_name << endl;
+                	cerr << "ExecutingTuningTask_BeforeSimulation() : Error in writing " << block_file_name << endl;
                        	abort();
                 }
 	}
 	else 
 	{
 		if_eejump= true;
-		// based on samples of the previous stage (not group specific) to estimate covariance matrix
-		vector<CSampleIDWeight> samples; 
-		if (!model.storage->DrawAllSample(model.energy_stage+1, samples) || samples.empty() )
+		convert.str(string());
+        	convert << model.parameter->run_id << "/" << model.parameter->run_id << BMATRIX;
+		string bmatrix_file_name = model.parameter->storage_dir + convert.str(); 
+		std::vector<TDenseMatrix> BMatrix = ReadBMatrixFile(bmatrix_file_name); 
+		if (BMatrix.empty())
 		{
-			cerr << "ExecutingTuningTask_BeforeSimulation() : Error in loading samples of previous stage.\n"; 
+			cerr << "ExecutingTuningTask_BeforeSimulation() : Error in reading " << bmatrix_file_name; 
 			abort(); 
 		}
-		vector<double> log_weight = model.Reweight(samples, model.energy_stage, model.energy_stage+1); 
-		double log_weight_sum = log_weight[0]; 
-		for (int i=1; i<(int)log_weight.size(); i++)
-			log_weight_sum = AddLogs(log_weight_sum, log_weight[i]); 
-		vector<double> weight(log_weight.size(), 0.0); 
-		for (int i=0; i<(int)log_weight.size(); i++)
-			weight[i] = exp(log_weight[i] - log_weight_sum); 
 
-		if (!model.metropolis->AdaptiveAfterSimulation_WeightedSampling_OnePass(model.current_sample, period, max_period, samples, weight, block_file_name, if_eejump, block_scheme_file_name))
+		// if (!model.metropolis->AdaptiveAfterSimulation_WeightedSampling_OnePass(model.current_sample, period, max_period, samples, weight, block_file_name, if_eejump, block_scheme_file_name))
+		if (!model.metropolis->AdaptiveAfterSimulation_WeightedSampling_OnePass(model.current_sample, period, max_period, BMatrix, block_file_name, if_eejump))
                 {
-                	cerr << "CMetroplis::AdaptiveAfterSimulation_WeightedSampling_OnePass() : Error in writing " << block_file_name << endl;
+                	cerr << "ExecutingTuningTask_BeforeSimulation() : Error in writing " << block_file_name << endl;
                		abort();
                 }
 	}

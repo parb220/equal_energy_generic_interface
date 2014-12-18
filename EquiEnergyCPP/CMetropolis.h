@@ -34,7 +34,8 @@ public:
 	bool AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name=string(), bool if_eejump=false, const string &block_scheme_file_name=string());
 	bool AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &sample_file_name, const string &block_file_name=string(), bool if_eejump=false, const string &block_scheme_file_name=string());
 
-	bool AdaptiveAfterSimulation_WeightedSampling_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const vector<CSampleIDWeight> &samples, const vector<double> &weights, const string &block_file_name=string(), bool if_eejump=false, const string &block_scheme_file_name=string()); 
+	// bool AdaptiveAfterSimulation_WeightedSampling_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const vector<CSampleIDWeight> &samples, const vector<double> &weights, const string &block_file_name=string(), bool if_eejump=false, const string &block_scheme_file_name=string()); 
+	bool AdaptiveAfterSimulation_WeightedSampling_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, std::vector<TDenseMatrix> &B_matrix, const string &block_file_name=string(), bool if_eejump=false); 
 
 	// draw one sample
 	bool BlockRandomWalkMetropolis(double &, CSampleIDWeight &, const CSampleIDWeight &x, size_t thin=1); 
@@ -51,4 +52,8 @@ public:
 }; 
 
 vector<TIndex>ReadBlockScheme(const string &file_name); 
+std::vector<TDenseMatrix> ReadBMatrixFile(const string &file_name); 
+bool WriteBMatrixFile(const string &file_name, std::vector<TDenseMatrix> &B_matrix);
+std::vector<TDenseMatrix> GetBlockMatrix_WeightedSampling(const std::vector<CSampleIDWeight> &Y, const std::vector<double> &weight, const std::vector<TIndex> &block_scheme); 
+
 #endif

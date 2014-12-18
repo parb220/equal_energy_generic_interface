@@ -692,9 +692,10 @@ bool CMetropolis::AdaptiveAfterSimulation_OnePass(const CSampleIDWeight &adaptiv
 	}
 }
 
-bool CMetropolis::AdaptiveAfterSimulation_WeightedSampling_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const vector<CSampleIDWeight> &Y, const vector<double> &weight, const string &block_file_name, bool if_eejump, const string &block_scheme_file)
+// bool CMetropolis::AdaptiveAfterSimulation_WeightedSampling_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const vector<CSampleIDWeight> &Y, const vector<double> &weight, const string &block_file_name, bool if_eejump, const string &block_scheme_file)
+bool CMetropolis::AdaptiveAfterSimulation_WeightedSampling_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, std::vector<TDenseMatrix> &B_matrix, const string &block_file_name, bool if_eejump)
 {
-	block_scheme = ReadBlockScheme(block_scheme_file); 
+	/*block_scheme = ReadBlockScheme(block_scheme_file); 
 	if (block_scheme.empty())
 		block_scheme.push_back(TIndex(0, Y[0].data.dim-1)); 
 
@@ -723,7 +724,7 @@ bool CMetropolis::AdaptiveAfterSimulation_WeightedSampling_OnePass(const CSample
 
 		B_matrix[i_block]=Zeros(Y[0].data.dim, block_scheme[i_block].size); 
 		B_matrix[i_block].Insert(block_scheme[i_block], TIndex(0,block_scheme[i_block].size-1), U_matrix); 
-	}
+	}*/
 	CSampleIDWeight x=adaptive_start_point; 
 
 	// double accP=1.0- exp(log(1.0-0.25)/(double)block_scheme.size());
@@ -767,4 +768,63 @@ vector<TIndex> ReadBlockScheme(const string &file_name)
 	} 
 	input.close(); 
 	return block_scheme; 
+}
+
+std::vector<TDenseMatrix> GetBlockMatrix_WeightedSampling(const std::vector<CSampleIDWeight> &Y, const std::vector<double> &weight, const std::vector<TIndex> &block_scheme)
+{
+	std::vector<TDenseMatrix>B_matrix(block_scheme.size()); 
+        TDenseVector mean, d_vector;
+        TDenseMatrix variance, U_matrix, V_matrix, D_matrix;
+        for (int i_block=0; i_block<(int)block_scheme.size(); i_block++)
+        {
+                mean = Zeros(block_scheme[i_block].size);
+                variance = Zeros(block_scheme[i_block].size, block_scheme[i_block].size);
+                for (int i=0; i<(int)Y.size(); i++)
+                {
+                        mean = mean + weight[i] * Y[i].data.SubVector(block_scheme[i_block]);
+                        variance = variance + weight[i] * Multiply(Y[i].data.SubVector(block_scheme[i_block]),Y[i].data.SubVector(block_scheme[i_block]));
+                 }
+
+                variance = variance - Multiply(mean, mean);
+                variance = 0.5 * (variance+Transpose(variance));
+
+                SVD(U_matrix, d_vector, V_matrix, variance);
+                for (int i=0; i<d_vector.dim; i++)
+                        d_vector[i] = sqrt(d_vector[i]);
+                D_matrix = DiagonalMatrix(d_vector);
+                U_matrix = U_matrix *D_matrix;
+                B_matrix[i_block]=Zeros(Y[0].data.dim, block_scheme[i_block].size);
+                B_matrix[i_block].Insert(block_scheme[i_block], TIndex(0,block_scheme[i_block].size-1), U_matrix);
+       }
+        return B_matrix;
+}
+
+bool WriteBMatrixFile(const string &file_name, std::vector<TDenseMatrix> &B_matrix)
+{
+	fstream output; 
+	output.open(file_name.c_str(), ios::out|ios::binary);
+        if (!output.is_open())
+		return false; 
+	int n_blocks = (int)(B_matrix.size()); 
+	output.write((char *)(&n_blocks), sizeof(int)); // number of blocks
+	for (int i=0; i<n_blocks; i++)
+		B_matrix[i].WriteBinary(output); 
+	output.close(); 
+	return true; 
+}
+
+std::vector<TDenseMatrix> ReadBMatrixFile(const string &file_name)
+{
+	fstream input; 
+	input.open(file_name.c_str(), ios::in|ios::binary); 
+	if (!input.is_open())
+		return std::vector<TDenseMatrix>(0); 
+
+	int n_blocks; 
+	input.read((char*)&(n_blocks), sizeof(int)); 
+	std::vector<TDenseMatrix> BMatrix(n_blocks); 
+	for (int i=0; i<n_blocks; i++)
+		BMatrix[i].ReadBinary(input); 
+	input.close(); 
+	return BMatrix; 
 }
