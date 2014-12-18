@@ -102,7 +102,6 @@ void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, con
 						high_scale[i] = scale[i]; 
 						high_jump_ratio[i] = previous_ratio[i]; 
 					}
-
 					// new scale and best scale
 					if (low_jump_ratio[i] < 0.0)
 					{
