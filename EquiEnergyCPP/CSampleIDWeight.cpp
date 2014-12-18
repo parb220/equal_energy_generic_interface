@@ -11,16 +11,16 @@ void CSampleIDWeight::DataChanged()
 
 size_t CSampleIDWeight::GetSize_Data() const
 {
-	return sizeof(int)+(size_t)data.dim*sizeof(double)+sizeof(int)+sizeof(double)+sizeof(bool);
-	// data.dim, data.vector, id, weight, calculated
+	return sizeof(int)+(size_t)data.dim*sizeof(double)+sizeof(int)+sizeof(double)+sizeof(reserved)+sizeof(bool);
+	// data.dim, data.vector, id, weight, reserved, calculated
 }
 
-CSampleIDWeight::CSampleIDWeight(const TDenseVector &_x, int _id, double _weight, bool _calculated) : id(_id), weight(_weight), calculated(_calculated)
+CSampleIDWeight::CSampleIDWeight(const TDenseVector &_x, int _id, double _weight, double _reserved, bool _calculated) : id(_id), weight(_weight), reserved(_reserved), calculated(_calculated)
 {
 	data.CopyContent(_x); 
 }
 
-CSampleIDWeight::CSampleIDWeight(const CSampleIDWeight &right) : id(right.id), weight(right.weight), calculated(right.calculated)
+CSampleIDWeight::CSampleIDWeight(const CSampleIDWeight &right) : id(right.id), weight(right.weight), reserved(right.reserved), calculated(right.calculated)
 {
 	data.CopyContent(right.data); 
 }
@@ -34,6 +34,7 @@ CSampleIDWeight &CSampleIDWeight::operator = (const CSampleIDWeight &right)
 	data.CopyContent(right.data); 
 	id = right.id; 
 	weight = right.weight; 
+	reserved = right.reserved; 
 	calculated = right.calculated; 
 	return *this; 
 }
@@ -52,6 +53,7 @@ bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, int offset, 
 	if (offset ==0 && (int)length == data.dim && (int)length == right.data.dim )
 	{
 		weight = right. weight; 
+		reserved = right.reserved; 
 		calculated = right.calculated; 
 	}
 
@@ -71,6 +73,7 @@ bool CSampleIDWeight::PartialCopyFrom(int offset1, const CSampleIDWeight &right,
 	if (offset1 == 0 && offset2 == 0 && (int)length == data.dim && (int)length == right.data.dim)
 	{
 		weight = right.weight;
+		reserved = right.reserved; 
 		calculated = right.calculated; 
 	}
 	
@@ -90,6 +93,7 @@ istream & read (istream & input_stream, CSampleIDWeight *x)
 	}
 	input_stream.read((char*)&(x->id), sizeof(int)); 
 	input_stream.read((char*)&(x->weight), sizeof(double)); 
+	input_stream.read((char*)&(x->reserved), sizeof(double)); 
 	input_stream.read((char*)&(x->calculated), sizeof(bool)); 
 	return input_stream; 
 }
@@ -105,6 +109,7 @@ ostream& write(ostream & output_stream, const CSampleIDWeight *x)
 	}
 	output_stream.write((char*)&(x->id), sizeof(int)); 
 	output_stream.write((char*)&(x->weight), sizeof(double)); 
+	output_stream.write((char*)&(x->reserved), sizeof(double)); 
 	output_stream.write((char*)&(x->calculated), sizeof(bool)); 
 	return output_stream; 
 }
@@ -118,6 +123,7 @@ istream& operator >> (istream &inputStr, CSampleIDWeight &sample)
 		inputStr >> sample.data[i]; 
 	inputStr >> sample.id; 
 	inputStr >> sample.weight; 
+	inputStr >> sample.reserved; 
 	inputStr >> sample.calculated;
 	return inputStr; 
 }
@@ -129,6 +135,7 @@ ostream& operator << (ostream &outputStr, const CSampleIDWeight &sample)
 		outputStr << sample.data[i] << "\t"; 
 	outputStr << sample.id << "\t"; 
 	outputStr << sample.weight << "\t"; 
+	outputStr << sample.reserved << "\t"; 
 	outputStr << sample.calculated << endl; 
 
 	return outputStr; 

@@ -66,7 +66,9 @@ double CEquiEnergy_TState::log_posterior_function(CSampleIDWeight &x)
 		// Post x to target_model
 		ConvertFreeParametersToTheta(target_model, x.data.vector);
                 ConvertFreeParametersToQ(target_model, x.data.vector+NumberFreeParametersTheta(target_model) );
-                x.weight = LogPosterior_StatesIntegratedOut(target_model);
+		x.reserved =LogLikelihood_StatesIntegratedOut(target_model); 
+                // x.weight = LogPosterior_StatesIntegratedOut(target_model);
+                x.weight = x.reserved + LogPrior(target_model); 
                 x.calculated = true;
 		// Post old_x back to target_model 
 		// ConvertFreeParametersToTheta(target_model, old_x); 

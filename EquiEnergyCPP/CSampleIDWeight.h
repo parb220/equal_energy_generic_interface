@@ -17,9 +17,10 @@ public:
 public:
 	TDenseVector data; 
 	int id; 
-	double weight; 
+	double weight;
+	double reserved;  
 
-	CSampleIDWeight(const TDenseVector &_x=TDenseVector(), int _id=0, double _weight=0.0, bool _calculated=false); 
+	CSampleIDWeight(const TDenseVector &_x=TDenseVector(), int _id=0, double _weight=0.0, double _reserved=0.0, bool _calculated=false); 
 	CSampleIDWeight(const CSampleIDWeight &); 
 	~CSampleIDWeight();
 
