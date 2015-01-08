@@ -15,6 +15,7 @@
 
 using namespace std; 
 
+vector<double> WeightFromGaussianSample(int N, const TDenseVector &center, const TDenseMatrix &scale, CEquiEnergyModel &model, double temperature); 
 bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSampleIDWeight &j); 
 bool compare_CSampleIDWeight_BasedOnID(const CSampleIDWeight &i, const CSampleIDWeight &j); 
 double EstimateLogMDD(CEquiEnergyModel &model, int stage, int previous_stage, double logMDD_previous); 
@@ -25,6 +26,8 @@ vector<double>EstimateLogMDD(CEquiEnergyModel &model, int stage, int proposal_ty
 vector<double>EstimateLogMDD_gaussian(CEquiEnergyModel &model, int stage, int nGroup);
  
 double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t, int proposal_type); 
+double LogMDD(const vector<CSampleIDWeight> &proposal, const vector<CSampleIDWeight> &posterior, double t_previous, double t_current, double logMDD_previous); 
+
 double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t); 
 TMatrix CreateProposalMatrix(int ndraws, CEquiEnergyModel &model, const TElliptical *elliptical); 
 TMatrix CreatePosteriorMatrix(const vector<CSampleIDWeight> &sample, const TElliptical *elliptical);
@@ -42,7 +45,7 @@ TMatrix CreateGaussianPosteriorMatrix(const vector<CSampleIDWeight> &sample, con
 	TMatrix posterior = CreateMatrix(sample.size(), 2); 
 	double logdensity; 
 	TDenseVector y(sample[0].data.dim, 0.0); 
-	TDenseMatrix scale_inverse = Inverse(scale); 
+	TDenseMatrix scale_inverse = Inverse(scale, SOLVE_SVD); 
 	
 	for (int i=0; i<(int)sample.size(); i++)
 	{
@@ -61,7 +64,7 @@ TMatrix CreateGaussianPosteriorMatrix(const vector<CSampleIDWeight> &sample, dou
 	TMatrix posterior = CreateMatrix(sample.size(), 2); 
 	double logdensity; 
 	TDenseVector y(sample[0].data.dim, 0.0); 
-	TDenseMatrix scale_inverse = Inverse(scale); 
+	TDenseMatrix scale_inverse = Inverse(scale, SOLVE_SVD); 
 	
 	for (int i=0; i<(int)sample.size(); i++)
 	{
@@ -70,7 +73,7 @@ TMatrix CreateGaussianPosteriorMatrix(const vector<CSampleIDWeight> &sample, dou
 		for (int j=1; j<y.dim; j++)
                         logdensity += -0.918938533204673 -0.5*y[j]*y[j];
 		ElementM(posterior,i,0)=logdensity;
-		ElementM(posterior, i, 1) = sample[i].weight/t; 
+		ElementM(posterior, i, 1) = sample[i].reserved/t + sample[i].weight-sample[i].reserved; 
 	}
 	return posterior; 
 }
@@ -194,7 +197,7 @@ TMatrix CreatePosteriorMatrix(const vector<CSampleIDWeight> &sample, double t, c
 	{
 		log_density = dim> 0 ? LogDensityElliptical_Draw(sample[i].data.vector, (TElliptical *)elliptical) : 0.0; 
 		ElementM(posterior, i, 0) = log_density; 
-		ElementM(posterior, i, 1) = sample[i].weight/t; 
+		ElementM(posterior, i, 1) = sample[i].reserved/t + sample[i].weight-sample[i].reserved; 
 	}
 	return posterior; 
 }
@@ -204,7 +207,7 @@ TDenseVector GetRadiusFromSample(const vector<CSampleIDWeight> &sample, const TD
 {
 	TDenseVector Radii(sample.size(), 0.0); 
 	TDenseMatrix quadratic_form = MultiplyTranspose(scale, scale); 
-	quadratic_form.Inverse();
+	quadratic_form.Inverse(SOLVE_SVD);
 	quadratic_form = (quadratic_form + Transpose(quadratic_form)) * 0.5; // force symmetry
 	
 	TDenseVector theta; 
@@ -242,12 +245,25 @@ bool GetCenterScaleFromSample(const vector<CSampleIDWeight> &sample, TDenseVecto
 	sample_sum = sample_sum * (1.0/(double)sample.size()); 
 	sample_square = sample_square * (1.0/(double)sample.size()); 	
 
+	// using mode
 	center = mode.data; 
 	sample_square = sample_square + OuterProduct(mode.data, mode.data); 
-	sample_square = sample_square - OuterProduct(sample_sum, mode.data) - OuterProduct(mode.data, sample_sum); 
+	sample_square = sample_square - OuterProduct(sample_sum, mode.data) - OuterProduct(mode.data, sample_sum);
+	// using center
+	// sample_square = sample_square - OuterProduct(sample_sum, sample_sum); 	
+ 
 	sample_square = (sample_square+Transpose(sample_square))*0.5; 
-	scale = Cholesky(sample_square); 
-	scale = Transpose(scale); 
+	
+	/*scale = Cholesky(sample_square); 
+	scale = Transpose(scale); */
+	
+	// Eig analysis
+	TDenseVector eValue(sample_square.rows,0.0); 
+	TDenseMatrix eVector(sample_square.rows, sample_square.cols, 0.0); 
+	Eig(eValue, eVector, sample_square); 
+	for (int i=0; i<eValue.dim; i++)
+		eValue[i] = sqrt(eValue[i]); 
+	scale = MultiplyTranspose(eVector * DiagonalMatrix(eValue), eVector); 
 	return true; ; 
 }
 
@@ -305,79 +321,111 @@ double EstimateLogMDD(CEquiEnergyModel &model, int stage, int proposal_type)
 	return LogMDD(posterior, model, model.parameter->t[stage], proposal_type); 
 }
 
+vector<double> WeightFromGaussianSample(int N, const TDenseVector &center, const TDenseMatrix &scale, CEquiEnergyModel &model, double temperature)
+{
+	vector<double> weight(N,0.0); 
+	TDenseVector x, y;  
+	double log_likelihood, log_prior; 
+	for (int i=0; i<N; i++)
+	{
+		x = RandomNormalVector(center.dim);
+		y = scale * x + center; 
+		log_prior = model.log_prior_function(y.vector, y.dim); 
+		log_likelihood = model.log_likelihood_function(y.vector, y.dim); 
+		
+		weight[i] = log_likelihood/temperature + log_prior; 
+		weight[i] += 0.918938533204673*(double)x.dim; // 0.5*log(2*pi) = 0.918938533204673
+		for (int j=0; j<x.dim; j++)
+			weight[i] += 0.5*x[j]*x[j];  
+	}
+	return weight; 
+}
+
 double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t,  int proposal_type)
 {
-	TDenseVector center(posterior[0].data.dim, 0.0); 
-	TDenseMatrix scale(posterior[0].data.dim, posterior[0].data.dim, 0.0); 
-	if(!GetCenterScaleFromSample(posterior, center, scale))
-	{
-		cerr << "Error occurred in GetCenterScaleFromSample()\n"; 
-		abort(); 
-	}
-	TDenseVector R = GetRadiusFromSample(posterior, center, scale); 
-
-	TVector center_vector = CreateVector(center.dim); 
-	TMatrix scale_matrix = CreateMatrix(scale.rows, scale.cols); 
-	TVector R_vector = CreateVector(R.dim); 
-	for (int i=0; i<center.dim; i++)
-		ElementV(center_vector, i) = center[i]; 
-	for (int i=0; i<scale.rows; i++)
-		for (int j=0; j<scale.cols; j++)
-			ElementM(scale_matrix, i, j) = scale(i,j); 
-	for (int i=0; i<R.dim; i++)
-		ElementV(R_vector, i) = R[i]; 
-	
-	double low=0.1, high=0.9; 
-	TElliptical *elliptical=(TElliptical*)NULL; 
-	switch (proposal_type)
+	TDenseVector center(posterior[0].data.dim, 0.0);
+        TDenseMatrix scale(posterior[0].data.dim, posterior[0].data.dim, 0.0);
+        if(!GetCenterScaleFromSample(posterior, center, scale))
         {
-                case USE_GAUSSIAN:
-                        elliptical=CreateEllipticalFromPosterior_Gaussian(R_vector,center.dim,center_vector,scale_matrix);
-                        break;
-                case USE_POWER:
-                        elliptical=CreateEllipticalFromPosterior_Power(R_vector,center.dim,center_vector,scale_matrix, high);
-                        break;
-                case USE_TRUNCATED_POWER:
-                        elliptical=CreateEllipticalFromPosterior_TruncatedPower(R_vector,center.dim,center_vector,scale_matrix,low,high);
-                        break;
-                case USE_STEP:
-                        elliptical=CreateEllipticalFromPosterior_Step(R_vector,center.dim,center_vector,scale_matrix,low,high);
-                        break;
-                case USE_TRUNCATED_GAUSSIAN:
-                        elliptical=CreateEllipticalFromPosterior_TruncatedGaussian(R_vector,center.dim,center_vector,scale_matrix,low,high);
-                        break;
-                case USE_UNIFORM:
-                        elliptical=CreateEllipticalFromPosterior_Uniform(R_vector,center.dim,center_vector,scale_matrix,low,high);
-                        break;
-                default:
-                        cerr << "proposal type can only be 1 (Gaussian), 2(power), 3 (truncated power), 4 (step), 5 (truncated gaussian), 6 (uniform).\n";
-                        abort();
-                        break;
-        }
-
-	// TMatrix proposal_matrix=CreateProposalMatrix(posterior.size(), model, elliptical); 
-	// TMatrix posterior_matrix=CreatePosteriorMatrix(posterior, elliptical); 
-	TMatrix proposal_matrix=CreateProposalMatrix((int)posterior.size(), model, t, elliptical); 
-	TMatrix posterior_matrix=CreatePosteriorMatrix(posterior, t, elliptical); 
-
-	if (!proposal_matrix || !posterior_matrix)
+                cerr << "Error occurred in GetCenterScaleFromSample()\n";
+                abort();
+        } 
+	 
+	if (proposal_type == WEIGHTED_WITH_GAUSIAN_SAMPLES)
 	{
-		cerr << "There are no proposal or posterior draws.\n"; 
-		abort(); 
-	}
+		vector<double> weight = WeightFromGaussianSample((int)posterior.size(), center, scale, model, t);
+		double sum_weight = weight[0]; 
+		for (int i=1; i<(int)weight.size(); i++)
+                        sum_weight = AddLogs(sum_weight, weight[i]);
+		return sum_weight; 
+	}	
+	else 
+	{
+		TDenseVector R = GetRadiusFromSample(posterior, center, scale); 
 
-	int in_P1, in_P2; 
-	double mdd_mueller = ComputeLogMarginalDensity_Mueller(proposal_matrix, posterior_matrix, &in_P1, &in_P2); 
-	double mdd_bridge = ComputeLogMarginalDensity_Bridge(proposal_matrix, posterior_matrix); 
+		TVector center_vector = CreateVector(center.dim); 
+		TMatrix scale_matrix = CreateMatrix(scale.rows, scale.cols); 
+		TVector R_vector = CreateVector(R.dim); 
+		for (int i=0; i<center.dim; i++)
+			ElementV(center_vector, i) = center[i]; 
+		for (int i=0; i<scale.rows; i++)
+			for (int j=0; j<scale.cols; j++)
+				ElementM(scale_matrix, i, j) = scale(i,j); 
+		for (int i=0; i<R.dim; i++)
+			ElementV(R_vector, i) = R[i]; 
 	
-	FreeVector(center_vector); 
-	FreeMatrix(scale_matrix); 
-	FreeVector(R_vector); 
-	FreeMatrix(proposal_matrix); 
-	FreeMatrix(posterior_matrix); 
-	FreeElliptical(elliptical);
+		double low=0.1, high=0.9; 
+		TElliptical *elliptical=(TElliptical*)NULL; 
+		switch (proposal_type)
+        	{
+                	case USE_GAUSSIAN:
+                        	elliptical=CreateEllipticalFromPosterior_Gaussian(R_vector,center.dim,center_vector,scale_matrix);
+                        	break;
+                	case USE_POWER:
+                        	elliptical=CreateEllipticalFromPosterior_Power(R_vector,center.dim,center_vector,scale_matrix, high);
+                        	break;
+                	case USE_TRUNCATED_POWER:
+                       		elliptical=CreateEllipticalFromPosterior_TruncatedPower(R_vector,center.dim,center_vector,scale_matrix,low,high);
+                        	break;
+                	case USE_STEP:
+                        	elliptical=CreateEllipticalFromPosterior_Step(R_vector,center.dim,center_vector,scale_matrix,low,high);
+                        	break;
+                	case USE_TRUNCATED_GAUSSIAN:
+                        	elliptical=CreateEllipticalFromPosterior_TruncatedGaussian(R_vector,center.dim,center_vector,scale_matrix,low,high);
+                       	 	break;
+                	case USE_UNIFORM:
+                        	elliptical=CreateEllipticalFromPosterior_Uniform(R_vector,center.dim,center_vector,scale_matrix,low,high);
+                        	break;
+                	default:
+                        	cerr << "proposal type can only be 1 (Gaussian), 2(power), 3 (truncated power), 4 (step), 5 (truncated gaussian), 6 (uniform).\n";
+                        	abort();
+                        	break;
+        	}
 
-	return mdd_bridge; 
+		// TMatrix proposal_matrix=CreateProposalMatrix(posterior.size(), model, elliptical); 
+		// TMatrix posterior_matrix=CreatePosteriorMatrix(posterior, elliptical); 
+		TMatrix proposal_matrix=CreateProposalMatrix((int)posterior.size(), model, t, elliptical); 
+		TMatrix posterior_matrix=CreatePosteriorMatrix(posterior, t, elliptical); 
+
+		if (!proposal_matrix || !posterior_matrix)
+		{
+			cerr << "There are no proposal or posterior draws.\n"; 
+			abort(); 
+		}
+
+		int in_P1, in_P2; 
+		double mdd_mueller = ComputeLogMarginalDensity_Mueller(proposal_matrix, posterior_matrix, &in_P1, &in_P2); 
+		double mdd_bridge = ComputeLogMarginalDensity_Bridge(proposal_matrix, posterior_matrix); 
+	
+		FreeVector(center_vector); 
+		FreeMatrix(scale_matrix); 
+		FreeVector(R_vector); 
+		FreeMatrix(proposal_matrix); 
+		FreeMatrix(posterior_matrix); 
+		FreeElliptical(elliptical);
+
+		return mdd_bridge; 
+	}
 }
 
 double LowerBoundEffectiveSampleSize(CEquiEnergyModel &model, int stage, int previous_stage)
@@ -397,9 +445,9 @@ double LowerBoundEffectiveSampleSize(CEquiEnergyModel &model, int stage, int pre
 	for(int i=0; i<(int)proposal.size(); i++)
 	{
 		if (previous_stage == model.parameter->number_energy_stage)
-			weight[i] = proposal[i].weight/model.parameter->t[stage]-model.StudentT_LogPDF(proposal[i]);
+			weight[i] = (proposal[i].reserved/model.parameter->t[stage]+proposal[i].weight-proposal[i].reserved)-model.StudentT_LogPDF(proposal[i]);
 		else 
-			weight[i] = proposal[i].weight/model.parameter->t[stage]-proposal[i].weight/model.parameter->t[previous_stage]; 
+			weight[i] = proposal[i].reserved/model.parameter->t[stage]-proposal[i].reserved/model.parameter->t[previous_stage]; 
 		if (i==0)
 			sum_weight = weight[i]; 
 		else
@@ -493,9 +541,9 @@ double CheckConvergency (CEquiEnergyModel &model, int stage, int previous_stage,
 	for(int i=0; i<(int)proposal.size(); i++)
 	{
 		if (previous_stage == model.parameter->number_energy_stage)
-			weight[i] = proposal[i].weight/model.parameter->t[stage]-model.StudentT_LogPDF(proposal[i]);
+			weight[i] = (proposal[i].reserved/model.parameter->t[stage]+proposal[i].weight-proposal[i].reserved)-model.StudentT_LogPDF(proposal[i]);
 		else 
-			weight[i] = proposal[i].weight/model.parameter->t[stage]-proposal[i].weight/model.parameter->t[previous_stage]; 
+			weight[i] = proposal[i].reserved/model.parameter->t[stage]-proposal[i].reserved/model.parameter->t[previous_stage]; 
 	}
 
 	vector<double>group_consistency; 
@@ -560,7 +608,11 @@ double EstimateLogMDD(CEquiEnergyModel &model, int stage, int previous_stage,  d
 		cerr << "EstimateLogMDD:: error occurred when loading all samples.\n"; 
 		abort(); 
 	}
+	return LogMDD(proposal, posterior, model.parameter->t[previous_stage], model.parameter->t[stage], logMDD_previous); 
+}
 
+double LogMDD(const vector<CSampleIDWeight> &proposal, const vector<CSampleIDWeight> &posterior, double t_previous, double t_current, double logMDD_previous)
+{
 	// dimension 0: proposal density
 	// dimension 1: posterior kernel
 	TMatrix proposal_value=CreateMatrix(proposal.size(), 2); 
@@ -568,17 +620,13 @@ double EstimateLogMDD(CEquiEnergyModel &model, int stage, int previous_stage,  d
 
 	for(int i=0; i<(int)proposal.size(); i++)
 	{
-		ElementM(proposal_value, i, 0) = proposal[i].weight/model.parameter->t[previous_stage]-logMDD_previous; 
-        	ElementM(proposal_value, i, 1) = proposal[i].weight/model.parameter->t[stage];
-		// ElementM(proposal_value, i, 0) = proposal[i].weight-logMDD_previous; 
-        	// ElementM(proposal_value, i, 1) = proposal[i].weight;
+		ElementM(proposal_value, i, 0) = (proposal[i].reserved/t_previous+proposal[i].weight-proposal[i].reserved)-logMDD_previous; 
+        	ElementM(proposal_value, i, 1) = proposal[i].reserved/t_current+proposal[i].weight-proposal[i].reserved;
 	}
 	for(int i=0; i<(int)posterior.size(); i++)
 	{
-		ElementM(posterior_value, i, 0) = posterior[i].weight/model.parameter->t[previous_stage]-logMDD_previous; 
-                ElementM(posterior_value, i, 1) = posterior[i].weight/model.parameter->t[stage];
-		// ElementM(posterior_value, i, 0) = posterior[i].weight-logMDD_previous; 
-                // ElementM(posterior_value, i, 1) = posterior[i].weight;
+		ElementM(posterior_value, i, 0) = (posterior[i].reserved/t_previous+posterior[i].weight-posterior[i].reserved)-logMDD_previous; 
+                ElementM(posterior_value, i, 1) = posterior[i].reserved/t_current+posterior[i].weight-posterior[i].reserved; 
 	}
 	
 	int in_P1, in_P2; 
