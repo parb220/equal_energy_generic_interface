@@ -65,8 +65,8 @@ TASK_SCHEDULING_INCLUDE_DIR = $(EQUAL_ENERGY_DIR)/TaskSchedulingCPP
 EXAMPLE_DIR = $(EQUAL_ENERGY_DIR)/ExampleCPP
 EXAMPLE_INCLUDE_DIR = $(EQUAL_ENERGY_DIR)/ExampleCPP
 
-MDD_DIR = $(HOME)/DW_TZ_GIT/projects_dw/time-series/mdd
-MDD_INCLUDE_DIR = $(HOME)/DW_TZ_GIT/projects_dw/time-series/mdd
+MDD_FUNCTION_DIR = $(EQUAL_ENERGY_DIR)/TaskSchedulingCPP
+MDD_FUNCTION_INCLUDE_DIR = $(EQUAL_ENERGY_DIR)/TaskSchedulingCPP
 
 #################################################################################
 # Building
@@ -74,9 +74,9 @@ MDD_INCLUDE_DIR = $(HOME)/DW_TZ_GIT/projects_dw/time-series/mdd
 BUILD_DIR = $(EQUAL_ENERGY_DIR)/build
 EXE_DIR = $(EQUAL_ENERGY_DIR)/data
 
-INCLUDE_DIR := $(INCLUDE_DIR) -I$(ALGLIB) -I$(EQUAL_ENERGY_INCLUDE_DIR) -I$(TASK_SCHEDULING_INCLUDE_DIR) -I$(EXAMPLE_INCLUDE_DIR) -I$(MDD_INCLUDE_DIR)
+INCLUDE_DIR := $(INCLUDE_DIR) -I$(ALGLIB) -I$(EQUAL_ENERGY_INCLUDE_DIR) -I$(TASK_SCHEDULING_INCLUDE_DIR) -I$(EXAMPLE_INCLUDE_DIR) -I$(MDD_FUNCTION_INCLUDE_DIR)
 
-VPATH := $(VPATH) $(ALGLIB) $(EQUAL_ENERGY_CPP_DIR) $(BUILD_DIR) $(TASK_SCHEDULING_DIR) $(EXAMPLE_DIR) $(MDD_INCLUDE_DIR)
+VPATH := $(VPATH) $(ALGLIB) $(EQUAL_ENERGY_CPP_DIR) $(BUILD_DIR) $(TASK_SCHEDULING_DIR) $(EXAMPLE_DIR) $(MDD_FUNCTION_DIR)
 
 # DW FILES #########################################################################
 DW_OBJS = dw_switch.o dw_switchio.o dw_dirichlet_restrictions.o dw_metropolis_theta.o dw_switch_opt.o dw_MSStateSpace.o dw_metropolis_simulation.o dw_state_space_impulse_response.o dw_state_space_forecast.o dw_state_space_historical_decomposition.o dw_state_space_command_line_output.o dw_state_space_variance_decomposition.o dw_state_space_counterfactual.o dw_mdd_switch.o 
