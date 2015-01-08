@@ -73,7 +73,7 @@ TMatrix CreateGaussianPosteriorMatrix(const vector<CSampleIDWeight> &sample, dou
 		for (int j=1; j<y.dim; j++)
                         logdensity += -0.918938533204673 -0.5*y[j]*y[j];
 		ElementM(posterior,i,0)=logdensity;
-		ElementM(posterior, i, 1) = sample[i].reserved/t + sample[i].weight-sample[i].reserved; 
+		ElementM(posterior, i, 1) = sample[i].weight/t; 
 	}
 	return posterior; 
 }
@@ -197,7 +197,7 @@ TMatrix CreatePosteriorMatrix(const vector<CSampleIDWeight> &sample, double t, c
 	{
 		log_density = dim> 0 ? LogDensityElliptical_Draw(sample[i].data.vector, (TElliptical *)elliptical) : 0.0; 
 		ElementM(posterior, i, 0) = log_density; 
-		ElementM(posterior, i, 1) = sample[i].reserved/t + sample[i].weight-sample[i].reserved; 
+		ElementM(posterior, i, 1) = sample[i].weight/t; 
 	}
 	return posterior; 
 }
@@ -444,10 +444,7 @@ double LowerBoundEffectiveSampleSize(CEquiEnergyModel &model, int stage, int pre
 	double sum_weight=0.0; 
 	for(int i=0; i<(int)proposal.size(); i++)
 	{
-		if (previous_stage == model.parameter->number_energy_stage)
-			weight[i] = (proposal[i].reserved/model.parameter->t[stage]+proposal[i].weight-proposal[i].reserved)-model.StudentT_LogPDF(proposal[i]);
-		else 
-			weight[i] = proposal[i].reserved/model.parameter->t[stage]-proposal[i].reserved/model.parameter->t[previous_stage]; 
+		weight[i] = proposal[i].weight/model.parameter->t[stage]-proposal[i].weight/model.parameter->t[previous_stage]; 
 		if (i==0)
 			sum_weight = weight[i]; 
 		else
@@ -539,12 +536,7 @@ double CheckConvergency (CEquiEnergyModel &model, int stage, int previous_stage,
 	sort(proposal.begin(), proposal.end(), compare_CSampleIDWeight_BasedOnID);
 	vector<double> weight(proposal.size(), 0.0); 
 	for(int i=0; i<(int)proposal.size(); i++)
-	{
-		if (previous_stage == model.parameter->number_energy_stage)
-			weight[i] = (proposal[i].reserved/model.parameter->t[stage]+proposal[i].weight-proposal[i].reserved)-model.StudentT_LogPDF(proposal[i]);
-		else 
-			weight[i] = proposal[i].reserved/model.parameter->t[stage]-proposal[i].reserved/model.parameter->t[previous_stage]; 
-	}
+		weight[i] = proposal[i].weight/model.parameter->t[stage]-proposal[i].weight/model.parameter->t[previous_stage]; 
 
 	vector<double>group_consistency; 
 	double consistency, sum_weight; 
@@ -620,13 +612,13 @@ double LogMDD(const vector<CSampleIDWeight> &proposal, const vector<CSampleIDWei
 
 	for(int i=0; i<(int)proposal.size(); i++)
 	{
-		ElementM(proposal_value, i, 0) = (proposal[i].reserved/t_previous+proposal[i].weight-proposal[i].reserved)-logMDD_previous; 
-        	ElementM(proposal_value, i, 1) = proposal[i].reserved/t_current+proposal[i].weight-proposal[i].reserved;
+		ElementM(proposal_value, i, 0) = proposal[i].weight/t_previous-logMDD_previous; 
+        	ElementM(proposal_value, i, 1) = proposal[i].weight/t_current;
 	}
 	for(int i=0; i<(int)posterior.size(); i++)
 	{
-		ElementM(posterior_value, i, 0) = (posterior[i].reserved/t_previous+posterior[i].weight-posterior[i].reserved)-logMDD_previous; 
-                ElementM(posterior_value, i, 1) = posterior[i].reserved/t_current+posterior[i].weight-posterior[i].reserved; 
+		ElementM(posterior_value, i, 0) = posterior[i].weight/t_previous-logMDD_previous; 
+                ElementM(posterior_value, i, 1) = posterior[i].weight/t_current; 
 	}
 	
 	int in_P1, in_P2; 
