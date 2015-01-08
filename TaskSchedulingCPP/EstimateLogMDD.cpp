@@ -444,9 +444,9 @@ double LowerBoundEffectiveSampleSize(CEquiEnergyModel &model, int stage, int pre
 	double sum_weight=0.0; 
 	for(int i=0; i<(int)proposal.size(); i++)
 	{
-		if (previous_stage == model.parameter->number_energy_stage)
-			weight[i] = (proposal[i].reserved/model.parameter->t[stage]+proposal[i].weight-proposal[i].reserved)-model.StudentT_LogPDF(proposal[i]);
-		else 
+		// if (previous_stage == model.parameter->number_energy_stage)
+		//	weight[i] = (proposal[i].reserved/model.parameter->t[stage]+proposal[i].weight-proposal[i].reserved)-model.StudentT_LogPDF(proposal[i]);
+		// else 
 			weight[i] = proposal[i].reserved/model.parameter->t[stage]-proposal[i].reserved/model.parameter->t[previous_stage]; 
 		if (i==0)
 			sum_weight = weight[i]; 
@@ -540,9 +540,9 @@ double CheckConvergency (CEquiEnergyModel &model, int stage, int previous_stage,
 	vector<double> weight(proposal.size(), 0.0); 
 	for(int i=0; i<(int)proposal.size(); i++)
 	{
-		if (previous_stage == model.parameter->number_energy_stage)
-			weight[i] = (proposal[i].reserved/model.parameter->t[stage]+proposal[i].weight-proposal[i].reserved)-model.StudentT_LogPDF(proposal[i]);
-		else 
+		// if (previous_stage == model.parameter->number_energy_stage)
+		//	weight[i] = (proposal[i].reserved/model.parameter->t[stage]+proposal[i].weight-proposal[i].reserved)-model.StudentT_LogPDF(proposal[i]);
+		//else 
 			weight[i] = proposal[i].reserved/model.parameter->t[stage]-proposal[i].reserved/model.parameter->t[previous_stage]; 
 	}
 
