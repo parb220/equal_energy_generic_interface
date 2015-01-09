@@ -1,6 +1,7 @@
 #include <cmath>
 #include <fstream>
 #include <vector>
+#include <iomanip>
 #include "prcsn.h"
 #include "dw_rand.h"
 #include "dw_math.h"
@@ -240,6 +241,26 @@ bool CEquiEnergyModel::WriteGaussianMixtureModelParameters(const string &file_na
         oFile.close();
 
         return true;
+}
+
+bool CEquiEnergyModel::WriteGaussianMixtureModelMeanAscii(const string &file_name) 
+{
+	int number = (int)gmm_mean.size();
+	ofstream oFile(file_name.c_str());
+        if (!oFile)
+                return false;
+	double log_prior, log_likelihood; 
+	for (int i=0; i<number; i++)
+	{
+		log_prior = log_prior_function(gmm_mean[i].vector, gmm_mean[i].dim); 
+		log_likelihood = log_likelihood_function(gmm_mean[i].vector, gmm_mean[i].dim); 
+		oFile << setprecision(20) << log_likelihood + log_prior << "\t" << log_likelihood; 
+		for (int j=0; j<gmm_mean[i].dim; j++)
+			oFile << setprecision(20) << "\t" << gmm_mean[i][j] ; 
+		oFile << endl; 
+	}
+	oFile.close(); 
+	return true; 
 }
 
 bool CEquiEnergyModel::ReadGaussianMixtureModelParameters(const string &file_name)

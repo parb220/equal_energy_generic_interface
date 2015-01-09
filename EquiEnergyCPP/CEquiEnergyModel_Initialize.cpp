@@ -87,8 +87,8 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(int K, int stage_
 		return true; 
 	}
 	// 1st starter, the best sample so far
-	starters[0] = samples[dw_uniform_int(K)]; 
-	// starters[0] = samples[0]; 
+	// starters[0] = samples[dw_uniform_int(K)]; 
+	starters[0] = samples[0]; 
 	// k-th starter, the most distant to starters(0..k-1) 
 	double most_distance, distance; 
 	TDenseVector e; 

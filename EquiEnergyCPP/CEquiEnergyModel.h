@@ -115,7 +115,7 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////
 // HillClimb
 public: 
-	virtual double HillClimb_NPSOL(int nSolution, int =10, int =10, double = 1.0, double = 1000.0); 
+	virtual double HillClimb_NPSOL(int nSolution, int =10, int =10, double = 1.0, double = 1000.0, const TDenseVector &start_point=TDenseVector(0)); 
 	// virtual double HillClimb_CSMINWEL(int nSolution); 
 	virtual bool DrawParametersFromPrior(double *x) const = 0; 
 	double GMM_Simulation(int simulation_length);
@@ -129,6 +129,7 @@ public:
 	double GMM_LogPDF(const CSampleIDWeight &x) const; 
 	double GMM_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const; 
 	bool WriteGaussianMixtureModelParameters(const string &file_name) const; 
+	bool WriteGaussianMixtureModelMeanAscii(const string &file_name) ; 
 	bool ReadGaussianMixtureModelParameters(const string &file_name); 
 	bool AggregateGaussianMixtureModelParameters(const string &file_name);
 	void ClearGaussianMixtureModelParameters(); 

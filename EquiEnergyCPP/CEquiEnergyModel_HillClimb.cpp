@@ -21,7 +21,7 @@ void *MinusLogPosterior_NPSOL::function(int *mode, int *n, double *x, double *f,
 	*f = -model->log_posterior_function(x,*n); 
 }
 
-double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iteration, int perturbation_iteration, double perturbation_scale, double scale)
+double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iteration, int perturbation_iteration, double perturbation_scale, double scale, const TDenseVector &start_point)
 {
 	const string COLD_START = string("Cold Start");
         const string NO_PRINT_OUT = string("Major print level = 0");
@@ -93,7 +93,9 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 	try {
 		for (int i=0; i<nSolution; i++)
 		{
-			if (!DrawParametersFromPrior(x)) 
+			if (start_point.dim)
+				memcpy(x, start_point.vector, sizeof(double)*start_point.dim); 
+			else if (!DrawParametersFromPrior(x)) 
 				throw dw_exception("CEquiEnergyModel::HillClimb_NPSOL : DrawSampleFromPrior() error occurred");
 
 			log_posterior_before_perturbation = log_posterior_function(x, n);
