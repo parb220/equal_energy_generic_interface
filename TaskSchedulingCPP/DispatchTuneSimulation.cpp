@@ -175,7 +175,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		int data_size = model.current_sample.GetSize_Data();
 		bool unstructured = true;
 
-		if (stage == model.parameter->number_energy_stage -10)
+		if (stage == model.parameter->number_energy_stage -1)
 		{        
 			if (!model.storage->DrawAllSample(stage, posterior, unstructured, data_size))
                 	{
@@ -186,7 +186,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
                         logMDD[stage][0] = logMDD[stage][1] = LogMDD(posterior,  model, model.parameter->t[stage], USE_TRUNCATED_POWER);
                         logMDD[stage][2] = LogMDD(posterior, model, model.parameter->t[stage], WEIGHTED_WITH_GAUSIAN_SAMPLES);
 		}
-		else if (stage < model.parameter->number_energy_stage -10) 
+		else if (stage < model.parameter->number_energy_stage -1) 
 		{
         		if (!model.storage->DrawAllSample(stage+1, proposal, unstructured, data_size) || !model.storage->DrawAllSample(stage, posterior, unstructured, data_size))
         		{	
@@ -199,8 +199,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		}
 		proposal.clear(); 
 		posterior.clear(); 
-		if (stage <= model.parameter->number_energy_stage -10)
-		cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][0] << "\t" << logMDD[stage][1] << "\t" << logMDD[stage][2] << endl; 
+		if (stage <= model.parameter->number_energy_stage -1)
+			cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][0] << "\t" << logMDD[stage][1] << "\t" << logMDD[stage][2] << endl; 
 
 		/*if (stage == model.parameter->number_energy_stage-1 )
 			consistency[stage-1] = CheckConvergency(model, stage-1, stage, logMDD[stage][stage], average_consistency[stage-1], std_consistency[stage-1], LB_ESS[stage-1]);
