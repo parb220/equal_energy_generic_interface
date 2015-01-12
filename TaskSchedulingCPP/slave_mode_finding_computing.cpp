@@ -20,7 +20,6 @@ void slave_mode_finding_computing(int n_initial, CEquiEnergyModel &model, const 
 	MPI_Status status; 
 	
 	double *rPackage = new double [N_MESSAGE], *sPackage = new double [N_MESSAGE];    
-	int group_index; 
 
 	while (1)
 	{
@@ -35,7 +34,7 @@ void slave_mode_finding_computing(int n_initial, CEquiEnergyModel &model, const 
 		{
 			// start point
 			stringstream convert;
-			convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << "0." << group_index;
+			convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << "0." << (int)rPackage[GROUP_INDEX];
 			string start_point_file = model.parameter->storage_dir + convert.str();
 			if (!model.InitializeFromFile(start_point_file))
 			{
@@ -46,7 +45,7 @@ void slave_mode_finding_computing(int n_initial, CEquiEnergyModel &model, const 
 			model.HillClimb_NPSOL(rPackage[LENGTH_INDEX], optimizationN, perturbationN, perturbationS, 1.0, model.current_sample.data); // model.parameter->t[model.parameter->number_energy_level]);
 			// Save gm_mean and gm_covariance_sqrt into files 
 			convert.str(string()); 
-			convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE << "." << my_rank; 
+			convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE << "." << (int)rPackage[GROUP_INDEX]; 
 			string gm_file = model.parameter->storage_dir + convert.str();  
 			if (!model.WriteGaussianMixtureModelMeanAscii(gm_file))
 			{
