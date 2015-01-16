@@ -9,7 +9,7 @@
 
 using namespace std;
 
-void master_mode_finding_deploying(int nNode, int nInitial, CEquiEnergyModel &model, const CSampleIDWeight &mode)
+void master_mode_finding_deploying(int nNode, int nInitial, CEquiEnergyModel &model, const CSampleIDWeight &mode, double pctl)
 {	
 	double *sPackage= new double [N_MESSAGE];
 	double *rPackage= new double [N_MESSAGE];   
@@ -23,7 +23,7 @@ void master_mode_finding_deploying(int nNode, int nInitial, CEquiEnergyModel &mo
 
 	// Starting points
 	vector<CSampleIDWeight> start_points(nInitial);
-	if (model.storage->empty(0) || !model.Initialize_MostDistant_WithinPercentile(nInitial, 0, start_points, 0.10))	
+	if (model.storage->empty(0) || !model.Initialize_MostDistant_WithinPercentile(nInitial, 0, start_points, pctl))	
 	{
 		for (int i=0; i<nInitial; i++)
                 	start_points[i] = mode;
