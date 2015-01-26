@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <iomanip>
 #include "dw_math.h"
 #include "CEquiEnergyModel.h"
 #include "CEESParameter.h"
@@ -16,7 +17,31 @@ using namespace std;
 
 vector<string> glob(const string &pattern); 
 
-void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t simulation_length, int stage, int message_tag)
+void DispatchSimulation_PriorProbability(int nNode, int simulation_length)
+{
+	double *sPackage = new double [N_MESSAGE];
+        double *rPackage = new double [N_MESSAGE];
+
+	int simulation_length_per_node =  (int)ceil((double)simulation_length/(double)(nNode-1)); 
+	int total_length = 0; 
+	for (int iNode=1; iNode<nNode; iNode++)
+	{
+		sPackage[LENGTH_INDEX] = simulation_length_per_node;
+		total_length += sPackage[LENGTH_INDEX]; 
+		sPackage[GROUP_INDEX] = iNode; 
+		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, iNode, PRIOR_PROB_TAG, MPI_COMM_WORLD);
+	}
+	int accpt_length = 0; 
+	MPI_Status status;
+	for (int iNode=1; iNode<nNode; iNode++)
+	{
+		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, PRIOR_PROB_TAG, MPI_COMM_WORLD, &status);
+		accpt_length += rPackage[LENGTH_INDEX]; 
+	}
+	cout << "log prior probability constant " << setprecision(20) << log((double)accpt_length/(double)total_length) << endl; 
+}
+
+void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int simulation_length, int stage, int message_tag)
 {
 	double *sPackage = new double [N_MESSAGE]; 
 	double *rPackage = new double [N_MESSAGE]; 
@@ -25,8 +50,8 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, size_t
        	sPackage[LEVEL_INDEX] = stage;
 	sPackage[PEE_INDEX] = model.parameter->pee; 
 
-	size_t simulation_length_per_node, simulation_length_check; 
-	simulation_length_per_node = (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) > 1000 ? (size_t)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) : 1000; 
+	int simulation_length_per_node, simulation_length_check; 
+	simulation_length_per_node = (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) > 1000 ? (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) : 1000; 
 	simulation_length_check = (int)ceil((double)simulation_length/(double)(nInitial)); 
 
 	MPI_Status status;

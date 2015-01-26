@@ -7,4 +7,6 @@ void slave_computing(int, int, int, CEquiEnergyModel &, const CSampleIDWeight &m
 void slave_mode_finding_computing(int n_initial, CEquiEnergyModel &model, const CSampleIDWeight &mode, int optimizationN, int perturbationN, double perturbationS); 
 void master_mode_finding_deploying(int nNode, int nInitial, CEquiEnergyModel &model, const CSampleIDWeight &mode, double prctl=0.10); 
 
+void DispatchSimulation_PriorProbability(int nNode, int simulation_length); 
+
 #endif

@@ -9,6 +9,7 @@
 #include "CSampleIDWeight.h"
 #include "mpi_parameter.h"
 #include "storage_parameter.h"
+#include "prcsn.h"
 
 #include "slave_computing.h"
 
@@ -32,6 +33,17 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 			delete []rPackage; 
 			delete []sPackage; 
 			exit(0); 
+		}
+		else if (status.MPI_TAG == PRIOR_PROB_TAG)
+		{
+			int nAccpt = 0; 
+			TDenseVector x(mode.data.dim,0.0); 
+			for (int i=0; i<(int)(rPackage[LENGTH_INDEX]); i++)
+			{
+				if (model.DrawParametersFromPrior(x.vector) && model.log_prior_function(x.vector, x.dim)> MINUS_INFINITY) 
+					nAccpt ++; 
+			}
+			sPackage[LENGTH_INDEX] = (double)nAccpt;
 		}
 		else if (status.MPI_TAG == BINNING_INFO)
 		{
