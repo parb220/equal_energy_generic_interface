@@ -47,8 +47,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		/////////////////////////////////////////////////////////////////////////////////
 		// Highest +1 stage 
 		if (stage == model.parameter->number_energy_stage-1)
-			// HighestPlus1Stage(nNode, nInitial, model);
-			HighestPlus1Stage_Prior(nNode, nInitial, model); 
+			HighestPlus1Stage(nNode, nInitial, model);
+			// HighestPlus1Stage_Prior(nNode, nInitial, model); 
 
 		////////////////////////////////////////////////////////////////////////////////
 		// Starting points

@@ -95,10 +95,18 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 		{
 			if (start_point.dim)
 				memcpy(x, start_point.vector, sizeof(double)*start_point.dim); 
-			else if (!DrawParametersFromPrior(x)) 
-				throw dw_exception("CEquiEnergyModel::HillClimb_NPSOL : DrawSampleFromPrior() error occurred");
+			else 
+			{
+				log_posterior_before_perturbation = MINUS_INFINITY; 
+				while (log_posterior_before_perturbation <= MINUS_INFINITY)
+				{
+					if(!DrawParametersFromPrior(x))
+						throw dw_exception("CEquiEnergyModel::HillClimb_NPSOL : DrawSampleFromPrior() error occurred");
+					log_posterior_before_perturbation = log_posterior_function(x, n);
+				}
+			}
 
-			log_posterior_before_perturbation = log_posterior_function(x, n);
+
 			for (int ii=0; ii<optimization_iteration; ii++)
 			{
 				perturbation.RandomNormal(); 
@@ -163,8 +171,9 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 			}
 		}
 	}	
-	catch(...)
+	catch( dw_exception& e )
 	{
+		cout << e.what() << endl; 
 		delete [] g; 
 		delete [] c;
 		delete [] w; 
