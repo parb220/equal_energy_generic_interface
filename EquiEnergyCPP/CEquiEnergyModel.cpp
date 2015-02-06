@@ -26,15 +26,11 @@ bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleI
 	{
 		// calculate log_ratio in the current and the higher stages
 		double log_ratio; 
-		// double log_prior_initial = y_initial.weight - y_initial.reserved; // log_prior_function(y_initial); 
-		// double log_prior_end = y_end.weight - y_end.reserved; // log_prior_function(y_end); 
 
-		if (energy_stage == parameter->number_energy_stage-1)
+		/*if (energy_stage == parameter->number_energy_stage-1)
 			log_ratio = 0.0; 
-		else 
-			// log_ratio = parameter->LogRatio_Stage(-(y_initial.weight-log_prior_initial), -(y_end.weight-log_prior_end), energy_stage+1);
+		else*/ 
 			log_ratio = parameter->LogRatio_Stage(-(y_initial.reserved), -(y_end.reserved), energy_stage+1);
-		// log_ratio += parameter->LogRatio_Stage(-(y_end.weight-log_prior_end), -(y_initial.weight-log_prior_initial), energy_stage); 
 		log_ratio += parameter->LogRatio_Stage(-(y_end.reserved), -(y_initial.reserved), energy_stage); 
 		if (log(dw_uniform_rnd()) <= log_ratio)
 			return true; 
@@ -113,20 +109,18 @@ void CEquiEnergyModel::Simulation_Prior(bool if_storage, const string &sample_fi
 
 	for (int i=0; i<parameter->simulation_length; i++)
 	{
-		if (DrawParametersFromPrior(x_new.data.vector))
+		do
 		{
+			DrawParametersFromPrior(x_new.data.vector); 
 			x_new.DataChanged(); 
-			log_posterior_function(x_new); 
-			if (x_new.weight > MINUS_INFINITY)
-			{
-				current_sample = x_new; 
-				current_sample.id = timer_when_started;			
-				if (if_storage)
-                        		SaveSampleToStorage(current_sample);
-                		if (if_write_file)
-                        		write(output_file, &current_sample);
-			}
-		}		
+			log_posterior_function(x_new);
+		} while (x_new.weight <= MINUS_INFINITY); 
+		current_sample = x_new; 
+		current_sample.id = timer_when_started;			
+		if (if_storage)
+               	      SaveSampleToStorage(current_sample);
+                if (if_write_file)
+                      write(output_file, &current_sample);
 	}
 	if (if_write_file)
                 output_file.close();

@@ -27,6 +27,7 @@ vector<double>EstimateLogMDD_gaussian(CEquiEnergyModel &model, int stage, int nG
  
 double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t, int proposal_type); 
 double LogMDD(const vector<CSampleIDWeight> &proposal, const vector<CSampleIDWeight> &posterior, double t_previous, double t_current, double logMDD_previous); 
+double LogMDD_Importance(const vector<CSampleIDWeight> &proposal, double t_previous, double t_current, double logMDD_previous); 
 
 double LogMDD_gaussian(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t); 
 TMatrix CreateProposalMatrix(int ndraws, CEquiEnergyModel &model, const TElliptical *elliptical); 
@@ -637,6 +638,20 @@ double LogMDD(const vector<CSampleIDWeight> &proposal, const vector<CSampleIDWei
 	// cout << "logMDD bridge at stage " << stage << " using draws of previuos stage " << previous_stage << " as proposal is " << logmdd << endl; 
 	return logMDD; 
 }
+
+double LogMDD_Importance(const vector<CSampleIDWeight> &proposal, double t_previous, double t_current, double logMDD_previous)
+{
+	vector<double> weight(proposal.size(),0); 
+	for (int i=0; i<(int)proposal.size(); i++)
+	{
+		weight[i] = proposal[i].reserved/t_current; 
+		weight[i] -= proposal[i].reserved/t_previous - logMDD_previous;  
+	}
+	double sum_weight = weight[0]; 
+	for (int i=1; i<(int)weight.size(); i++)
+		sum_weight = AddLogs(sum_weight, weight[i]); 
+	return sum_weight; 
+} 
 
 double CheckLogMDDConvergency(vector<CSampleIDWeight> &sample, CEquiEnergyModel &model, int stage, double t, int proposal_type, double &average_logMDD, double &std_logMDD)
 {
