@@ -109,20 +109,18 @@ void CEquiEnergyModel::Simulation_Prior(bool if_storage, const string &sample_fi
 
 	for (int i=0; i<parameter->simulation_length; i++)
 	{
-		if (DrawParametersFromPrior(x_new.data.vector))
+		do
 		{
+			DrawParametersFromPrior(x_new.data.vector); 
 			x_new.DataChanged(); 
-			log_posterior_function(x_new); 
-			if (x_new.weight > MINUS_INFINITY)
-			{
-				current_sample = x_new; 
-				current_sample.id = timer_when_started;			
-				if (if_storage)
-                        		SaveSampleToStorage(current_sample);
-                		if (if_write_file)
-                        		write(output_file, &current_sample);
-			}
-		}		
+			log_posterior_function(x_new);
+		} while (x_new.weight <= MINUS_INFINITY); 
+		current_sample = x_new; 
+		current_sample.id = timer_when_started;			
+		if (if_storage)
+               	      SaveSampleToStorage(current_sample);
+                if (if_write_file)
+                      write(output_file, &current_sample);
 	}
 	if (if_write_file)
                 output_file.close();
