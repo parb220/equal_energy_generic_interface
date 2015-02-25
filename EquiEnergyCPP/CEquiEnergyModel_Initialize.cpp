@@ -16,7 +16,7 @@ vector<double> CEquiEnergyModel::Reweight(const vector<CSampleIDWeight> &samples
 		// double log_prior = log_prior_function(samples[i]); 
 		// log_weight[i] = (samples[i].weight-log_prior)  * 1.0/parameter->t[current_stage] ; 
 		log_weight[i] = samples[i].reserved  * 1.0/parameter->t[current_stage] ; 
-		if (previous_stage < parameter->number_energy_stage)
+		// if (previous_stage < parameter->number_energy_stage)
 			// log_weight[i] = log_weight[i] - (samples[i].weight-log_prior) * 1.0/parameter->t[previous_stage] ; 
 			log_weight[i] = log_weight[i] - samples[i].reserved * 1.0/parameter->t[previous_stage] ; 
 	}
