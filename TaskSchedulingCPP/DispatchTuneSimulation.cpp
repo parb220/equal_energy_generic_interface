@@ -16,15 +16,11 @@
 #include "mdd.hpp"
 #include "mdd_function.h"
 #include "master_deploying.h"
+#include "EstimateLogMDD.hpp"
 
 using namespace std; 
 
 vector<string> glob(const string &pattern);
-
-double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model, double t, int proposal_type);
-double LogMDD(const vector<CSampleIDWeight> &proposal, const vector<CSampleIDWeight> &posterior, double t_previous, double t_current, double logMDD_previous);
-double LogMDD_Importance(const vector<CSampleIDWeight> &proposal, double t_previous, double t_current, double logMDD_previous);
-// double  CheckConvergency (CEquiEnergyModel &model, int stage, int previous_stage,  double convergency_previous, double &average, double &std, double &LB_ESS); 
 
 void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
 {
@@ -38,19 +34,35 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	// logMDD[i][1], constant of integration using draws from the previous stage as the proposals where for the highest+1 level, logMDD[i][1] uses ellipticals as proposals
 	// logMDD[i][2], constant of integration using draws from the previous stage as the proposals where for the highest+1 level, logMDD[i][1] uses Gaussian and important sampling to calculate
 	// logMDD[i][3], constant of integration using draws from the previous stage and importance.
-	vector<vector<double> > logMDD(model.parameter->number_energy_stage+1, vector<double>(4, 0.0)); 
+	vector<vector<double> > logMDD(model.parameter->number_energy_stage+1, vector<double>(2, 0.0)); 
 	/* vector<double> consistency(model.parameter->number_energy_stage, 0.0);
 	vector<double> average_consistency(model.parameter->number_energy_stage, 0.0); 
 	vector<double> std_consistency(model.parameter->number_energy_stage, 0.0);
 	vector<double> LB_ESS(model.parameter->number_energy_stage, 0.0); */
 
+	vector<CSampleIDWeight> posterior, proposal;
+	int data_size = model.current_sample.GetSize_Data();
+	bool unstructured = true;
+	
 	for (int stage=model.parameter->highest_stage; stage>=model.parameter->lowest_stage; stage--)
 	{
 		/////////////////////////////////////////////////////////////////////////////////
 		// Highest +1 stage 
 		if (stage == model.parameter->number_energy_stage-1)
-			// HighestPlus1Stage(nNode, nInitial, model);
-			HighestPlus1Stage_Prior(nNode, nInitial, model); // Sample from prior
+		{
+			HighestPlus1Stage(nNode, nInitial, model);
+			// HighestPlus1Stage_Prior(nNode, nInitial, model); // Sample from prior
+			posterior.clear(); 
+			if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
+                        {
+                                cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
+                                abort();
+                        }
+
+			// logMDD[stage+1][1]: logMDD using elliptical for draws from prior distribution
+                        logMDD[stage+1][0] = logMDD[stage+1][1] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
+			cout << setprecision(20) << "logMDD at stage " << stage+1 << ": " << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << endl; 
+		}
 
 		////////////////////////////////////////////////////////////////////////////////
 		// Starting points
@@ -173,39 +185,34 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// logMDD
-		vector<CSampleIDWeight> proposal, posterior;
-		int data_size = model.current_sample.GetSize_Data();
-		bool unstructured = true;
 
-		if (stage == model.parameter->number_energy_stage -10)
-		{        
-			if (!model.storage->DrawAllSample(stage, posterior, unstructured, data_size))
-                	{
-                		cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
-                       		abort();
-                	}
-
-                        logMDD[stage][0] = logMDD[stage][1] = LogMDD(posterior,  model, model.parameter->t[stage], USE_TRUNCATED_POWER);
-                        logMDD[stage][2] = logMDD[stage][3] = LogMDD(posterior, model, model.parameter->t[stage], WEIGHTED_WITH_GAUSIAN_SAMPLES);
-		}
-		else if (stage < model.parameter->number_energy_stage -10) 
-		// if (stage == 0)
+		// logMDD[stage][1]: logMDD using importance sampling of the draws from previous stage
+		/*if (stage == model.parameter->number_energy_stage - 10)
 		{
-        		if (!model.storage->DrawAllSample(stage+1, proposal, unstructured, data_size) || !model.storage->DrawAllSample(stage, posterior, unstructured, data_size))
+			posterior.clear(); 
+                        if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
+                        {
+                                cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
+                                abort();
+                        }
+
+                        // logMDD[stage+1][1]: logMDD using elliptical for draws from prior distribution
+                        logMDD[stage+1][0] = logMDD[stage+1][1] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
+                        cout << setprecision(20) << "logMDD at stage " << stage+1 << ": " << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << endl; 
+		}
+		if (stage <= model.parameter->number_energy_stage -10) 
+		{*/	
+			logMDD[stage][1] = LogMDD_Importance(posterior, model, stage+1, stage, logMDD[stage+1][1], LIKELIHOOD_HEATED); 
+			posterior.clear(); 
+        		if (!model.storage->DrawAllSample(stage, posterior, unstructured, data_size))
         		{	
                 		cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
                 		abort();
         		}
-	     		logMDD[stage][0] = LogMDD(posterior, model, model.parameter->t[stage], USE_TRUNCATED_POWER);
-			logMDD[stage][1] = LogMDD(proposal, posterior, model.parameter->t[stage+1], model.parameter->t[stage], logMDD[stage+1][1]); 
-			logMDD[stage][2] = LogMDD(proposal, posterior, model.parameter->t[stage+1], model.parameter->t[stage], logMDD[stage+1][2]); 
-			logMDD[stage][3] = LogMDD_Importance(proposal, model.parameter->t[stage+1], model.parameter->t[stage], logMDD[stage+1][3]); 
-		}
-		proposal.clear(); 
-		posterior.clear(); 
-		if (stage <= model.parameter->number_energy_stage -10)
-		// if (stage == 0)
-			cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][0] << "\t" << logMDD[stage][1] << "\t" << logMDD[stage][2] << "\t" << logMDD[stage][3] << endl; 
+	     		logMDD[stage][0] = LogMDD(posterior, model, model.parameter->t[stage], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
+		// }
+		
+		cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][0] << "\t" << logMDD[stage][1] << endl; //  "\t" << logMDD[stage][2] << "\t" << logMDD[stage][3] << endl; 
 
 		/*if (stage == model.parameter->number_energy_stage-1 )
 			consistency[stage-1] = CheckConvergency(model, stage-1, stage, logMDD[stage][stage], average_consistency[stage-1], std_consistency[stage-1], LB_ESS[stage-1]);
