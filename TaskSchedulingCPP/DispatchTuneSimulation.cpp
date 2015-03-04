@@ -51,8 +51,11 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// Highest +1 stage 
 		if (stage == model.parameter->number_energy_stage-1)
 		{
+			model.storage->InitializeBin(model.parameter->number_energy_stage, model.current_sample.GetSize_Data()); 
 			// HighestPlus1Stage(nNode, nInitial, model);
 			HighestPlus1Stage_Prior(nNode, nInitial, model); // Sample from prior
+		
+			// logMDD
 			posterior.clear(); 
 			if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
                         {
@@ -67,6 +70,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 		////////////////////////////////////////////////////////////////////////////////
 		// Starting points
+		model.storage->InitializeBin(stage, model.current_sample.GetSize_Data()); 
 		vector<CSampleIDWeight> start_points(nInitial); 
 		if (model.storage->empty(stage+1) || !model.Initialize_WeightedSampling(nInitial, stage+1, start_points))
 		{
@@ -229,10 +233,10 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		} */
 		
 		// to save space, remove stage+1 samples
+		model.storage->ClearBin(stage+1); 
 		if (save_space_flag  && stage > 0 ) //&& stage+1 < model.parameter->number_energy_stage-1 )
 		{
 			model.storage->ClearSample(stage+1);  
-			
 			convert.str(string());
                         convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << stage+1 << ".*";;
                         string remove_file_pattern = model.parameter->storage_dir + convert.str();

@@ -20,11 +20,10 @@ protected:
 	vector<vector<CPutGetBin> > bin;
 	vector<vector<double> > energy_lower_bound; 
 public: 
-	CStorageHead(int size_each_data, int _node_index=0, const string & _run_id=string(), size_t _storage_marker=10000, string _file_location=string(), size_t _number_stage=1); 
+	CStorageHead(int _node_index=0, const string & _run_id=string(), size_t _storage_marker=10000, string _file_location=string(), size_t _number_stage=1); 
 	~CStorageHead(); 
 
 	bool makedir(); 
-	size_t Number_Bin(int stage) const; 
 	
 	int BinIndex(int stage, double energy) const;  
 	int DepositSample(int stage, int _bin_id, const CSampleIDWeight &) ;
@@ -59,6 +58,7 @@ public:
         void ResizeBin(int stage, int number); 
         void SetEnergyLowerBound(int stage, int index, double e); 
 	void ClearBin(int stage); 
+	void InitializeBin(int stage, int data_size); 
 
 }; 
 

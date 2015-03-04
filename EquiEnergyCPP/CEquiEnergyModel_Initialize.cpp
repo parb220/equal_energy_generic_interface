@@ -64,7 +64,7 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(int K, int stage_
         if (starters.size() != K)
                 starters.resize(K);
 	int nSample=0; 
-	for (int ii=0; ii<storage->Number_Bin(stage_index); ii++)
+	for (int ii=0; ii<storage->GetNumber_Bin(stage_index); ii++)
 		nSample += (int)storage->GetNumberRecrod(stage_index, ii); 
 	if (nSample < K)
 		return false; 
@@ -72,7 +72,7 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(int K, int stage_
 	vector<CSampleIDWeight> samples; 
 	int nDraw = ceil(percentile*nSample) < K ? K : ceil(percentile*nSample); 
 	int bin = 0;
-       	while (bin < storage->Number_Bin(stage_index) && samples.size() < nDraw)
+       	while (bin < storage->GetNumber_Bin(stage_index) && samples.size() < nDraw)
        	{
                	storage->Draw_K_MostWeightSample(nDraw, stage_index, bin, samples);
                	bin ++;
@@ -118,7 +118,7 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentileBand(int K, int st
         if (starters.size() != K)
                 starters.resize(K);
 	int nSample=0; 
-	for (int ii=0; ii<storage->Number_Bin(stage_index); ii++)
+	for (int ii=0; ii<storage->GetNumber_Bin(stage_index); ii++)
 		nSample += (int)storage->GetNumberRecrod(stage_index, ii); 
 	if (nSample < K)
 		return false; 
@@ -126,7 +126,7 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentileBand(int K, int st
 	vector<CSampleIDWeight> samples; 
 	int nDraw = ceil(percentile*nSample) < K ? K : ceil(percentile*nSample); 
 	int bin = 0;
-       	while (bin < storage->Number_Bin(stage_index) && samples.size() < nDraw)
+       	while (bin < storage->GetNumber_Bin(stage_index) && samples.size() < nDraw)
        	{
                	storage->Draw_K_MostWeightSample(nDraw, stage_index, bin, samples);
                	bin ++;
@@ -234,7 +234,7 @@ bool CEquiEnergyModel::InitializeFromFile(const string &file_name)
 // A sample is randomly taken from a pool (with size desired_pool_size) of samples where the pool is formed by samples with higher log-posteriors. Note that samples with higher log-posterior values are stored in smaller-indexed bins. So, if the desired pool size is 10 while the size of the first bin is 100, then only the first bin will be used. In contrast, if the desired pool size is 100 while the total number of samples in the first 3 bins is barely greater than 100, then the first 3 bins will be used. 
 bool CEquiEnergyModel::Initialize(int desiredPoolSize, int stage_index)
 {
-        int N=storage->Number_Bin(stage_index);
+        int N=storage->GetNumber_Bin(stage_index);
         int nSample_Total=0;
         vector<int>nSample_Bin(N,0);
         for (int bin_index=0;  bin_index<N; bin_index++)
@@ -266,9 +266,9 @@ bool CEquiEnergyModel::Initialize(int desiredPoolSize, int stage_index)
 bool CEquiEnergyModel::InitializeWithBestSample(int stage_index)
 {
         int bin_index=0;
-        while (bin_index<storage->Number_Bin(stage_index) && !(storage->DrawMostWeightSample(stage_index, bin_index, current_sample) ) )
+        while (bin_index<storage->GetNumber_Bin(stage_index) && !(storage->DrawMostWeightSample(stage_index, bin_index, current_sample) ) )
                 bin_index ++;
-        if (bin_index >= storage->Number_Bin(stage_index))
+        if (bin_index >= storage->GetNumber_Bin(stage_index))
                 return false;
         current_sample.id = timer_when_started;
         return true;
@@ -278,7 +278,7 @@ bool CEquiEnergyModel::InitializeWith_Kth_BestSample(int K, int stage_index)
 {
         vector<CSampleIDWeight> sample;
         int bin=0;
-        while (bin < storage->Number_Bin(stage_index) && sample.size() < K)
+        while (bin < storage->GetNumber_Bin(stage_index) && sample.size() < K)
         {
                 storage->Draw_K_MostWeightSample(K, stage_index, bin, sample);
                 bin ++;
@@ -291,7 +291,7 @@ bool CEquiEnergyModel::Initialize_RandomlyPickFrom_K_BestSample(int K, int stage
 {
         vector<CSampleIDWeight> sample;
         int bin = 0;
-        while (bin < storage->Number_Bin(stage_index) && sample.size() < K)
+        while (bin < storage->GetNumber_Bin(stage_index) && sample.size() < K)
         {
                 storage->Draw_K_MostWeightSample(K, stage_index, bin, sample);
                 bin ++;
