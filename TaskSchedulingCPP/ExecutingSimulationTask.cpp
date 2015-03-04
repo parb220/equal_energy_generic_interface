@@ -12,6 +12,7 @@ using namespace std;
 
 void ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_index, const CSampleIDWeight &mode, int message_tag)
 {
+	model.storage->InitializeBin(model.energy_stage, model.current_sample.GetSize_Data()); 
 	// restore partial storage (previously obtained at this node) for updating
 	model.storage->ClearStatus(model.energy_stage); 
 	model.storage->restore(model.energy_stage); 
@@ -64,9 +65,7 @@ void ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_ind
 	// finalze and clear-up storage
 	model.storage->ClearStatus(model.energy_stage); 
 	model.storage->finalize(model.energy_stage); 
+	model.storage->ClearDepositDrawHistory(model.energy_stage);
 	if (model.energy_stage < model.parameter->number_energy_stage)
-	{
-		model.storage->ClearDepositDrawHistory(model.energy_stage);
 		model.storage->ClearDepositDrawHistory(model.energy_stage+1); 
-	}
 }

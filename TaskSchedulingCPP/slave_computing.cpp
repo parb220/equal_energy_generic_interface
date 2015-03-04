@@ -91,6 +91,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 				cerr << "Error occurred while reading Gaussian mixture model parameters from " << gm_file << endl; 
 				abort(); 
 			}
+			model.storage->InitializeBin(model.energy_stage, model.current_sample.GetSize_Data()); 
 			model.GMM_Simulation(rPackage[LENGTH_INDEX]); 
 			model.storage->ClearStatus(model.energy_stage); 
 			model.storage->finalize(model.energy_stage);
@@ -126,7 +127,6 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 				abort(); 
 			}
 			model.t_bound = model.parameter->t[model.energy_stage];
-
 			ExecutingSimulationTask(model, my_rank, group_index, mode, status.MPI_TAG); 
 		}
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD); 

@@ -36,7 +36,7 @@ vector <CSampleIDWeight> ReadSampleFromFile(const string &file_name, int size_ea
 	return sample;
 }
 
-CStorageHead::CStorageHead(int size_each_data, int _node_index, const string & _run_id, size_t _storage_marker, string _file_location, size_t _number_stage) : 
+CStorageHead::CStorageHead(int _node_index, const string & _run_id, size_t _storage_marker, string _file_location, size_t _number_stage) : 
 cluster_node(_node_index), 
 run_id(_run_id), 
 storage_marker(_storage_marker), 
@@ -44,6 +44,17 @@ filename_base(_file_location),
 bin(vector<vector<CPutGetBin> >(_number_stage+1)), 
 energy_lower_bound(vector<vector<double> >(_number_stage+1)) 
 {
+}
+
+void CStorageHead::InitializeBin(int stage, int size_each_data)
+{
+	if (stage < 0 || stage >= (int)bin.size())
+	{
+		cerr << "CStorageHead::InitializeBin() : stage exceeds range"; 
+		abort(); 
+	}
+	bin[stage].clear(); 
+
 	stringstream str; 
 	str << run_id << "/" << run_id << ".binary/";
 
@@ -54,12 +65,8 @@ energy_lower_bound(vector<vector<double> >(_number_stage+1))
 	
 	stringstream bin_id_string; 
 	// Each stage has one bin at the begging for depositing
-	for (int i=0; i<(int)bin.size(); i++)
-	{
-		bin_id_string.str(string()); 
-		bin_id_string << i << ".0"; 
-		bin[i].push_back(CPutGetBin(size_each_data, bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node)); 
-	}
+	bin_id_string << stage << ".0"; 
+	bin[stage].push_back(CPutGetBin(size_each_data, bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node)); 
 }
 
 CStorageHead::~CStorageHead()
@@ -88,16 +95,6 @@ bool CStorageHead::makedir()
 		return false; 
 }
 
-size_t CStorageHead::Number_Bin(int stage) const
-{
-	if (stage < 0 || stage >=(int)bin.size())
-	{
-		cerr << "CStorageHead::Number_Bin() : stage index exceeds the range.\n"; 
-		abort(); 
-	}
-	return bin[stage].size(); 
-}
-
 int CStorageHead::BinIndex(int stage, double energy) const 
 {
 	if (stage < 0 || stage >= (int)energy_lower_bound.size())
@@ -105,12 +102,7 @@ int CStorageHead::BinIndex(int stage, double energy) const
 		cerr << "CStorageHead::BinIndex() : stage index exceeds the range.\n"; 
 		abort(); 
 	}
-	if (bin[stage].empty())
-	{
-		cerr << "CStorageHead::BinIndex() : There should be at least one bin for each stage.\n"; 
-		abort(); 
-	}
-	else if (energy_lower_bound[stage].empty()) // binning has not been done yet
+	if (energy_lower_bound[stage].empty()) // binning has not been done yet
 		return 0; 
 	for (int j=1; j<(int)energy_lower_bound[stage].size(); j++)
 	{
@@ -125,6 +117,11 @@ int CStorageHead::DepositSample(int stage, int _bin_id, const CSampleIDWeight &s
 	if (stage < 0 || stage >= (int)bin.size())
 	{
 		cerr << "CStorageHead::DepositSample() : stage index exceeds the range.\n"; 
+		abort(); 
+	}
+	if (bin[stage].empty())
+	{
+		cerr << "CStorageHead::DepositSample() : there should be at least one bin for the stage"; 
 		abort(); 
 	}
 	return bin[stage][_bin_id].DepositSample(sample); 
@@ -443,4 +440,5 @@ void CStorageHead::ClearBin(int stage)
                 abort();
         }
 	bin[stage].clear(); 
+	bin[stage].swap(bin[stage]); 
 }
