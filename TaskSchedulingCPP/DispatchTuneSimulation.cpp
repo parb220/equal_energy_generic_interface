@@ -52,8 +52,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		if (stage == model.parameter->number_energy_stage-1)
 		{
 			model.storage->InitializeBin(model.parameter->number_energy_stage, model.current_sample.GetSize_Data()); 
-			// HighestPlus1Stage(nNode, nInitial, model);
-			HighestPlus1Stage_Prior(nNode, nInitial, model); // Sample from prior
+			HighestPlus1Stage(nNode, nInitial, model);
 		
 			// logMDD
 			posterior.clear(); 
