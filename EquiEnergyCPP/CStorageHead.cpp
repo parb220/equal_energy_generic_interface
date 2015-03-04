@@ -404,13 +404,15 @@ double CStorageHead::GetEnergyLowerBound(int stage, int index) const
 	return energy_lower_bound[stage][index]; 
 }
 
-void CStorageHead::ResizeBin(int stage, int number) 
+void CStorageHead::ResizeBin(int stage, int number, int size_each_data) 
 {
 	if (stage <0 || stage >= (int)bin.size() || number < 0 )
         {
                 cerr << "CStorageHead::ResizeBin() : stage index exceeds the range or invalid number of bins.\n";
                 abort();
         } 
+	if (bin[stage].empty())
+		InitializeBin(stage, size_each_data); 
 	bin[stage].resize(number, bin[stage][0]); 
 	stringstream convert; 
 	for (int i=0; i<number; i++)

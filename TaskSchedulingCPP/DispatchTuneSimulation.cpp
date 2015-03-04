@@ -49,23 +49,19 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	{
 		/////////////////////////////////////////////////////////////////////////////////
 		// Highest +1 stage 
+		model.storage->InitializeBin(stage+1, model.current_sample.GetSize_Data()); 
 		if (stage == model.parameter->number_energy_stage-1)
-		{
-			model.storage->InitializeBin(model.parameter->number_energy_stage, model.current_sample.GetSize_Data()); 
 			HighestPlus1Stage(nNode, nInitial, model);
-		
-			// logMDD
-			posterior.clear(); 
-			if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
-                        {
-                                cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
-                                abort();
-                        }
+		posterior.clear(); 
+		if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
+                {
+                	cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
+                        abort();
+                }
 
-			// logMDD[stage+1][1]: logMDD using elliptical for draws from prior distribution
-                        logMDD[stage+1][0] = logMDD[stage+1][1] = logMDD[stage+1][2] = logMDD[stage+1][3] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, POSTERIOR_HEATED);
-			cout << setprecision(20) << "logMDD at stage " << stage+1 << ": " << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << "\t" << logMDD[stage+1][2] << "\t" << logMDD[stage+1][3] << endl; 
-		}
+		// logMDD[stage+1][1]: logMDD using elliptical for draws from prior distribution
+               logMDD[stage+1][0] = logMDD[stage+1][1] = logMDD[stage+1][2] = logMDD[stage+1][3] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, POSTERIOR_HEATED);
+		cout << setprecision(20) << "logMDD at stage " << stage+1 << ": " << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << "\t" << logMDD[stage+1][2] << "\t" << logMDD[stage+1][3] << endl; 
 
 		////////////////////////////////////////////////////////////////////////////////
 		// Starting points
@@ -189,36 +185,19 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// logMDD
-		/*if (stage == model.parameter->number_energy_stage -10)
-		{
-			posterior.clear(); 
- 			if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
- 			{
- 				cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
- 				abort();
- 			}
- 
-			// logMDD[stage+1][1]: logMDD using elliptical for draws from prior distribution
-			logMDD[stage+1][0] = logMDD[stage+1][1] = logMDD[stage+1][2] = logMDD[stage+1][3] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
-			cout << setprecision(20) << "logMDD at stage " << stage+1 << ": " << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << "\t" << logMDD[stage+1][2] << "\t" << logMDD[stage+1][3] << endl; 
-		}
-		if (stage <= model.parameter->number_energy_stage -10)
-		{*/
-			// logMDD[stage][1]: logMDD using importance sampling of the draws from previous stage
-			logMDD[stage][1] = LogMDD_Importance(posterior, model, stage+1, stage, logMDD[stage+1][1], POSTERIOR_HEATED); 
-			proposal = posterior; 
-			posterior.clear(); 
-        		if (!model.storage->DrawAllSample(stage, posterior, unstructured, data_size))
-        		{	
-               			cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
-               			abort();
-        		}
-	     		logMDD[stage][0] = LogMDD(posterior, model, model.parameter->t[stage], USE_TRUNCATED_POWER, POSTERIOR_HEATED);
-			logMDD[stage][2] = LogMDD(proposal, posterior, model, stage+1, stage, logMDD[stage+1][0]); 
-			logMDD[stage][3] = LogMDD(proposal, posterior, model, stage+1, stage, logMDD[stage+1][3]); 
-		
-			cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][0] << "\t" << logMDD[stage][1] << "\t" << logMDD[stage][2] << "\t" << logMDD[stage][3] << endl; 
-		// }
+		logMDD[stage][1] = LogMDD_Importance(posterior, model, stage+1, stage, logMDD[stage+1][1], POSTERIOR_HEATED); 
+		proposal = posterior; 
+		posterior.clear(); 
+        	if (!model.storage->DrawAllSample(stage, posterior, unstructured, data_size))
+        	{	
+               		cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
+               		abort();
+        	}
+	     	logMDD[stage][0] = LogMDD(posterior, model, model.parameter->t[stage], USE_TRUNCATED_POWER, POSTERIOR_HEATED);
+		logMDD[stage][2] = LogMDD(proposal, posterior, model, stage+1, stage, logMDD[stage+1][0]); 
+		logMDD[stage][3] = LogMDD(proposal, posterior, model, stage+1, stage, logMDD[stage+1][3]); 
+	
+		cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][0] << "\t" << logMDD[stage][1] << "\t" << logMDD[stage][2] << "\t" << logMDD[stage][3] << endl; 
 
 		/*if (stage == model.parameter->number_energy_stage-1 )
 			consistency[stage-1] = CheckConvergency(model, stage-1, stage, logMDD[stage][stage], average_consistency[stage-1], std_consistency[stage-1], LB_ESS[stage-1]);
@@ -232,7 +211,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		} */
 		
 		// to save space, remove stage+1 samples
-		model.storage->ClearBin(stage+1); 
 		if (save_space_flag  && stage > 0 ) //&& stage+1 < model.parameter->number_energy_stage-1 )
 		{
 			model.storage->ClearSample(stage+1);  
@@ -250,6 +228,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
                         for (int i=0; i<(int)remove_file.size(); i++)
                                 remove(remove_file[i].c_str());
 		}
+		model.storage->ClearBin(stage+1); 
 
 	}
 
