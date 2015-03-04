@@ -49,7 +49,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		{
 			model.energy_stage = (int)(rPackage[LEVEL_INDEX]); 
 			int number_ring = (int)(rPackage[RESERVE_INDEX]); 
-			model.storage-> ResizeBin(model.energy_stage, number_ring); 
+			model.storage-> ResizeBin(model.energy_stage, number_ring, model.current_sample.GetSize_Data()); 
 			for (int i=0; i<number_ring; i++)
 				model.storage->SetEnergyLowerBound(model.energy_stage, i, rPackage[RESERVE_INDEX+i+1]);
 			if (model.energy_stage+1 <= model.parameter->number_energy_stage)

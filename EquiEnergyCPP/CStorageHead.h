@@ -55,7 +55,7 @@ public:
 	/* get set energy lower bound */
  	int GetNumber_Bin(int stage) const;
         double GetEnergyLowerBound(int stage, int index) const;
-        void ResizeBin(int stage, int number); 
+        void ResizeBin(int stage, int number, int data_size); 
         void SetEnergyLowerBound(int stage, int index, double e); 
 	void ClearBin(int stage); 
 	void InitializeBin(int stage, int data_size); 

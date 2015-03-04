@@ -16,6 +16,7 @@ void master_deploying(int nNode, int nInitial, CEquiEnergyModel &model, const CS
 	MPI_Status status;
 	
 	// Re-binning highest_stage+1 if continues from a previous run (such that highest_stage < number_energy_stage -1)
+
 	if (model.parameter->highest_stage < model.parameter->number_energy_stage - 1)
 	{
 		model.storage->ClearStatus(model.parameter->highest_stage+1);
