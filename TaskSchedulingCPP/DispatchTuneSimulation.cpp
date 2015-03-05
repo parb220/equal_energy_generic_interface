@@ -49,19 +49,25 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	{
 		/////////////////////////////////////////////////////////////////////////////////
 		// Highest +1 stage 
-		model.storage->InitializeBin(stage+1, model.current_sample.GetSize_Data()); 
-		if (stage == model.parameter->number_energy_stage-1)
-			HighestPlus1Stage_Prior(nNode, nInitial, model); // Sample from prior
-		posterior.clear(); 
-		if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
-                {
-                	cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
-                        abort();
-                }
+		if (stage == model.parameter->highest_stage)
+		{
+			model.storage->InitializeBin(stage+1, model.current_sample.GetSize_Data()); 
+			if (stage == model.parameter->number_energy_stage-1)
+				HighestPlus1Stage_Prior(nNode, nInitial, model); // Sample from prior
+			posterior.clear(); 
+			if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
+                	{
+                		cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
+                        	abort();
+                	}
 
-		// logMDD[stage+1][1]: logMDD using elliptical for draws from prior distribution
-               logMDD[stage+1][0] = logMDD[stage+1][1] = logMDD[stage+1][2] = logMDD[stage+1][3] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
-		cout << setprecision(20) << "logMDD at stage " << stage+1 << ": " << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << "\t" << logMDD[stage+1][2] << "\t" << logMDD[stage+1][3] << endl; 
+			if (stage == model.parameter->number_energy_stage-1)
+			// logMDD[stage+1][1]: logMDD using elliptical for draws from prior distribution
+               			logMDD[stage+1][0] = logMDD[stage+1][1] = logMDD[stage+1][2] = logMDD[stage+1][3] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, PRIOR_ONLY);
+			else 
+               			logMDD[stage+1][0] = logMDD[stage+1][1] = logMDD[stage+1][2] = logMDD[stage+1][3] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
+			cout << setprecision(20) << "logMDD at stage " << stage+1 << ": " << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << "\t" << logMDD[stage+1][2] << "\t" << logMDD[stage+1][3] << endl; 
+		}
 
 		////////////////////////////////////////////////////////////////////////////////
 		// Starting points
