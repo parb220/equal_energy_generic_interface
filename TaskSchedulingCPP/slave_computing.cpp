@@ -59,6 +59,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
 		{
 			model.HillClimb_NPSOL(rPackage[LENGTH_INDEX], optimizationN, perturbationN, perturbationS, 1.0); // model.parameter->t[model.parameter->number_energy_level]);
+			cout << "HILL_CLIMB_TAG: successful\n";
 			// Save gm_mean and gm_covariance_sqrt into files 
 			stringstream convert;
 			convert.str(string()); 
