@@ -74,8 +74,8 @@ bool CStorageHead::makedir()
 	string dir = filename_base + str.str(); 
 	errno = 0; // clear error number
 	int status = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-	if (status !=0 && errno != EEXIST)
-		return false;
+	if (status !=0 && errno != EEXIST) { cerr << dir << endl;
+	  return false;}
  
 	str.str(string()); 
 	str << run_id << "/" << run_id << ".binary" ; 
@@ -84,8 +84,8 @@ bool CStorageHead::makedir()
 	status = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); 
 	if (status == 0 || errno == EEXIST)
 		return true; 
-	else 
-		return false; 
+	else { cerr << dir << endl;
+	  return false; }
 }
 
 size_t CStorageHead::Number_Bin(int stage) const
