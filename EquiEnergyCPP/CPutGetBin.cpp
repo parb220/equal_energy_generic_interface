@@ -586,8 +586,8 @@ void CPutGetBin::RestoreForFetch()
 		{
 			nPutUsed = tempSample.size(); 
 			if (dataPut.size() < tempSample.size())
-				dataPut.resize(capacity); 
-			copy(tempSample.begin(), tempSample.end(), dataPut.begin()); 
+				dataPut.resize(capacity);
+			copy(tempSample.begin(), tempSample.end(), dataPut.begin());
 			//for (int j=0; j<tempSample.size(); j++)
 			//	dataPut[j] = tempSample[j]; 
 		}
