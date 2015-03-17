@@ -24,7 +24,7 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 	convert.str(string()); 
 	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_SCHEME; 
 	string block_scheme_file_name = model.parameter->storage_dir  + convert.str(); 
-	cout << "In ExecutingTuningTask_BeforeSimulation() - 1\n"; 
+
 	// tuning 
         convert.str(string()); 
        	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << model.energy_stage << "." << group_index;
@@ -34,10 +34,10 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 	model.storage->restore(model.energy_stage); 
 	if (model.energy_stage < model.parameter->number_energy_stage)
 	{
-		model.storage->ClearStatus(model.energy_stage+1); cout << "In ExecutingTuningTask_BeforeSimulation() - 2\n";
-		model.storage->RestoreForFetch(model.energy_stage+1);	cout << "In ExecutingTuningTask_BeforeSimulation() - 3\n";
+		model.storage->ClearStatus(model.energy_stage+1);
+		model.storage->RestoreForFetch(model.energy_stage+1);	
 	}	
-	cout << "In ExecutingTuningTask_BeforeSimulation() - 4\n";
+
 	if (model.energy_stage == model.parameter->number_energy_stage)
 	{
 		if_eejump=false; 
