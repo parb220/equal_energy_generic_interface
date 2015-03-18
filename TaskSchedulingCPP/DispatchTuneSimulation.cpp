@@ -83,7 +83,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			  {
 				time(&rawtime);
 				cout << "DispatchTuneSimulation() - drawing from prior: stage=" << stage << " " << ctime(&rawtime) << endl;
-				HighestPlus1Stage_Prior(nNode, nInitial, model); // Sample from prior
+				HighestPlus1Stage_Prior(nNode, nInitial, model);   // Sample from prior
 				time(&rawtime);
 				cout << "DispatchTuneSimulation() - done drawing from prior: stage=" << stage << " " << ctime(&rawtime) << endl;
 			  }
@@ -95,11 +95,17 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
                        		abort();
                 	}
 
+			ofstream out;
+			out.open("tmp.tmp");
+			for (unsigned int i=0; i < posterior.size(); i++)
+			  out << posterior[i].weight << '\t' << posterior[i].reserved << endl;
+			out.close();
+
 			time(&rawtime);
 			cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
 			if (stage == model.parameter->number_energy_stage-1)
 			  {
-			    logMDD[stage+1][0] = 0.0; // LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, PRIOR_ONLY);
+			    logMDD[stage+1][0] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, PRIOR_ONLY);
 			    logMDD[stage+1][1] = 0.0;
 			  }		
 			else 
