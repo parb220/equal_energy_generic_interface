@@ -95,11 +95,13 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
                        		abort();
                 	}
 
-			ofstream out;
-			out.open("tmp.tmp");
-			for (unsigned int i=0; i < posterior.size(); i++)
-			  out << posterior[i].weight << '\t' << posterior[i].reserved << endl;
-			out.close();
+			// // debugging
+			// ofstream out;
+			// out.open("tmp.tmp");
+			// for (unsigned int i=0; i < posterior.size(); i++)
+			//   out << model.log_prior_function(posterior[i]) << endl; //posterior[i].weight << '\t' << posterior[i].reserved << endl;
+			// out.close();
+			// abort();
 
 			time(&rawtime);
 			cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
@@ -171,7 +173,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
         		double log_weight_sum = log_weight[0];
         		for (int i=1; i<(int)log_weight.size(); i++)
                 		log_weight_sum = AddLogs(log_weight_sum, log_weight[i]);
-			for (int i=0; i < log_weight.size(); i+=100) cout << log_weight[i] << endl; cout << log_weight_sum << endl; abort();
         		vector<double> weight(log_weight.size(), 0.0);
         		for (int i=0; i<(int)log_weight.size(); i++)
                 		weight[i] = exp(log_weight[i] - log_weight_sum);
