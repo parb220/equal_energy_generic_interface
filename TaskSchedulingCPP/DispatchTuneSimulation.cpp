@@ -83,7 +83,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			  {
 				time(&rawtime);
 				cout << "DispatchTuneSimulation() - drawing from prior: stage=" << stage << " " << ctime(&rawtime) << endl;
-				HighestPlus1Stage_Prior(nNode, nInitial, model);   // Sample from prior
+				//HighestPlus1Stage_Prior(nNode, nInitial, model);   // Sample from prior
+				HighestPlus1Stage(nNode, nInitial, model);    // Sample from prior with likelihood heated extremely
 				time(&rawtime);
 				cout << "DispatchTuneSimulation() - done drawing from prior: stage=" << stage << " " << ctime(&rawtime) << endl;
 			  }
@@ -107,8 +108,9 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
 			if (stage == model.parameter->number_energy_stage-1)
 			  {
-			    logMDD[stage+1][0] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, PRIOR_ONLY);
-			    logMDD[stage+1][1] = 0.0;
+			    logMDD[stage+1][0] = logMDD[stage+1][1] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
+			    //logMDD[stage+1][0] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, PRIOR_ONLY);
+			    //logMDD[stage+1][1] = 0.0;
 			  }		
 			else 
 			  logMDD[stage+1][0] = logMDD[stage+1][1] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
