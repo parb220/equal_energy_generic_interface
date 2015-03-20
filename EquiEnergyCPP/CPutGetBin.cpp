@@ -57,8 +57,8 @@ bool CPutGetBin::Dump(const string &_filename)
 	fstream oFile(file_name.c_str(), ios::out | ios::binary); 
 	if (!oFile)
 	{
-		cerr << "Error in dumping samples to " << file_name << endl; 
-		return false; 
+	        cerr << "Error in dumping samples to " << file_name << endl; 
+		return false;
 	}
 	for (int i=0; i<nPutUsed; i++)
 		write(oFile, &(dataPut[i])); 
@@ -563,7 +563,7 @@ void CPutGetBin::restore()
 
         	convert.str(string());
         	convert << id << "." << nDumpFile-1 << "." << suffix << ".record"; 
-        	file_name = filename_prefix + convert.str();
+         	file_name = filename_prefix + convert.str();
 		dataPut = ReadSampleFromFile(file_name); 
 		nPutUsed = dataPut.size(); 
  

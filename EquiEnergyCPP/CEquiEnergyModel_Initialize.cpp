@@ -26,7 +26,7 @@ vector<double> CEquiEnergyModel::Reweight(const vector<CSampleIDWeight> &samples
   // q_i(samples[i]) = p(samples[i] | Y)^(1.0/parameter->t[i]) * pi(samples[i]).  This implementation only
   // works for heating the likelihood!
   vector<double> log_weight(samples.size(),0.0);
-  double w = (previous_stage == parameter->number_energy_stage-1) ?  1.0/parameter->t[current_stage] : 1.0/parameter->t[current_stage] - 1.0/parameter->t[previous_stage];
+  double w = (previous_stage == parameter->number_energy_stage) ?  1.0/parameter->t[current_stage] : 1.0/parameter->t[current_stage] - 1.0/parameter->t[previous_stage];
   for (unsigned int i=0; i < samples.size(); i++) log_weight[i]=w*samples[i].reserved;
   return log_weight;
   
