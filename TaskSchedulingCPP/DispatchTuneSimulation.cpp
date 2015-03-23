@@ -93,7 +93,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			  {
 		                // draw highest stage + 1 sample
 				time(&rawtime);
-				cout << "DispatchTuneSimulation() - drawing from prior: stage=" << stage << " temperature: " << model.parameter->t[stage] << " " << ctime(&rawtime) << endl;
+				cout << "DispatchTuneSimulation() - drawing from prior: stage=" << stage+1 << " temperature: " << model.parameter->t[stage+1] << " " << ctime(&rawtime) << endl;
 
 				//HighestPlus1Stage_Prior(nNode, nInitial, model);   // Sample from prior
 				HighestPlus1Stage(nNode, nInitial, model);    // Sample from prior with likelihood heated extremely
@@ -104,6 +104,14 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 				// compute log MDD
 				time(&rawtime);			 
 				cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
+
+				// get posterior draws
+				posterior.clear(); 
+				if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
+				  {
+				    cerr << "DispatchTuneSimulation: error occurred when loading all samples.\n";
+				    abort();
+				  }
 
 				//logMDD[stage+1][0] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, PRIOR_ONLY);
 				logMDD[stage+1][0] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
@@ -153,15 +161,15 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 				mdd_file << mdd_stage << "\t" << logMDD[mdd_stage][0] << "\t" << logMDD[mdd_stage][1] << endl;
 				cout << setprecision(20) << "logMDD at stage " << mdd_stage << ": " << logMDD[mdd_stage][0] << "\t" << logMDD[mdd_stage][1] << endl;
 			      }
-			  }			
 
-			// get posterior draws
-			posterior.clear(); 
-			if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
-                	{
+			    // get posterior draws
+			    posterior.clear(); 
+			    if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
+			      {
                 		cerr << "DispatchTuneSimulation: error occurred when loading all samples.\n";
                        		abort();
-                	}
+			      }
+			  }			
 
 			// // debugging
 			// ofstream out;
@@ -301,7 +309,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// simualtion
 		//cout << "Simulation at " << stage << " for " << model.parameter->simulation_length << endl; 
 		time(&rawtime);
-		cout << "DispatchTuneSimulation() - dispatching simulation (" << model.parameter->simulation_length << "): stage=" << stage << " " << ctime(&rawtime) << endl;
+		cout << "DispatchTuneSimulation() - dispatching simulation (" << model.parameter->simulation_length << "): stage=" << stage << " " << " temperature: " << model.parameter->t[stage] << " " << ctime(&rawtime) << endl;
 		DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length, stage, SIMULATION_TAG);
 		time(&rawtime);
 		cout << "DispatchTuneSimulation() - done simulating (" << model.parameter->simulation_length << "): stage=" << stage << " " << ctime(&rawtime) << endl;
