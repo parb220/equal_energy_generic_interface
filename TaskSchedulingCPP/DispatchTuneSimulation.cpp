@@ -47,9 +47,19 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	int data_size = model.current_sample.GetSize_Data();
 	bool unstructured = true;
 
+	stringstream convert; 
+	ifstream input_file;
+	ofstream output_file;
+
+	// log MDD filename and stream
+	string mdd_filename; 
+	ofstream mdd_file;
+	convert.str(string());
+	convert << model.parameter->storage_dir << model.parameter->run_id << "/" << model.parameter->run_id << ".LogMDD.txt";
+	mdd_filename=convert.str();
+
 	time_t rawtime;
 
-	
 	for (int stage=model.parameter->highest_stage; stage>=model.parameter->lowest_stage; stage--)
 	{
 	  time(&rawtime);
@@ -76,23 +86,80 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// }
 
                 ////////////////////////////////////////////////////////////////////////////////////
-		// Highest +1 stage 
+		// Highest + 1 stage 
 		if (stage == model.parameter->highest_stage)
 		{
 			if (stage == model.parameter->number_energy_stage-1)
 			  {
+		                // draw highest stage + 1 sample
 				time(&rawtime);
-				cout << "DispatchTuneSimulation() - drawing from prior: stage=" << stage << " " << ctime(&rawtime) << endl;
+				cout << "DispatchTuneSimulation() - drawing from prior: stage=" << stage << " temperature: " << model.parameter->t[stage] << " " << ctime(&rawtime) << endl;
+
 				//HighestPlus1Stage_Prior(nNode, nInitial, model);   // Sample from prior
 				HighestPlus1Stage(nNode, nInitial, model);    // Sample from prior with likelihood heated extremely
+
 				time(&rawtime);
 				cout << "DispatchTuneSimulation() - done drawing from prior: stage=" << stage << " " << ctime(&rawtime) << endl;
-			  }
 
+				// compute log MDD
+				time(&rawtime);			 
+				cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
+
+				//logMDD[stage+1][0] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, PRIOR_ONLY);
+				logMDD[stage+1][0] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
+				logMDD[stage+1][1] = 0.0;
+
+				// open MDD file for output and write log MDD for stage + 1
+				mdd_file.open(mdd_filename.c_str());
+				if (!mdd_file.is_open())
+				  {
+				    cerr << "DispatchTuneSimulation: Error opening " << mdd_filename << endl; 
+				    abort(); 	
+				  }
+				mdd_file << stage+1 << "\t" << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << endl; 
+				cout << setprecision(20) << "logMDD at stage " << stage+1 << ": " << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << endl; 
+
+				time(&rawtime);
+				cout << "DispatchTuneSimulation() - done computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
+			  }
+			else
+			  {
+			    // read log MDD info
+			    input_file.open(mdd_filename.c_str());
+			    if (!input_file.is_open())
+			      {
+				cerr << "Error opening " << mdd_filename << endl; 
+				abort(); 
+			      }	
+			    int mdd_stage=stage+2;
+			    while (true)
+			      if (!(input_file >> mdd_stage) || !(input_file  >> logMDD[mdd_stage][0] >> logMDD[mdd_stage][1])) break;
+			    input_file.close();
+			    if (mdd_stage > stage+1)
+			      {
+				cerr << "DispatchTuneSimulation: stage " << stage+1 << " not in " << mdd_filename << endl;
+				abort();
+			      }
+
+			    // open MDD file for output and write log MDD
+			    mdd_file.open(mdd_filename.c_str());
+			    if (!mdd_file.is_open())
+			      {
+				cerr << "Error opening " << mdd_filename << endl; 
+				abort(); 	
+			      }
+			    for (mdd_stage=logMDD.size()-1; mdd_stage >= stage+1; mdd_stage--)
+			      {
+				mdd_file << mdd_stage << "\t" << logMDD[mdd_stage][0] << "\t" << logMDD[mdd_stage][1] << endl;
+				cout << setprecision(20) << "logMDD at stage " << mdd_stage << ": " << logMDD[mdd_stage][0] << "\t" << logMDD[mdd_stage][1] << endl;
+			      }
+			  }			
+
+			// get posterior draws
 			posterior.clear(); 
 			if (!model.storage->DrawAllSample(stage+1, posterior, unstructured, data_size))
                 	{
-                		cerr << "EstimateLogMDD:: error occurred when loading all samples.\n";
+                		cerr << "DispatchTuneSimulation: error occurred when loading all samples.\n";
                        		abort();
                 	}
 
@@ -104,19 +171,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			// out.close();
 			// abort();
 
-			time(&rawtime);
-			cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
-			if (stage == model.parameter->number_energy_stage-1)
-			  {
-			    logMDD[stage+1][0] = logMDD[stage+1][1] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
-			    //logMDD[stage+1][0] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, PRIOR_ONLY);
-			    //logMDD[stage+1][1] = 0.0;
-			  }		
-			else 
-			  logMDD[stage+1][0] = logMDD[stage+1][1] = LogMDD(posterior, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
-			cout << setprecision(20) << "logMDD at stage " << stage+1 << ": " << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << endl; 
-			time(&rawtime);
-			cout << "DispatchTuneSimulation() - done computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
 		}
 
 		////////////////////////////////////////////////////////////////////////////////
@@ -133,9 +187,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		model.storage->ClearStatus(stage+1); 
 		model.storage->RestoreForFetch(stage+1); 
 
-		stringstream convert; 
 		string start_point_file; 
-        	ofstream output_file;
 		for (int i=0; i<nInitial; i++)
 		{
 			convert.str(string());
@@ -292,7 +344,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			//logMDD[stage][2] = LogMDD(proposal, posterior, model, stage+1, stage, logMDD[stage+1][0]); 
 			//logMDD[stage][3] = LogMDD(proposal, posterior, model, stage+1, stage, logMDD[stage+1][3]); 
 		
-			cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][0] << "\t" << logMDD[stage][1] << "\t" << logMDD[stage][2] << "\t" << logMDD[stage][3] << endl; 
+			mdd_file << stage << "\t" << logMDD[stage][0] << "\t" << logMDD[stage][1] << endl;
+			cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][0] << "\t" << logMDD[stage][1] << endl; 
 		}
 
 		/*if (stage == model.parameter->number_energy_stage-1 )
@@ -331,6 +384,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		cout << "DispatchTuneSimulation() - bottom of loop: stage=" << stage << " " << ctime(&rawtime) << endl;
 	
 	}
+
+	mdd_file.close();
 
 	delete []sPackage; 
 	delete []rPackage; 
