@@ -206,16 +206,16 @@ size_t CStorageHead::binning_equal_size(int stage, size_t bin_number, bool if_un
         {
                 cerr << "CStorageHead::binning_equal_size() : it seems that binning has been done before.\n";
                 abort();
-        }	
+        } 
         vector<CSampleIDWeight> sample;
         if (!DrawAllSample(stage, sample, if_unstructured, data_size) )
         {
                 cerr << "CStorageHead::binning_equal_size() : error occurred when loading all samples.\n";
                 abort();
-        }
-	sort(sample.begin(), sample.end(), compare_CSampleIDWeight_BasedOnEnergy); 
+        } 
+	sort(sample.begin(), sample.end(), compare_CSampleIDWeight_BasedOnEnergy);
 	// ascending energy (equivalently, descending on weight)
-	int size_each_data = (int)sample[0].GetSize_Data(); 
+	int size_each_data = (int)sample[0].GetSize_Data();
         DisregardHistorySamples(stage);
 
         stringstream str, bin_id_string;
@@ -310,7 +310,7 @@ bool CStorageHead::DrawAllSample(int stage, vector<CSampleIDWeight>&sample, bool
         	vector<string> filename = glob(filename_pattern); 
 		vector<CSampleIDWeight> sample_block;
         	for (int i=0; i<(int)filename.size(); i++)
-		{
+        	{
 			sample_block = ReadSampleFromFile(filename[i], data_size); 
 			sample.insert(sample.end(), sample_block.begin(), sample_block.end()); 
 		}
