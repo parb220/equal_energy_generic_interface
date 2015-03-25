@@ -372,20 +372,19 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// to save space, remove stage+1 samples
 		time(&rawtime);
 		cout << "DispatchTuneSimulation() - deleting files: stage=" << stage << " " << ctime(&rawtime) << endl;
-		// changed so that only two stages back are deleted
-		if (save_space_flag  && stage > 0 && stage+1+1 < model.parameter->number_energy_stage-1 )
+                if (save_space_flag  && stage > 0 ) //&& stage+1 < model.parameter->number_energy_stage-1 )
 		{
-			model.storage->ClearSample(stage+1+1);  
+			model.storage->ClearSample(stage+1);  
 			
 			convert.str(string());
-                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << stage+1+1 << ".*";;
+                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << stage+1 << ".*";;
                         string remove_file_pattern = model.parameter->storage_dir + convert.str();
 			vector<string> remove_file = glob(remove_file_pattern); 
                 	for (int i=0; i<(int)remove_file.size(); i++)
                         	remove(remove_file[i].c_str());
 			
 			convert.str(string());
-                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*.sample." << stage+1+1;
+                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*.sample." << stage+1;
 			remove_file_pattern = model.parameter->storage_dir + convert.str();
 			remove_file = glob(remove_file_pattern); 
                         for (int i=0; i<(int)remove_file.size(); i++)

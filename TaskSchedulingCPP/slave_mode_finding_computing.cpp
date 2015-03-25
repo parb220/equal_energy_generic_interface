@@ -46,9 +46,12 @@ void slave_mode_finding_computing(int n_initial, CEquiEnergyModel &model, const 
 				abort(); 
 			}
 			//
+			time(&rawtime);
                         cout << "slave_mode_finding_computing(): starting optimization " << ctime(&rawtime) << endl;
 			model.HillClimb_NPSOL(rPackage[LENGTH_INDEX], optimizationN, perturbationN, perturbationS, 1.0, model.current_sample.data); // model.parameter->t[model.parameter->number_energy_level]);
                         cout << "slave_mode_finding_computing(): done with optimization " << ctime(&rawtime) << endl;
+			time(&rawtime);
+
 			// Save gm_mean and gm_covariance_sqrt into files 
 			convert.str(string()); 
 			convert <<  model.parameter->run_id << "/" << model.parameter->run_id << GM_MEAN_COVARIANCE << "." << (int)rPackage[GROUP_INDEX]; 
