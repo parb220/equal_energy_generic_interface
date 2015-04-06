@@ -90,6 +90,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 	double log_posterior_before_perturbation, log_posterior_after_perturbation, log_posterior_optimal; 
 	TDenseVector peak(n,0.0), perturbation(n,0.0), x_plus_perturbation(n,0.0);  
 	TDenseMatrix hessian_cholesky(n,n,0.0); 
+
 	try {
 		for (int i=0; i<nSolution; i++)
 		{
@@ -105,7 +106,6 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 					log_posterior_before_perturbation = log_posterior_function(x, n);
 				}
 			}
-
 
 			for (int ii=0; ii<optimization_iteration; ii++)
 			{
@@ -139,6 +139,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
                         		hessian_cholesky.column_major = true;
 				}
 			}
+
 			// Accept the optimal solution
 			if (log_posterior_optimal > MINUS_INFINITY)
 			{

@@ -16,8 +16,8 @@ void master_mode_finding_deploying(int nNode, int nInitial, CEquiEnergyModel &mo
 	MPI_Status status;
 
 	// binning 
-	model.storage->ClearStatus(0);
-        model.storage->binning_equal_size(0, model.parameter->number_striation, true, model.current_sample.GetSize_Data());
+	model.storage->ClearStatus(0);	
+        model.storage->binning_equal_size(0, model.parameter->number_striation, true, model.current_sample.GetSize_Data()); 
         model.storage->finalize(0);
         model.storage->ClearDepositDrawHistory(0);
 
@@ -31,7 +31,7 @@ void master_mode_finding_deploying(int nNode, int nInitial, CEquiEnergyModel &mo
 	model.storage->ClearDepositDrawHistory(0);
         model.storage->ClearStatus(0);
         model.storage->RestoreForFetch(0);
-	
+
 	stringstream convert;
         string start_point_file;
         ofstream output_file;

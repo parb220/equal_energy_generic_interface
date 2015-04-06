@@ -664,10 +664,11 @@ double LogMDD_Importance(const vector<CSampleIDWeight> &proposal, CEquiEnergyMod
 		else if (posterior_type == LIKELIHOOD_HEATED)
 			weight[i] -= proposal[i].reserved/t_previous + (proposal[i].weight-proposal[i].reserved) - logMDD_previous;  
 	}
-	double sum_weight = weight[0]; 
+	double sum_weight = weight[0];
 	for (int i=1; i<(int)weight.size(); i++)
 		sum_weight = AddLogs(sum_weight, weight[i]); 
-	return sum_weight; 
+	// changed by DW - must "divide" by number of observations
+	return sum_weight- log(weight.size()); 
 } 
 
 double CheckLogMDDConvergency(vector<CSampleIDWeight> &sample, CEquiEnergyModel &model, int stage, double t, int proposal_type, double &average_logMDD, double &std_logMDD, int posterior_type)

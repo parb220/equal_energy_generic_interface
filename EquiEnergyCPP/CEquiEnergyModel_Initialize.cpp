@@ -9,18 +9,27 @@
 
 vector<double> CEquiEnergyModel::Reweight(const vector<CSampleIDWeight> &samples, int current_stage, int previous_stage) 
 {
-	vector<double> log_weight(samples.size(),0.0); 
-	// log_weight = weight*(1.0/t[current_stage]-1.0/([previous_stage]))
-	for (int i=0; i<(int)(samples.size()); i++)
-	{
-		// double log_prior = log_prior_function(samples[i]); 
-		// log_weight[i] = (samples[i].weight-log_prior)  * 1.0/parameter->t[current_stage] ; 
-		log_weight[i] = samples[i].reserved  * 1.0/parameter->t[current_stage] ; 
-		if (previous_stage < parameter->number_energy_stage)
-			// log_weight[i] = log_weight[i] - (samples[i].weight-log_prior) * 1.0/parameter->t[previous_stage] ; 
-			log_weight[i] = log_weight[i] - samples[i].reserved * 1.0/parameter->t[previous_stage] ; 
-	}
-	return log_weight; 
+	// vector<double> log_weight(samples.size(),0.0); 
+	// // log_weight = weight*(1.0/t[current_stage]-1.0/([previous_stage]))
+	// for (int i=0; i<(int)(samples.size()); i++)
+	// {
+	// 	// double log_prior = log_prior_function(samples[i]); 
+	// 	// log_weight[i] = (samples[i].weight-log_prior)  * 1.0/parameter->t[current_stage] ; 
+	// 	log_weight[i] = samples[i].reserved  * 1.0/parameter->t[current_stage] ; 
+	// 	// if (previous_stage < parameter->number_energy_stage)
+	// 		// log_weight[i] = log_weight[i] - (samples[i].weight-log_prior) * 1.0/parameter->t[previous_stage] ; 
+	// 		log_weight[i] = log_weight[i] - samples[i].reserved * 1.0/parameter->t[previous_stage] ; 
+	// }
+	// return log_weight; 
+
+  // log_weight[i] = log( q_current_stage(samples[i]) / q_previous_stage(samples[i]) ) where we assume that
+  // q_i(samples[i]) = p(samples[i] | Y)^(1.0/parameter->t[i]) * pi(samples[i]).  This implementation only
+  // works for heating the likelihood!
+  vector<double> log_weight(samples.size(),0.0);
+  double w = (previous_stage == parameter->number_energy_stage) ?  1.0/parameter->t[current_stage] : 1.0/parameter->t[current_stage] - 1.0/parameter->t[previous_stage];
+  for (unsigned int i=0; i < samples.size(); i++) log_weight[i]=w*samples[i].reserved;
+  return log_weight;
+  
 }
 
 bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int stage_index, vector<CSampleIDWeight> &starters)
