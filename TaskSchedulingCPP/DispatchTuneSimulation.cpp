@@ -89,6 +89,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// Highest + 1 stage 
 		if (stage == model.parameter->highest_stage)
 		{
+			model.storage->InitializeBin(stage+1, model.current_sample.GetSize_Data());
 			if (stage == model.parameter->number_energy_stage-1)
 			  {
 		                // draw highest stage + 1 sample
@@ -186,6 +187,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		time(&rawtime);
 		cout << "DispatchTuneSimulation() - getting initial points: stage=" << stage << " " << ctime(&rawtime) << endl;
 		vector<CSampleIDWeight> start_points(nInitial); 
+		model.storage->InitializeBin(stage, model.current_sample.GetSize_Data()); 
 		if (model.storage->empty(stage+1) || !model.Initialize_WeightedSampling(nInitial, stage+1, start_points))
 		{
 			for (int i=0; i<nInitial; i++)
@@ -389,6 +391,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
                         for (int i=0; i<(int)remove_file.size(); i++)
                                 remove(remove_file[i].c_str());
 		}
+		model.storage->ClearBin(stage+1); 
 		time(&rawtime);
 		cout << "DispatchTuneSimulation() - bottom of loop: stage=" << stage << " " << ctime(&rawtime) << endl;
 	}
