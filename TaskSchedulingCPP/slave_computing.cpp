@@ -123,7 +123,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 				abort(); 
 			}
 		}
-		else if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == SIMULATION_TAG || status.MPI_TAG == SIMULATION_PRIOR_TAG) 
+		else if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == SIMULATION_TAG || status.MPI_TAG == SIMULATION_PRIOR_TAG || status.MPI_TAG == SCALE_MATRIX_FIT_TAG) 
 		{	
 		  cout << "* TUNE_TAG_SIMULATION_FIRST || SIMULATION_TAG || SIMULATION_PRIOR_TAG\n";
 			model.energy_stage = (int)(rPackage[LEVEL_INDEX]);
@@ -135,7 +135,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 				abort(); 
 			}
 			model.t_bound = model.parameter->t[model.energy_stage];
-			ExecutingSimulationTask(model, my_rank, group_index, mode, status.MPI_TAG); 
+			sPackage[RETURN_INDEX_5] = ExecutingSimulationTask(model, my_rank, group_index, mode, status.MPI_TAG); 
 		}
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD); 
 	}

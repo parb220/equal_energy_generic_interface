@@ -79,19 +79,18 @@ double CEquiEnergyModel::BurnIn(int burn_in_length)
 {
 	CSampleIDWeight x_new; 
 	int nJump =0; 
-	double max_posterior = current_sample.weight, bounded_log_posterior_new; 
+	double bounded_log_posterior_new; 
 	for (int i=0; i<burn_in_length; i++)
 	{
 		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1) )
 		{
 			current_sample = x_new;
 			current_sample.id = timer_when_started;  
-			max_posterior = current_sample.weight > max_posterior ? current_sample.weight : max_posterior; 
 			nJump ++; 
 		}
 	}
 	cout << "MH Jump " << nJump << " out of " << burn_in_length << " in burning-in.\n"; 
-	return max_posterior;  
+	return (double)(nJump)/(double)(burn_in_length);   
 }
 
 void CEquiEnergyModel::Simulation_Prior(bool if_storage, const string &sample_file_name)

@@ -5,6 +5,8 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <sys/stat.h>
+#include <cstdio>
 #include "dw_rand.h"
 #include "dw_math.h"
 #include "CSampleIDWeight.h"
@@ -25,6 +27,9 @@ using namespace std;
 vector<string> glob(const string &pattern);
 void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage); 
 void AggregateScaleMatrix(CEquiEnergyModel &model, int stage); 
+bool ScaleMatrixFileExist(CEquiEnergyModel &model, int stage); 
+bool RenameScaleMatrixFile(CEquiEnergyModel &model, int p_stage, int c_stage); 
+bool ScaleMatrixeFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, double lower_bound, double upper_bound );
 
 void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
 {
@@ -192,34 +197,37 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		time(&rawtime);
 		cout << "DispatchTuneSimulation() - done getting initial points: stage=" << stage << " " << ctime(&rawtime) << endl;
 
+		if (!ScaleMatrixFileExist(model, stage+1) || (RenameScaleMatrixFile(model, stage+1, stage) && !ScaleMatrixeFit(model, stage, nNode, nInitial, 0.234*0.8, 0.234*1.25)) )
 		/////////////////////////////////////////////////////////////////////////////////
-		// Send out tuning jobs
-		// Only need to tune on each slave node noce, because the results will be aggregated
-		time(&rawtime);
-		cout << "DispatchTuneSimulation() - getting weighted variance matrix: stage=" << stage << " " << ctime(&rawtime) << endl;
-		
-		GetWeightedVarianceMatrix(model, stage); 
-		
-		sPackage[LEVEL_INDEX] = stage; 
-		sPackage[thin_INDEX] = model.parameter->thin; 
-		sPackage[THIN_INDEX] = model.parameter->THIN; 
-		sPackage[PEE_INDEX] = model.parameter->pee/(model.parameter->THIN/model.parameter->thin); 
-
-		time(&rawtime);
-		cout << "DispatchTuneSimulation() - dispatching tuning: stage=" << stage << " " << ctime(&rawtime) << endl;
-
-		for (int i=1; i<nNode; i++)
+		// Send out tuning jobs when the existing scale matrix does not fit anymore
 		{
-			sPackage[GROUP_INDEX] = dw_uniform_int(nInitial); 
-			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD); 
+			// Only need to tune on each slave node noce, because the results will be aggregated
+			time(&rawtime);
+			cout << "DispatchTuneSimulation() - getting weighted variance matrix: stage=" << stage << " " << ctime(&rawtime) << endl;
+		
+			GetWeightedVarianceMatrix(model, stage); 
+		
+			sPackage[LEVEL_INDEX] = stage; 
+			sPackage[thin_INDEX] = model.parameter->thin; 
+			sPackage[THIN_INDEX] = model.parameter->THIN; 
+			sPackage[PEE_INDEX] = model.parameter->pee/(model.parameter->THIN/model.parameter->thin); 
+
+			time(&rawtime);
+			cout << "DispatchTuneSimulation() - dispatching tuning: stage=" << stage << " " << ctime(&rawtime) << endl;
+
+			for (int i=1; i<nNode; i++)
+			{
+				sPackage[GROUP_INDEX] = dw_uniform_int(nInitial); 
+				MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD); 
+			}
+
+			for (int i=1; i<nNode; i++)
+				MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD, &status);
+
+			AggregateScaleMatrix(model, stage);
+			time(&rawtime);
+			cout << "DispatchTuneSimulation() - done tuning: stage=" << stage << " " << ctime(&rawtime);
 		}
-
-		for (int i=1; i<nNode; i++)
-			MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD, &status);
-
-		AggregateScaleMatrix(model, stage);
-		time(&rawtime);
-		cout << "DispatchTuneSimulation() - done tuning: stage=" << stage << " " << ctime(&rawtime);
 		
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simualtion
@@ -363,3 +371,62 @@ void AggregateScaleMatrix(CEquiEnergyModel &model, int stage)
         string bmatrix_file_name = model.parameter->storage_dir  + convert.str();
 	remove(bmatrix_file_name.c_str()); 
 }
+
+bool ScaleMatrixFileExist(CEquiEnergyModel &model, int stage)
+{
+	stringstream convert; 
+        convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << stage;
+        string block_file_name = model.parameter->storage_dir + convert.str();
+
+	struct stat buffer;   
+  	return (stat (block_file_name.c_str(), &buffer) == 0);			
+}
+
+bool RenameScaleMatrixFile(CEquiEnergyModel &model, int p_stage, int c_stage)
+{
+	stringstream convert; 
+	convert.str(string()); 
+        convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << p_stage;
+        string p_name = model.parameter->storage_dir + convert.str();
+	
+	convert.str(string()); 
+        convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << c_stage;
+        string c_name = model.parameter->storage_dir + convert.str();
+
+	return (rename(p_name.c_str(), c_name.c_str()) == 0); 	
+}
+
+bool ScaleMatrixeFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, double lower_bound, double upper_bound )
+{
+        double *sPackage = new double [N_MESSAGE];
+        double *rPackage = new double [N_MESSAGE];
+        sPackage[thin_INDEX] = 1;
+        sPackage[THIN_INDEX] = 1;
+        sPackage[LEVEL_INDEX] = stage;
+        sPackage[PEE_INDEX] = 0;
+       	sPackage[LENGTH_INDEX] = 0;
+        sPackage[BURN_INDEX] = 1000;
+
+        MPI_Status status;
+
+	for (int i=1; i<nNode; i++)
+	{
+		sPackage[GROUP_INDEX] = dw_uniform_int(nInitial); 
+		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, SCALE_MATRIX_FIT_TAG, MPI_COMM_WORLD); 
+	}
+
+	double avg_accpt_rate = 0.0; 
+	for (int i=1; i<nNode; i++)
+	{
+		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, SCALE_MATRIX_FIT_TAG, MPI_COMM_WORLD, &status);
+		avg_accpt_rate += rPackage[RETURN_INDEX_5]; 
+	}
+	avg_accpt_rate = avg_accpt_rate/(nNode-1); 
+
+	delete [] sPackage; 
+	delete [] rPackage; 
+	cout << "Metropolis acceptance rate at stage " << stage << " using the scale matrix of the previous stage " << avg_accpt_rate << endl; 
+	return (avg_accpt_rate >= lower_bound && avg_accpt_rate <= upper_bound); 
+}
+
+

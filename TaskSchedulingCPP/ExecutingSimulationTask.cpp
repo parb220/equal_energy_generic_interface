@@ -10,7 +10,7 @@
 
 using namespace std; 
 
-void ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_index, const CSampleIDWeight &mode, int message_tag)
+double ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_index, const CSampleIDWeight &mode, int message_tag)
 {
 	model.storage->InitializeBin(model.energy_stage, model.current_sample.GetSize_Data()); 
 	// restore partial storage (previously obtained at this node) for updating
@@ -23,6 +23,8 @@ void ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_ind
 		model.storage->ClearStatus(model.energy_stage+1); 
 		model.storage->RestoreForFetch(model.energy_stage+1);
 	}
+
+	double metropolis_accpt_rate = 0.0; 
 
 	if (message_tag == SIMULATION_PRIOR_TAG)
 		model.Simulation_Prior(true, string());	
@@ -46,7 +48,7 @@ void ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_ind
        		}
 
 		// burn-in
-		model.BurnIn(model.parameter->burn_in_length); 
+		metropolis_accpt_rate = model.BurnIn(model.parameter->burn_in_length); 
 
 		// whether to write dw output file
 		if (message_tag == TUNE_TAG_SIMULATION_FIRST)
@@ -57,10 +59,13 @@ void ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_ind
 			sample_file_name = model.parameter->storage_dir + convert.str(); 
 			model.Simulation_Within(false, sample_file_name); 
 		}
-		else if (model.energy_stage == model.parameter->number_energy_stage)
-			model.Simulation_Within(true, string()); 
-		else 
-			model.Simulation_Cross(true, string()); 
+		else if (message_tag == SIMULATION_TAG)
+		{
+			if (model.energy_stage == model.parameter->number_energy_stage)
+				model.Simulation_Within(true, string());
+			else
+				model.Simulation_Cross(true, string()); 
+		}
 	}
 	// finalze and clear-up storage
 	model.storage->ClearStatus(model.energy_stage); 
@@ -68,4 +73,6 @@ void ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_ind
 	model.storage->ClearDepositDrawHistory(model.energy_stage);
 	if (model.energy_stage < model.parameter->number_energy_stage)
 		model.storage->ClearDepositDrawHistory(model.energy_stage+1); 
+
+	return metropolis_accpt_rate; 
 }

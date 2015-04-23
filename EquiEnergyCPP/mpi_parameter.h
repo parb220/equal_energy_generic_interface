@@ -55,6 +55,7 @@ const int GMM_SIMULATION_TAG = 71;
 const int BINNING_INFO  = 1000; 
 
 const int PRIOR_PROB_TAG = 90;  
+const int SCALE_MATRIX_FIT_TAG = 91; 
 
 const int END_TAG = 0;  
 #endif
