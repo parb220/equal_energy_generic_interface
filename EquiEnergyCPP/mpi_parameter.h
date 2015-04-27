@@ -58,4 +58,5 @@ const int PRIOR_PROB_TAG = 90;
 const int SCALE_MATRIX_FIT_TAG = 91; 
 
 const int END_TAG = 0;  
+const int TASK_LENGTH = 1000; 
 #endif
