@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iomanip>
 #include "dw_math.h"
+#include "CSampleIDWeight.h"
 #include "CEquiEnergyModel.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
@@ -41,7 +42,7 @@ void DispatchSimulation_PriorProbability(int nNode, int simulation_length)
 	cout << "log prior probability constant " << setprecision(20) << log((double)accpt_length/(double)total_length) << endl; 
 }
 
-void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int simulation_length, int stage, int message_tag)
+std::vector<CSampleIDWeight> DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int simulation_length, int stage, int message_tag)
 {
 	double *sPackage = new double [N_MESSAGE]; 
 	double *rPackage = new double [N_MESSAGE]; 
@@ -49,6 +50,7 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int si
 	sPackage[THIN_INDEX] = model.parameter->THIN;
        	sPackage[LEVEL_INDEX] = stage;
 	sPackage[PEE_INDEX] = model.parameter->pee; 
+	std::vector<CSampleIDWeight> samples(0); 
 
 	MPI_Status status;
 	
@@ -134,7 +136,7 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int si
 	{
 		model.storage->ClearStatus(stage);	
 		model.storage->consolidate(stage); 
-		model.storage->binning_equal_size(stage, model.parameter->number_striation);
+		samples = model.storage->binning_equal_size(stage, model.parameter->number_striation);
 		model.storage->finalize(stage);
         	model.storage->ClearDepositDrawHistory(stage);
 
@@ -172,4 +174,5 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int si
 	
 	delete [] sPackage;
 	delete [] rPackage;
+	return samples;
 }

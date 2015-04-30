@@ -32,15 +32,15 @@ vector<double> CEquiEnergyModel::Reweight(const vector<CSampleIDWeight> &samples
   
 }
 
-bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int stage_index, vector<CSampleIDWeight> &starters)
+bool CEquiEnergyModel::Initialize_WeightedSampling(const std::vector<CSampleIDWeight> &samples, int K, int stage_index, vector<CSampleIDWeight> &starters)
 {
 	if (starters.size() != K)
 		starters.resize(K);
 
-	// Get all previous stage's samples out
+	/* Get all previous stage's samples out
 	vector<CSampleIDWeight> samples;  
 	if (!storage->DrawAllSample(stage_index, samples) || samples.size() < K)
-                return false;
+                return false;*/
         if (samples.size() == K)
         {
                 for (int ii=0; ii<(int)(starters.size()); ii++)

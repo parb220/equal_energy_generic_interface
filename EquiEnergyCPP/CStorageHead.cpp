@@ -192,7 +192,7 @@ bool compare_CSampleIDWeight_BasedOnID(const CSampleIDWeight &i, const CSampleID
 	return i.id < j.id; 
 }
 
-size_t CStorageHead::binning_equal_size(int stage, size_t bin_number, bool if_unstructured, int data_size)
+std::vector<CSampleIDWeight> CStorageHead::binning_equal_size(int stage, size_t bin_number, bool if_unstructured, int data_size)
 {
 	if (stage < 0 || stage >=(int)bin.size())
         {
@@ -204,7 +204,7 @@ size_t CStorageHead::binning_equal_size(int stage, size_t bin_number, bool if_un
                 cerr << "CStorageHead::binning_equal_size() : it seems that binning has been done before.\n";
                 abort();
         } 
-        vector<CSampleIDWeight> sample;
+        std::vector<CSampleIDWeight> sample(0);
         if (!DrawAllSample(stage, sample, if_unstructured, data_size) )
         {
                 cerr << "CStorageHead::binning_equal_size() : error occurred when loading all samples.\n";
@@ -235,8 +235,8 @@ size_t CStorageHead::binning_equal_size(int stage, size_t bin_number, bool if_un
                	iSample += sBin;
                	iBin++;
 	}
-	sample.clear(); 
-	return bin[stage].size(); 
+	// sample.clear(); 
+	return sample; 
 }
 
 bool CStorageHead::DrawLeastWeightSample(int stage, int _bin_id, CSampleIDWeight &sample) 
