@@ -128,14 +128,16 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		  cout << "* TUNE_TAG_SIMULATION_FIRST || SIMULATION_TAG || SIMULATION_PRIOR_TAG\n";
 			model.energy_stage = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]); 
-			model.timer_when_started = group_index; 
+			int nGroup = (int)(rPackage[GROUP_NUMBER_INDEX]); 
+			// model.timer_when_started = group_index; 
+		
 			if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
 			{
 				cout << "GetCommunicationParameter() : Error occurred.\n"; 
 				abort(); 
 			}
 			model.t_bound = model.parameter->t[model.energy_stage];
-			sPackage[RETURN_INDEX_5] = ExecutingSimulationTask(model, my_rank, group_index, mode, status.MPI_TAG); 
+			sPackage[RETURN_INDEX_5] = ExecutingSimulationTask(model, my_rank, group_index, nGroup,  mode, status.MPI_TAG); 
 		}
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD); 
 	}

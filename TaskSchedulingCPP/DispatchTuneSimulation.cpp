@@ -31,6 +31,23 @@ bool ScaleMatrixFileExist(CEquiEnergyModel &model, int stage);
 bool RenameScaleMatrixFile(CEquiEnergyModel &model, int p_stage, int c_stage); 
 bool ScaleMatrixeFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, double lower_bound, double upper_bound );
 
+std::vector<CSampleIDWeight> LoadSamplesFromFile(const string &file_name)
+{
+	CSampleIDWeight x;
+        ifstream input_file;
+        input_file.open(file_name.c_str(), ios::binary|ios::in);
+        if (!input_file)
+                return std::vector<CSampleIDWeight> (0); 
+	std::vector<CSampleIDWeight> points; 
+	while(!input_file.eof())
+	{
+        	read(input_file, &(x));
+		points.push_back(x); 
+	}
+        input_file.close();
+	return points; 
+}
+
 void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
 {
 	double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];  
@@ -180,21 +197,24 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		model.storage->RestoreForFetch(stage+1); 
 
 		string start_point_file; 
-		for (int i=0; i<nInitial; i++)
+		// for (int i=0; i<nInitial; i++)
+		// {
+		convert.str(string());
+        	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << stage; // << "." << i;
+        	start_point_file = model.parameter->storage_dir + convert.str();
+        	output_file.open(start_point_file.c_str(), ios::binary|ios::out);
+        	if (!output_file)
 		{
-			convert.str(string());
-        		convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << stage << "." << i;
-        		start_point_file = model.parameter->storage_dir + convert.str();
-        		output_file.open(start_point_file.c_str(), ios::binary|ios::out);
-        		if (!output_file)
-			{
-                		cerr << "Error in writing to " << start_point_file << endl; 
-				abort(); 	
-			}
-        		else
-               			write(output_file, &(start_points[i]));
-        		output_file.close();
+               		cerr << "Error in writing to " << start_point_file << endl; 
+			abort(); 	
 		}
+        	else
+		{
+			for (int i=0; i<(int)(start_points.size()); i++)
+               			write(output_file, &(start_points[i]));
+		}
+        	output_file.close();
+		//}
 		time(&rawtime);
 		cout << "DispatchTuneSimulation() - done getting initial points: stage=" << stage << " " << ctime(&rawtime) << endl;
 
@@ -220,6 +240,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			for (int i=1; i<nNode; i++)
 			{
 				sPackage[GROUP_INDEX] = dw_uniform_int(nInitial); 
+				sPackage[GROUP_NUMBER_INDEX] = 1; 
 				MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD); 
 			}
 
@@ -240,7 +261,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		time(&rawtime);
 		cout << "DispatchTuneSimulation() - dispatching simulation (" << model.parameter->simulation_length << "): stage=" << stage << " " << " temperature: " << model.parameter->t[stage] << " " << ctime(&rawtime) << endl;
 		// samples = samples of the current stage
-		samples = DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length, stage, SIMULATION_TAG);
+		samples = DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length, stage, SIMULATION_TAG) ;
 		time(&rawtime);
 		cout << "DispatchTuneSimulation() - done simulating (" << model.parameter->simulation_length << "): stage=" << stage << " " << ctime(&rawtime) << endl;
 		
@@ -281,7 +302,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		{
 			model.storage->ClearSample(stage+1);  
 			convert.str(string());
-                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << stage+1 << ".*";;
+                        convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << stage+1 << "*";;
                         string remove_file_pattern = model.parameter->storage_dir + convert.str();
 			vector<string> remove_file = glob(remove_file_pattern); 
                 	for (int i=0; i<(int)remove_file.size(); i++)
@@ -411,6 +432,7 @@ bool ScaleMatrixeFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial
 	for (int i=1; i<nNode; i++)
 	{
 		sPackage[GROUP_INDEX] = dw_uniform_int(nInitial); 
+		sPackage[GROUP_NUMBER_INDEX] = 1; 
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, SCALE_MATRIX_FIT_TAG, MPI_COMM_WORLD); 
 	}
 
