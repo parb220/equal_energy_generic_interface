@@ -89,7 +89,7 @@ double CEquiEnergyModel::BurnIn(int burn_in_length)
 			nJump ++; 
 		}
 	}
-	cout << "MH Jump " << nJump << " out of " << burn_in_length << " in burning-in.\n"; 
+	// cout << "MH Jump " << nJump << " out of " << burn_in_length << " in burning-in.\n"; 
 	return (double)(nJump)/(double)(burn_in_length);   
 }
 
@@ -159,7 +159,7 @@ void CEquiEnergyModel::Simulation_Within(bool if_storage, const string &sample_f
 	if (if_write_file)
 		output_file.close(); 
 
-	cout << "MH Jump " << nJump << " out of " << parameter->simulation_length*parameter->thin << " in simulation.\n"; 
+	// cout << "MH Jump " << nJump << " out of " << parameter->simulation_length*parameter->thin << " in simulation.\n"; 
 }
 
 void CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_file_name)
@@ -195,8 +195,8 @@ void CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_fi
 	if (if_write_file)
 		output_file.close(); 	
 
-	cout << "EE Jump " << nEEJump << " out of " << parameter->simulation_length *parameter->thin<< " in simulation.\n"; 
-	cout << "MH Jump " << nMHJump << " out of " << parameter->simulation_length *parameter->thin<< " in simulation.\n"; 
+	// cout << "EE Jump " << nEEJump << " out of " << parameter->simulation_length *parameter->thin<< " in simulation.\n"; 
+	// cout << "MH Jump " << nMHJump << " out of " << parameter->simulation_length *parameter->thin<< " in simulation.\n"; 
 }
 
 CEquiEnergyModel::CEquiEnergyModel() : 

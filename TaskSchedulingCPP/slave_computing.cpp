@@ -30,14 +30,14 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status); 
 		if (status.MPI_TAG == END_TAG)
 		{
-		  cout << "* END_TAG\n";
+		  // cout << "* END_TAG\n";
 			delete []rPackage; 
 			delete []sPackage; 
 			exit(0); 
 		}
 		else if (status.MPI_TAG == PRIOR_PROB_TAG)
 		{
-		  cout << "* PRIOR_PROB_TAG\n";
+		  // cout << "* PRIOR_PROB_TAG\n";
 			int nAccpt = 0; 
 			TDenseVector x(mode.data.dim,0.0); 
 			for (int i=0; i<(int)(rPackage[LENGTH_INDEX]); i++)
@@ -49,7 +49,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		}
 		else if (status.MPI_TAG == BINNING_INFO)
 		{
-		  cout << "* BINNING_INFO\n";
+		  // cout << "* BINNING_INFO\n";
 			model.energy_stage = (int)(rPackage[LEVEL_INDEX]); 
 			int number_ring = (int)(rPackage[RESERVE_INDEX]); 
 			model.storage-> ResizeBin(model.energy_stage, number_ring, model.current_sample.GetSize_Data()); 
@@ -61,7 +61,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		}		
 		else if (status.MPI_TAG == HILL_CLIMB_TAG)
 		{
-		  cout << "* HILL_CLIMB_TAG\n";
+		  // cout << "* HILL_CLIMB_TAG\n";
 			model.HillClimb_NPSOL(rPackage[LENGTH_INDEX], optimizationN, perturbationN, perturbationS, 1.0); // model.parameter->t[model.parameter->number_energy_level]);
 
 			// Save gm_mean and gm_covariance_sqrt into files 
@@ -78,7 +78,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		}
 		else if (status.MPI_TAG == GMM_SIMULATION_TAG)
 		{
-		  cout << "* GMM_SIMULATION_TAG\n";
+		  // cout << "* GMM_SIMULATION_TAG\n";
 			model.energy_stage = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]);
 			model.timer_when_started = group_index; 
@@ -106,7 +106,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		}
 		else if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION) 
 		{
-		  cout << "* TUNE_TAG_BEFORE_SIMULATION\n";
+		  // cout << "* TUNE_TAG_BEFORE_SIMULATION\n";
 			model.energy_stage = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]); 
 			model.timer_when_started = group_index; 
@@ -125,7 +125,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 		}
 		else if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == SIMULATION_TAG || status.MPI_TAG == SIMULATION_PRIOR_TAG || status.MPI_TAG == SCALE_MATRIX_FIT_TAG) 
 		{	
-		  cout << "* TUNE_TAG_SIMULATION_FIRST || SIMULATION_TAG || SIMULATION_PRIOR_TAG\n";
+		  // cout << "* TUNE_TAG_SIMULATION_FIRST || SIMULATION_TAG || SIMULATION_PRIOR_TAG\n";
 			model.energy_stage = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]); 
 			int nGroup = (int)(rPackage[GROUP_NUMBER_INDEX]); 
