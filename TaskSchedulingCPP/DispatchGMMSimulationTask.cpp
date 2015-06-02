@@ -24,6 +24,7 @@ void DispatchGMMSimulationTask(int nNode, int nInitial, CEquiEnergyModel &model,
 	for (int i=1; i<nNode; i++)
 	{
 		sPackage[GROUP_INDEX] = dw_uniform_int(nInitial); 
+		sPackage[GROUP_NUMBER_INDEX] = 1; 
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, GMM_SIMULATION_TAG, MPI_COMM_WORLD);		
 	}
 

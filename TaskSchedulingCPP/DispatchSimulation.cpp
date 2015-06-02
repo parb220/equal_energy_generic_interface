@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iomanip>
 #include "dw_math.h"
+#include "CSampleIDWeight.h"
 #include "CEquiEnergyModel.h"
 #include "CEESParameter.h"
 #include "CStorageHead.h"
@@ -29,6 +30,7 @@ void DispatchSimulation_PriorProbability(int nNode, int simulation_length)
 		sPackage[LENGTH_INDEX] = simulation_length_per_node;
 		total_length += sPackage[LENGTH_INDEX]; 
 		sPackage[GROUP_INDEX] = iNode; 
+		sPackage[GROUP_NUMBER_INDEX] = 1; 
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, iNode, PRIOR_PROB_TAG, MPI_COMM_WORLD);
 	}
 	int accpt_length = 0; 
@@ -41,7 +43,7 @@ void DispatchSimulation_PriorProbability(int nNode, int simulation_length)
 	cout << "log prior probability constant " << setprecision(20) << log((double)accpt_length/(double)total_length) << endl; 
 }
 
-void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int simulation_length, int stage, int message_tag)
+std::vector<CSampleIDWeight> DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int simulation_length, int stage, int message_tag)
 {
 	double *sPackage = new double [N_MESSAGE]; 
 	double *rPackage = new double [N_MESSAGE]; 
@@ -49,16 +51,94 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int si
 	sPackage[THIN_INDEX] = model.parameter->THIN;
        	sPackage[LEVEL_INDEX] = stage;
 	sPackage[PEE_INDEX] = model.parameter->pee; 
-
-	int simulation_length_per_node, simulation_length_check; 
-	simulation_length_per_node = (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) > 1000 ? (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) : 1000; 
-	simulation_length_check = (int)ceil((double)simulation_length/(double)(nInitial)); 
+	std::vector<CSampleIDWeight> samples(0); 
 
 	MPI_Status status;
 	
 	vector<int> available_node(nNode-1); 
 	for (int i=0; i<(int)(available_node.size()); i++)
 		available_node[i] = i+1; 
+
+	if (message_tag == SIMULATION_PRIOR_TAG) 
+	{
+		int length_per_node = (int)ceil((double)simulation_length/(double)available_node.size()); 
+		while(!available_node.empty())
+                {
+                        sPackage[LENGTH_INDEX] = length_per_node;
+                        MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, available_node.back(), message_tag, MPI_COMM_WORLD);
+                        available_node.pop_back();
+                }
+	}	
+	else 
+	{
+		std::vector<int> length_task, group_index_task;
+		int length_per_initial = (int)ceil((double)simulation_length/(double)nInitial);
+	
+		if (length_per_initial > TASK_LENGTH_SHORT)
+		{
+			if (length_per_initial > TASK_LENGTH_LONG)
+			{
+				for (int iInitial=0; iInitial<nInitial; iInitial++)
+				{
+					for (int k=0; k<length_per_initial/TASK_LENGTH_LONG; k++)
+					{
+						length_task.push_back(TASK_LENGTH_LONG);
+						group_index_task.push_back(iInitial);
+					}
+					if (length_per_initial%TASK_LENGTH_LONG)
+					{
+						length_task.push_back(length_per_initial % TASK_LENGTH_LONG);
+						group_index_task.push_back(iInitial);
+					}
+				}
+
+			}
+			else 
+			{
+				for (int iInitial=0; iInitial<nInitial; iInitial++)
+				{
+					length_task.push_back(length_per_initial);
+					group_index_task.push_back(iInitial);
+				}	
+			}
+
+			for (int iTask = 0; iTask<(int)(length_task.size()); iTask ++)
+			{
+				sPackage[LENGTH_INDEX] = length_task[iTask];  
+				sPackage[BURN_INDEX] = model.parameter->burn_in_length;
+				sPackage[GROUP_INDEX] = group_index_task[iTask]; 
+				sPackage[GROUP_NUMBER_INDEX] = 1; 
+				if (available_node.empty())
+				{
+					MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status); 
+					available_node.push_back(status.MPI_SOURCE); 
+				}
+				MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, available_node.back(), message_tag, MPI_COMM_WORLD);
+				available_node.pop_back(); 
+			}
+		}
+		else
+		{
+			int group_index_start = 0; 
+			int group_index_stepsize = (int)ceil(nInitial/(float)available_node.size()); 
+			while(!available_node.empty())
+			{
+		        	sPackage[LENGTH_INDEX] = length_per_initial; 
+                        	sPackage[BURN_INDEX] = model.parameter->burn_in_length;
+                        	sPackage[GROUP_INDEX] = group_index_start; 
+                        	sPackage[GROUP_NUMBER_INDEX] = group_index_stepsize; 
+                        	MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, available_node.back(), message_tag, MPI_COMM_WORLD);
+                        	available_node.pop_back();
+				group_index_start+=group_index_stepsize; 
+                	}
+		}
+	} 
+
+	/*int simulation_length_per_node, simulation_length_check; 
+	// simulation_length_per_node = (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) > 1000 ? (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) : 1000; 
+	simulation_length_per_node = (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) > 1 ?  (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))): 1 ; 
+	simulation_length_check = (int)ceil((double)simulation_length/(double)(nInitial)); 
+
 	
 	int iInitial =0, cumulative_length = 0; 
 	while (iInitial < nInitial)
@@ -79,7 +159,7 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int si
 		}
 		cumulative_length = 0; 
 		iInitial ++; 
-	}
+	}*/
 	
 	for (int j=0; j<(nNode-1)-(int)available_node.size(); j++)
 		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status);
@@ -89,7 +169,7 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int si
 	{
 		model.storage->ClearStatus(stage);	
 		model.storage->consolidate(stage); 
-		model.storage->binning_equal_size(stage, model.parameter->number_striation);
+		samples = model.storage->binning_equal_size(stage, model.parameter->number_striation);
 		model.storage->finalize(stage);
         	model.storage->ClearDepositDrawHistory(stage);
 
@@ -127,4 +207,5 @@ void DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int si
 	
 	delete [] sPackage;
 	delete [] rPackage;
+	return samples;
 }

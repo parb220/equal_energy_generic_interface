@@ -86,7 +86,7 @@ public:
 	bool Initialize_KMeansClustering(int K, int stage_index, vector<CSampleIDWeight> &centers) const; 
 	bool Initialize_MostDistant_WithinPercentile(int K, int stage_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
 	bool Initialize_MostDistant_WithinPercentileBand(int K, int stage_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
-	bool Initialize_WeightedSampling(int K, int stage_index, vector<CSampleIDWeight> &starters); 
+	bool Initialize_WeightedSampling(const std::vector<CSampleIDWeight> &, int K, int stage_index, vector<CSampleIDWeight> &starters); 
 	bool InitializeFromFile(const string &file_name); 
 
 	void Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy stage (no jumping across stages). Returns the maximum posterior during simulation

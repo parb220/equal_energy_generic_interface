@@ -9,7 +9,7 @@
 
 using namespace std;
 
-void master_deploying(int nNode, int nInitial, CEquiEnergyModel &model, const CSampleIDWeight &mode)
+void master_deploying(int nNode, int nInitial, CEquiEnergyModel &model, const CSampleIDWeight &mode, int nGroup_NSE)
 {	
 	double *sPackage= new double [N_MESSAGE];
 	double *rPackage= new double [N_MESSAGE];   
@@ -39,7 +39,7 @@ void master_deploying(int nNode, int nInitial, CEquiEnergyModel &model, const CS
 
 	// Tune & Simulation
 	if (model.parameter->simulation_length) 
-		DispatchTuneSimulation(nNode, nInitial, model, mode, model.parameter->simulation_length); 
+		DispatchTuneSimulation(nNode, nInitial, model, mode, model.parameter->simulation_length, nGroup_NSE); 
 
 	// tell all the slaves to exit by sending an empty messag with 0 simulation length 
 	for (int i=1; i<nNode; i++)

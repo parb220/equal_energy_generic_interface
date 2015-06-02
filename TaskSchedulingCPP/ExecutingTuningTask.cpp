@@ -15,10 +15,13 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 {
 	// start point
 	stringstream convert; 
-	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_stage << "." << group_index; 
+	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_stage ; // << "." << group_index; 
 	string start_point_file = model.parameter->storage_dir + convert.str(); 
-	if (!model.InitializeFromFile(start_point_file))
-		return false; 
+	std::vector<CSampleIDWeight> start_points; 
+	if (! LoadSampleFromFile(start_point_file, start_points) || (int)(start_points.size()) <= group_index) 
+		return false;  
+	model.current_sample = start_points[group_index]; 
+	// if (!model.InitializeFromFile(start_point_file, group_index))
 
 	// block scheme file
 	convert.str(string()); 
