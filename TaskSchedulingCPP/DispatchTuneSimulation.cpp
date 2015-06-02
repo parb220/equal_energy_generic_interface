@@ -82,9 +82,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 	time_t rawtime;
 
-	vector<CSampleIDWeight> posterior, proposal;
-	int data_size = model.current_sample.GetSize_Data();
-	bool unstructured = true;
 	
 	for (int stage=model.parameter->highest_stage; stage>=model.parameter->lowest_stage; stage--)
 	{
