@@ -25,6 +25,8 @@
 using namespace std; 
 
 double CheckConvergency (std::vector<CSampleIDWeight> &samples, CEquiEnergyModel &model, int stage, int previous_stage,  double convergency_previous, double &average_consistency, double &std_consistency, double &LB_ESS, int posterior_type); 
+double CheckConvergency (const std::vector<CSampleIDWeight> &samples, CEquiEnergyModel &model, int stage, int previous_stage,  double convergency_previous, double &average_consistency, double &std_consistency, double &LB_ESS, int posterior_type, int nGroup); 
+
 vector<string> glob(const string &pattern);
 void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage, const std::vector<CSampleIDWeight> &); 
 void AggregateScaleMatrix(CEquiEnergyModel &model, int stage); 
@@ -49,7 +51,7 @@ std::vector<CSampleIDWeight> LoadSamplesFromFile(const string &file_name)
 	return points; 
 }
 
-void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag)
+void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag, int nGroup_NSE)
 {
 	double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];  
 	MPI_Status status; 
@@ -280,9 +282,19 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		cout.flush();
 
 		if (stage == model.parameter->number_energy_stage-1 )
-			consistency[stage] = CheckConvergency(samples, model, stage, stage+1, 0.0, average_consistency[stage], std_consistency[stage], LB_ESS[stage], PRIOR_ONLY);
+		{
+			if (nGroup_NSE == 0)
+				consistency[stage] = CheckConvergency(samples, model, stage, stage+1, 0.0, average_consistency[stage], std_consistency[stage], LB_ESS[stage], PRIOR_ONLY);
+			else 
+				consistency[stage] = CheckConvergency(samples, model, stage, stage+1, 0.0, average_consistency[stage], std_consistency[stage], LB_ESS[stage], PRIOR_ONLY, nGroup_NSE); 
+		}
 		else
-			consistency[stage] = CheckConvergency(samples, model, stage, stage+1, consistency[stage+1], average_consistency[stage], std_consistency[stage], LB_ESS[stage], LIKELIHOOD_HEATED); 
+		{
+			if (nGroup_NSE == 0)
+				consistency[stage] = CheckConvergency(samples, model, stage, stage+1, consistency[stage+1], average_consistency[stage], std_consistency[stage], LB_ESS[stage], LIKELIHOOD_HEATED); 
+			else 
+				consistency[stage] = CheckConvergency(samples, model, stage, stage+1, consistency[stage+1], average_consistency[stage], std_consistency[stage], LB_ESS[stage], LIKELIHOOD_HEATED, nGroup_NSE); 
+		}
                 cout << "Convergency Measure at Stage " << stage << ": " << setprecision(20) << consistency[stage] << "\t" << average_consistency[stage] << "\t" << std_consistency[stage]<< "\t" << LB_ESS[stage] << endl;  
 		
 		// to save space, remove stage+1 samples
