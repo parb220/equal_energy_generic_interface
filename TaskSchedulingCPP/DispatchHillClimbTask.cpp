@@ -24,6 +24,7 @@ void DispatchHillClimbTask(int nNode, int nInitial, CEquiEnergyModel &model, int
 	for (int i=1; i<nNode; i++)
 	{
 		sPackage[GROUP_INDEX] = dw_uniform_int(nInitial);  
+		sPackage[GROUP_NUMBER_INDEX] = 1; 
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, HILL_CLIMB_TAG, MPI_COMM_WORLD);		
 	}
 	delete [] sPackage; 

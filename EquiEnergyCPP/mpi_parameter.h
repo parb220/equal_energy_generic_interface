@@ -15,6 +15,7 @@ const int RETURN_INDEX_3 = 9;
 const int RETURN_INDEX_4 = 10; 
 const int RETURN_INDEX_5 = 11; 
 const int RESERVE_INDEX = 100; 
+const int GROUP_NUMBER_INDEX = 101; 
 
 const int BURN_IN_LENGTH = 5000; 
 const int SIMULATION_LENGTH = 50000; 
@@ -53,6 +54,11 @@ const int HILL_CLIMB_TAG = 70;
 const int GMM_SIMULATION_TAG = 71; 
 
 const int BINNING_INFO  = 1000; 
- 
+
+const int PRIOR_PROB_TAG = 90;  
+const int SCALE_MATRIX_FIT_TAG = 91; 
+
 const int END_TAG = 0;  
+const int TASK_LENGTH_LONG = 1000; 
+const int TASK_LENGTH_SHORT = 100; 
 #endif

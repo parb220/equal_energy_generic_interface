@@ -33,7 +33,7 @@ public:
 	void ClearDepositDrawHistory(int stage); 
 	void ClearSample(int stage); 
 
-	size_t binning_equal_size(int stage, size_t bin_number, bool if_unstructured=false, int data_size=1); 
+	std::vector<CSampleIDWeight> binning_equal_size(int stage, size_t bin_number, bool if_unstructured=false, int data_size=1); 
 
 	bool DrawLeastWeightSample(int stage, int bin_id, CSampleIDWeight &); 
 	bool Draw_K_LeastWeightSample(size_t, int stage, int bin_id, vector<CSampleIDWeight> &) ; 

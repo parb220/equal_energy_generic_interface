@@ -310,7 +310,7 @@ double LogMDD(const vector<CSampleIDWeight> &posterior, CEquiEnergyModel &model,
 		double sum_weight = weight[0]; 
 		for (int i=1; i<(int)weight.size(); i++)
                         sum_weight = AddLogs(sum_weight, weight[i]);
-		return sum_weight; 
+		return sum_weight-log(weight.size()); 
 	}	
 	else 
 	{
@@ -490,9 +490,9 @@ vector<double> EffectiveSampleSize(vector<CSampleIDWeight> &sample) // CEquiEner
 	return ESS; 
 }
 
-double CheckConvergency (CEquiEnergyModel &model, int stage, int previous_stage,  double convergency_previous, double &average_consistency, double &std_consistency, double &LB_ESS, int posterior_type)
+double CheckConvergency (std::vector<CSampleIDWeight> &samples, CEquiEnergyModel &model, int stage, int previous_stage,  double convergency_previous, double &average_consistency, double &std_consistency, double &LB_ESS, int posterior_type)
 {
-	vector<CSampleIDWeight> proposal; 
+	/*vector<CSampleIDWeight> proposal; 
 
 	bool unstructured = true; 
 	int data_size = model.current_sample.GetSize_Data();
@@ -500,36 +500,36 @@ double CheckConvergency (CEquiEnergyModel &model, int stage, int previous_stage,
 	{
 		cerr << "CheckConvergency:: error occurred when checking convergency.\n"; 
 		abort(); 
-	}
+	}*/
 
-	sort(proposal.begin(), proposal.end(), compare_CSampleIDWeight_BasedOnID);
-	vector<double> weight(proposal.size(), 0.0); 
-	for(int i=0; i<(int)proposal.size(); i++)
+	sort(samples.begin(), samples.end(), compare_CSampleIDWeight_BasedOnID);
+	vector<double> weight(samples.size(), 0.0); 
+	for(int i=0; i<(int)samples.size(); i++)
 	{
 		if (previous_stage == model.parameter->number_energy_stage)
 		{
 			if (posterior_type == POSTERIOR_HEATED)
-				weight[i] = proposal[i].weight/model.parameter->t[stage] - (proposal[i].weight - proposal[i].reserved); 
+				weight[i] = samples[i].weight/model.parameter->t[stage] - (samples[i].weight - samples[i].reserved); 
 			else if (posterior_type == LIKELIHOOD_HEATED)
-				weight[i] = proposal[i].reserved/model.parameter->t[stage]; 
+				weight[i] = samples[i].reserved/model.parameter->t[stage]; 
 			else if (posterior_type == PRIOR_ONLY)
 				weight[i] = 0.0; 
 		}
 		else 
 		{
 			if (posterior_type == POSTERIOR_HEATED)
-				weight[i] = proposal[i].weight/model.parameter->t[stage] - proposal[i].weight/model.parameter->t[previous_stage]; 
+				weight[i] = samples[i].weight/model.parameter->t[stage] - samples[i].weight/model.parameter->t[previous_stage]; 
 			else if (posterior_type == LIKELIHOOD_HEATED)
-				weight[i] = proposal[i].reserved/model.parameter->t[stage] - proposal[i].reserved/model.parameter->t[previous_stage]; 
+				weight[i] = samples[i].reserved/model.parameter->t[stage] - samples[i].reserved/model.parameter->t[previous_stage]; 
 			else if (posterior_type == PRIOR_ONLY)
 				weight[i] = 0.0; 
 		}
 	}
 
 	vector<double>group_consistency; 
-	double consistency, sum_weight; 
+	double consistency; 
 	int counter =0; 
-	for (int i=0; i<(int)(proposal.size()); i++)
+	for (int i=0; i<(int)(samples.size()); i++)
 	{
 		if (i==0)
 		{ 
@@ -537,7 +537,7 @@ double CheckConvergency (CEquiEnergyModel &model, int stage, int previous_stage,
 			counter = 1; 
 			consistency = weight[i]; 
 		}
-		else if (proposal[i].id > proposal[i-1].id)
+		else if (samples[i].id > samples[i-1].id)
 		{
 			group_consistency[group_consistency.size()-1] = group_consistency[group_consistency.size()-1] + convergency_previous - log((double)counter); 
 			group_consistency.push_back(weight[i]); 
@@ -550,13 +550,9 @@ double CheckConvergency (CEquiEnergyModel &model, int stage, int previous_stage,
 			counter ++; 
 			consistency = AddLogs(consistency, weight[i]);
 		}
-		if ( i==0)
-			sum_weight = weight[i]; 
-		else 
-			sum_weight = AddLogs(sum_weight, weight[i]);
 	}
 	group_consistency[group_consistency.size()-1] = group_consistency[group_consistency.size()-1] + convergency_previous- log((double)counter);
-	consistency = consistency + convergency_previous- log((double)(proposal.size())); 
+	consistency = consistency + convergency_previous- log((double)(samples.size())); 
 	
 	average_consistency=0.0; 
 	std_consistency=0.0; 
@@ -569,13 +565,80 @@ double CheckConvergency (CEquiEnergyModel &model, int stage, int previous_stage,
 	std_consistency = sqrt(std_consistency/(double)(group_consistency.size())-average_consistency*average_consistency); 
 	
 	LB_ESS = 0.0; 
-	for (int i=0; i<(int)proposal.size(); i++)
-		LB_ESS += exp(2.0*(weight[i]-sum_weight)); 
+	for (int i=0; i<(int)samples.size(); i++)
+		LB_ESS += exp(2.0*(weight[i]-consistency)); 
 	LB_ESS = 1.0/LB_ESS;  
 
 	return consistency; 
 }
 
+
+double CheckConvergency (const std::vector<CSampleIDWeight> &samples, CEquiEnergyModel &model, int stage, int previous_stage,  double convergency_previous, double &average_consistency, double &std_consistency, double &LB_ESS, int posterior_type, int nGroup)
+{
+	vector<double> weight(samples.size(), 0.0); 
+	for(int i=0; i<(int)samples.size(); i++)
+	{
+		if (previous_stage == model.parameter->number_energy_stage)
+		{
+			if (posterior_type == POSTERIOR_HEATED)
+				weight[i] = samples[i].weight/model.parameter->t[stage] - (samples[i].weight - samples[i].reserved); 
+			else if (posterior_type == LIKELIHOOD_HEATED)
+				weight[i] = samples[i].reserved/model.parameter->t[stage]; 
+			else if (posterior_type == PRIOR_ONLY)
+				weight[i] = 0.0; 
+		}
+		else 
+		{
+			if (posterior_type == POSTERIOR_HEATED)
+				weight[i] = samples[i].weight/model.parameter->t[stage] - samples[i].weight/model.parameter->t[previous_stage]; 
+			else if (posterior_type == LIKELIHOOD_HEATED)
+				weight[i] = samples[i].reserved/model.parameter->t[stage] - samples[i].reserved/model.parameter->t[previous_stage]; 
+			else if (posterior_type == PRIOR_ONLY)
+				weight[i] = 0.0; 
+		}
+	}
+
+	vector<double>group_consistency(nGroup); 
+	double consistency; 
+	int avg_group_size = ceil((double)(samples.size())/(double)nGroup); 
+	
+	for (int iGroup = 0; iGroup < nGroup; iGroup++)
+	{
+		int counter =0; 
+		for (int i=iGroup*avg_group_size; i<( (iGroup+1)*avg_group_size < (int)samples.size() ? (iGroup+1)*avg_group_size : (int)(samples.size()) ); i++)
+		{
+			if (counter == 0)
+				group_consistency[iGroup] = weight[i]; 
+			else 
+				group_consistency[iGroup] =  AddLogs(group_consistency[iGroup], weight[i]); 
+
+			if (iGroup == 0 && counter == 0)
+				consistency = weight[i];
+			else 
+				consistency = AddLogs(consistency, weight[i]); 
+			counter ++; 
+		}
+		group_consistency[iGroup] = group_consistency[iGroup] + convergency_previous- log((double)counter);
+	}
+	consistency = consistency + convergency_previous- log((double)(samples.size())); 
+	
+	average_consistency=0.0; 
+	std_consistency=0.0; 
+	for (int i=0; i<(int)(group_consistency.size()); i++)
+	{
+		average_consistency += group_consistency[i]; 
+		std_consistency += group_consistency[i] * group_consistency[i]; 
+	}	
+	average_consistency = average_consistency/(double)(group_consistency.size()); 
+	std_consistency = sqrt(std_consistency/(double)(group_consistency.size())-average_consistency*average_consistency); 
+	
+	LB_ESS = 0.0; 
+	for (int i=0; i<(int)samples.size(); i++)
+		LB_ESS += exp(2.0*(weight[i]-consistency)); 
+	LB_ESS = 1.0/LB_ESS;  
+
+	return consistency; 
+}
 
 double EstimateLogMDD(CEquiEnergyModel &model, int stage, int previous_stage,  double logMDD_previous, int posterior_type)
 {
@@ -664,10 +727,11 @@ double LogMDD_Importance(const vector<CSampleIDWeight> &proposal, CEquiEnergyMod
 		else if (posterior_type == LIKELIHOOD_HEATED)
 			weight[i] -= proposal[i].reserved/t_previous + (proposal[i].weight-proposal[i].reserved) - logMDD_previous;  
 	}
-	double sum_weight = weight[0]; 
+	double sum_weight = weight[0];
 	for (int i=1; i<(int)weight.size(); i++)
 		sum_weight = AddLogs(sum_weight, weight[i]); 
-	return sum_weight; 
+	// changed by DW - must "divide" by number of observations
+	return sum_weight- log(weight.size()); 
 } 
 
 double CheckLogMDDConvergency(vector<CSampleIDWeight> &sample, CEquiEnergyModel &model, int stage, double t, int proposal_type, double &average_logMDD, double &std_logMDD, int posterior_type)

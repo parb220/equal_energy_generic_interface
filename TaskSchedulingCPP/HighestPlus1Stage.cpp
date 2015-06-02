@@ -18,12 +18,12 @@ using namespace std;
 
 vector<string> glob(const string &pattern); 
 
-void HighestPlus1Stage_Prior(int nNode, int nInitial, CEquiEnergyModel &model)
+std::vector<CSampleIDWeight> HighestPlus1Stage_Prior(int nNode, int nInitial, CEquiEnergyModel &model)
 {
-	DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length,  model.parameter->number_energy_stage, SIMULATION_PRIOR_TAG);
+	return DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length,  model.parameter->number_energy_stage, SIMULATION_PRIOR_TAG);
 }
 
-void HighestPlus1Stage(int nNode, int nInitial, CEquiEnergyModel &model)
+std::vector<CSampleIDWeight> HighestPlus1Stage(int nNode, int nInitial, CEquiEnergyModel &model)
 {
 	// HillClimb to aquire an appropriate starting point
 	DispatchHillClimbTask(nNode, nInitial, model, nInitial);
@@ -70,6 +70,7 @@ void HighestPlus1Stage(int nNode, int nInitial, CEquiEnergyModel &model)
 	for (int i=1; i<nNode; i++)
         {
 		sPackage[GROUP_INDEX] = dw_uniform_int(nInitial);
+		sPackage[GROUP_NUMBER_INDEX] = 1; 
                 MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD);
         }
 
@@ -96,6 +97,6 @@ void HighestPlus1Stage(int nNode, int nInitial, CEquiEnergyModel &model)
 	// DispatchSimulation(nNode, nInitial, model, estimation_length, model.parameter->number_energy_stage, TUNE_TAG_SIMULATION_FIRST);
 
 	// Dispatch simulation
-	DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length,  model.parameter->number_energy_stage, SIMULATION_TAG);
+	return DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length,  model.parameter->number_energy_stage, SIMULATION_TAG);
 	// DispatchGMMSimulationTask(nNode, nInitial, model, model.parameter->simulation_length); 
 }

@@ -20,15 +20,15 @@ vector<double> CEquiEnergyModel::Reweight(const vector<CSampleIDWeight> &samples
 	return log_weight; 
 }
 
-bool CEquiEnergyModel::Initialize_WeightedSampling(int K, int stage_index, vector<CSampleIDWeight> &starters)
+bool CEquiEnergyModel::Initialize_WeightedSampling(const std::vector<CSampleIDWeight> &samples, int K, int stage_index, vector<CSampleIDWeight> &starters)
 {
 	if (starters.size() != K)
 		starters.resize(K);
 
-	// Get all previous stage's samples out
+	/* Get all previous stage's samples out
 	vector<CSampleIDWeight> samples;  
 	if (!storage->DrawAllSample(stage_index, samples) || samples.size() < K)
-                return false;
+                return false;*/
         if (samples.size() == K)
         {
                 for (int ii=0; ii<(int)(starters.size()); ii++)
@@ -84,8 +84,8 @@ bool CEquiEnergyModel::Initialize_MostDistant_WithinPercentile(int K, int stage_
 		return true; 
 	}
 	// 1st starter, the best sample so far
-	starters[0] = samples[dw_uniform_int(K)]; 
-	// starters[0] = samples[0]; 
+	// starters[0] = samples[dw_uniform_int(K)]; 
+	starters[0] = samples[0]; 
 	// k-th starter, the most distant to starters(0..k-1) 
 	double most_distance, distance; 
 	TDenseVector e; 

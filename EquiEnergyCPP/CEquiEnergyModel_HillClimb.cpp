@@ -21,7 +21,7 @@ void *MinusLogPosterior_NPSOL::function(int *mode, int *n, double *x, double *f,
 	*f = -model->log_posterior_function(x,*n); 
 }
 
-double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iteration, int perturbation_iteration, double perturbation_scale, double scale)
+double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iteration, int perturbation_iteration, double perturbation_scale, double scale, const TDenseVector &start_point)
 {
 	const string COLD_START = string("Cold Start");
         const string NO_PRINT_OUT = string("Major print level = 0");
@@ -90,13 +90,23 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 	double log_posterior_before_perturbation, log_posterior_after_perturbation, log_posterior_optimal; 
 	TDenseVector peak(n,0.0), perturbation(n,0.0), x_plus_perturbation(n,0.0);  
 	TDenseMatrix hessian_cholesky(n,n,0.0); 
+
 	try {
 		for (int i=0; i<nSolution; i++)
 		{
-			if (!DrawParametersFromPrior(x)) 
-				throw dw_exception("CEquiEnergyModel::HillClimb_NPSOL : DrawSampleFromPrior() error occurred");
+			if (start_point.dim)
+				memcpy(x, start_point.vector, sizeof(double)*start_point.dim); 
+			else 
+			{
+				log_posterior_before_perturbation = MINUS_INFINITY; 
+				while (log_posterior_before_perturbation <= MINUS_INFINITY)
+				{
+					if(!DrawParametersFromPrior(x))
+						throw dw_exception("CEquiEnergyModel::HillClimb_NPSOL : DrawSampleFromPrior() error occurred");
+					log_posterior_before_perturbation = log_posterior_function(x, n);
+				}
+			}
 
-			log_posterior_before_perturbation = log_posterior_function(x, n);
 			for (int ii=0; ii<optimization_iteration; ii++)
 			{
 				perturbation.RandomNormal(); 
@@ -129,6 +139,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
                         		hessian_cholesky.column_major = true;
 				}
 			}
+
 			// Accept the optimal solution
 			if (log_posterior_optimal > MINUS_INFINITY)
 			{
@@ -161,8 +172,9 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 			}
 		}
 	}	
-	catch(...)
+	catch( dw_exception& e )
 	{
+		cout << e.what() << endl; 
 		delete [] g; 
 		delete [] c;
 		delete [] w; 
