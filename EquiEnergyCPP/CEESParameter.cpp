@@ -1,6 +1,7 @@
 #include <fstream>
 #include <cmath>
 
+#include "prcsn.h"
 #include "CSampleIDWeight.h"
 #include "CEESParameter.h"
 
@@ -122,6 +123,16 @@ bool CEESParameter::SetTemperature()
 	}
 	else
 		t[1] = tN_1; 
+	return true; 
+}
+
+bool CEESParameter::SetTemperature_quadratic()
+{
+	t.resize(number_energy_stage+1);
+	for (int i=0; i<number_energy_stage; i++)
+		t[i] = (double)number_energy_stage*(double)number_energy_stage/((double)(number_energy_stage-i) * (double)(number_energy_stage-i)); 
+
+	t[number_energy_stage] = PLUS_INFINITY; 
 	return true; 
 }
 
