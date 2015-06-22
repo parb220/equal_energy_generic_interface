@@ -136,6 +136,15 @@ bool CEESParameter::SetTemperature_quadratic()
 	return true; 
 }
 
+bool CEESParameter::SetTemperature_polynomial(double r)
+{
+	t.resize(number_energy_stage+1);
+	for (int i=0; i<number_energy_stage; i++)
+		t[i] = pow((double)number_energy_stage,r)/pow((double)(number_energy_stage-i),r); 
+
+	t[number_energy_stage] = PLUS_INFINITY; 
+}
+
 double CEESParameter::LogRatio_Stage(double original_energy_x, double original_energy_y, int stage) const
 {
 	double log_prob_x_bounded = -original_energy_x/t[stage];

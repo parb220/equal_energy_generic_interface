@@ -32,6 +32,7 @@ public:
 	bool SetEnergyBound();
 	bool SetTemperature(); 
 	bool SetTemperature_quadratic();  
+	bool SetTemperature_polynomial(double r);
 
 	double LogRatio_Stage(double energy_x, double energy_y, int stage) const; 
 
