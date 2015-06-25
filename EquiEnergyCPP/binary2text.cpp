@@ -14,9 +14,8 @@ int main(int argc, char* argv[])
 		cerr << argv[0] << " input_filename(binary) output_filename(text)"; 
 		abort(); 
 	} 
-	CSampleIDWeight one_sample; 
-	vector <CSampleIDWeight> sample;
-	if (!LoadSampleFromFile(string(argv[1]), sample) )
+	vector <CSampleIDWeight> sample = LoadSampleFromFile(string(argv[1]); 
+	if (sample.empty() )
 	{
 		cerr << "Error in LoadSampleFromFile() : " << argv[1] << endl; 
 		abort(); 

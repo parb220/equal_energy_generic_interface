@@ -17,11 +17,10 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 	stringstream convert; 
 	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_stage ; // << "." << group_index; 
 	string start_point_file = model.parameter->storage_dir + convert.str(); 
-	std::vector<CSampleIDWeight> start_points; 
-	if (! LoadSampleFromFile(start_point_file, start_points) || (int)(start_points.size()) <= group_index) 
+	std::vector<CSampleIDWeight> start_points = LoadSampleFromFile(start_point_file); 
+	if ((int)(start_points.size()) <= group_index) 
 		return false;  
 	model.current_sample = start_points[group_index]; 
-	// if (!model.InitializeFromFile(start_point_file, group_index))
 
 	// block scheme file
 	convert.str(string()); 
@@ -63,7 +62,6 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 			abort(); 
 		}
 
-		// if (!model.metropolis->AdaptiveAfterSimulation_WeightedSampling_OnePass(model.current_sample, period, max_period, samples, weight, block_file_name, if_eejump, block_scheme_file_name))
 		if (!model.metropolis->AdaptiveAfterSimulation_WeightedSampling_OnePass(model.current_sample, period, max_period, BMatrix, block_file_name, if_eejump))
                 {
                 	cerr << "ExecutingTuningTask_BeforeSimulation() : Error in writing " << block_file_name << endl;
@@ -72,8 +70,8 @@ bool ExecutingTuningTask_BeforeSimulation(size_t period, size_t max_period, CEqu
 	}
 
 	model.storage->ClearStatus(model.energy_stage);
-        model.storage->finalize(model.energy_stage);
-        model.storage->ClearDepositDrawHistory(model.energy_stage);
+        //model.storage->finalize(model.energy_stage);
+        //model.storage->ClearDepositDrawHistory(model.energy_stage);
 	if (model.energy_stage < model.parameter->number_energy_stage)
 	{
 		model.storage->ClearStatus(model.energy_stage+1); 

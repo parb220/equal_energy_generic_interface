@@ -11,18 +11,13 @@
 #include "dw_math.h"
 #include "CEquiEnergyModel.h"
 #include "CMetropolis.h"
-
-extern "C" {
-	#include "dw_math.h"
-	// #include "dw_switchio.h"
-	#include "dw_rand.h"
-}
+#include "dw_rand.h"
 
 using namespace std;
 
 bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleIDWeight &y_initial)
 {
-	if(dw_uniform_rnd() <= parameter->pee && storage->DrawSample(energy_stage+1, storage->BinIndex(energy_stage+1,-y_initial.weight), y_end) ) // if a sample is successfully draw from bin
+	if(storage->DrawSample(energy_stage+1, storage->BinIndex(energy_stage+1,-y_initial.weight), y_end) ) // if a sample is successfully draw from bin
 	{
 		// calculate log_ratio in the current and the higher stages
 		double log_ratio; 
@@ -44,29 +39,31 @@ void CEquiEnergyModel::SaveSampleToStorage(const CSampleIDWeight &sample)
         storage->DepositSample(energy_stage, storage->BinIndex(energy_stage, -sample.weight), sample);
 }
 
-void CEquiEnergyModel::Take_Sample_Just_Drawn_From_Storage(const CSampleIDWeight &x)
+void CEquiEnergyModel::Take_New_Sample_As_Current_Sample(const CSampleIDWeight &x_new)
 {
-	current_sample = x; 
+	current_sample = x_new; 
 	current_sample.id = timer_when_started;
 }
 
-int CEquiEnergyModel::EE_Draw(int MH_thin)
+int CEquiEnergyModel::EE_Draw()
 {
 	CSampleIDWeight x_new; 
 	int new_sample_code = NO_JUMP; 
-	double bounded_log_posterior_new; 
 
-	if (MakeEquiEnergyJump(x_new, current_sample))
+	if (dw_uniform_rnd() <= parameter->pee ) // EE jump
 	{
-		Take_Sample_Just_Drawn_From_Storage(x_new); 
-		new_sample_code = EQUI_ENERGY_JUMP; 
+		if (MakeEquiEnergyJump(x_new, current_sample))
+		{
+			Take_New_Sample_As_Current_Sample(x_new); 
+			new_sample_code = EQUI_ENERGY_JUMP; 
+		}
 	}
 	else 
 	{
-		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, MH_thin))
+		double bounded_log_posterior_new; 
+		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1))
 		{
-			current_sample = x_new; 
-			current_sample.id = timer_when_started;
+			Take_New_Sample_As_Current_Sample(x_new); 
 			new_sample_code = METROPOLIS_JUMP; 
 		}
 	}
@@ -75,28 +72,28 @@ int CEquiEnergyModel::EE_Draw(int MH_thin)
 }
 
 
-double CEquiEnergyModel::BurnIn(int burn_in_length)
+std::vector<int> CEquiEnergyModel::BurnIn(int burn_in_length)
 {
 	CSampleIDWeight x_new; 
-	int nJump =0; 
+	int nMHJump =0; 
 	double bounded_log_posterior_new; 
 	for (int i=0; i<burn_in_length; i++)
 	{
 		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1) )
 		{
-			current_sample = x_new;
-			current_sample.id = timer_when_started;  
-			nJump ++; 
+			Take_New_Sample_As_Current_Sample(x_new); 
+			nMHJump ++; 
 		}
 	}
-	// cout << "MH Jump " << nJump << " out of " << burn_in_length << " in burning-in.\n"; 
-	return (double)(nJump)/(double)(burn_in_length);   
+	std::vector<int> nJump(2);
+        nJump[0] = 0;   // EE jump
+        nJump[1] = nMHJump; // MH jump
+        return nJump;
 }
 
-void CEquiEnergyModel::Simulation_Prior(bool if_storage, const string &sample_file_name)
+std::vector<int> CEquiEnergyModel::Simulation_Prior(bool if_storage, const string &sample_file_name)
 {
 	CSampleIDWeight x_new(TDenseVector(current_sample.data.dim));   
-	double bounded_log_posterior_new;
         bool if_write_file = false;
         ofstream output_file;
         if (!sample_file_name.empty() )
@@ -114,8 +111,7 @@ void CEquiEnergyModel::Simulation_Prior(bool if_storage, const string &sample_fi
 			x_new.DataChanged(); 
 			log_posterior_function(x_new);
 		} while (x_new.weight <= MINUS_INFINITY); 
-		current_sample = x_new; 
-		current_sample.id = timer_when_started;			
+		Take_New_Sample_As_Current_Sample(x_new); 
 		if (if_storage)
                	      SaveSampleToStorage(current_sample);
                 if (if_write_file)
@@ -123,12 +119,13 @@ void CEquiEnergyModel::Simulation_Prior(bool if_storage, const string &sample_fi
 	}
 	if (if_write_file)
                 output_file.close();
+	return std::vector<int>(2,0); 
 }
 
-void CEquiEnergyModel::Simulation_Within(bool if_storage, const string &sample_file_name)
+std::vector<int> CEquiEnergyModel::Simulation_Within(bool if_storage, const string &sample_file_name)
 {
 	CSampleIDWeight x_new; 
-	int nJump =0; 
+	int nMHJump =0; 
 	double bounded_log_posterior_new; 
 	bool if_write_file = false; 
 	ofstream output_file; 
@@ -141,15 +138,12 @@ void CEquiEnergyModel::Simulation_Within(bool if_storage, const string &sample_f
 
 	for (int i=0; i<parameter->simulation_length; i++)
 	{
-		for (int j=0; j<parameter->thin; j++)
+		for (int j=0; j<parameter->THIN; j++)
 		{
-			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, parameter->THIN/parameter->thin) )
-                	{
-                        	current_sample = x_new;
-                        	current_sample.id = timer_when_started;
-                        	nJump ++;
-                	}
+			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1))
+                        	nMHJump ++;
 		}
+		Take_New_Sample_As_Current_Sample(x_new);
 		
 		if (if_storage)
 			SaveSampleToStorage(current_sample);
@@ -158,15 +152,17 @@ void CEquiEnergyModel::Simulation_Within(bool if_storage, const string &sample_f
 	}
 	if (if_write_file)
 		output_file.close(); 
-
-	// cout << "MH Jump " << nJump << " out of " << parameter->simulation_length*parameter->thin << " in simulation.\n"; 
+	std::vector<int> nJump(2);
+        nJump[0] = 0; // EE jump
+        nJump[1] = nMHJump; // MH jump
+	return nJump; 
 }
 
-void CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_file_name)
+std::vector<int> CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_file_name)
 {
 	CSampleIDWeight x_new;
 
-	int nEEJump=0, nMHJump=0; 
+	std::vector<int> nJump(2,0); // nJump[0]: EE, nJump[1]: MH
 	bool if_write_file = false;
         ofstream output_file;
         if (!sample_file_name.empty() )
@@ -177,13 +173,13 @@ void CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_fi
         }
 	for (int i=0; i<parameter->simulation_length; i++)
 	{
-		for (int j=0; j<parameter->thin; j++)
+		for (int j=0; j<parameter->THIN; j++)
 		{
-			int jump_code = EE_Draw(parameter->THIN/parameter->thin); 
+			int jump_code = EE_Draw(); 
 			if (jump_code == EQUI_ENERGY_JUMP)
-				nEEJump++; 
+				nJump[0] ++; // nEEJump++; 
 			else if (jump_code == METROPOLIS_JUMP)
-				nMHJump++; 
+				nJump[1] ++; // nMHJump++; 
 		}	
 	
 		if (if_storage)
@@ -195,6 +191,7 @@ void CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_fi
 	if (if_write_file)
 		output_file.close(); 	
 
+	return nJump; 
 	// cout << "EE Jump " << nEEJump << " out of " << parameter->simulation_length *parameter->thin<< " in simulation.\n"; 
 	// cout << "MH Jump " << nMHJump << " out of " << parameter->simulation_length *parameter->thin<< " in simulation.\n"; 
 }

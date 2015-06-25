@@ -9,9 +9,9 @@ void CSampleIDWeight::DataChanged()
 	calculated = false; 
 }
 
-size_t CSampleIDWeight::GetSize_Data() const
+int CSampleIDWeight::GetSize_Data() const
 {
-	return sizeof(int)+(size_t)data.dim*sizeof(double)+sizeof(int)+sizeof(double)+sizeof(reserved)+sizeof(bool);
+	return sizeof(int)+(int)data.dim*sizeof(double)+sizeof(int)+sizeof(double)+sizeof(reserved)+sizeof(bool);
 	// data.dim, data.vector, id, weight, reserved, calculated
 }
 
@@ -39,7 +39,7 @@ CSampleIDWeight &CSampleIDWeight::operator = (const CSampleIDWeight &right)
 	return *this; 
 }
 
-bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, int offset, size_t length)
+bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, int offset, int length)
 {
 	if (data.dim < offset+(int)length || right.data.dim < offset+(int)length)
 	{
@@ -60,7 +60,7 @@ bool CSampleIDWeight::PartialCopyFrom(const CSampleIDWeight &right, int offset, 
 	return true; 
 }
 
-bool CSampleIDWeight::PartialCopyFrom(int offset1, const CSampleIDWeight &right, int offset2, size_t length)
+bool CSampleIDWeight::PartialCopyFrom(int offset1, const CSampleIDWeight &right, int offset2, int length)
 {
 	if (data.dim < offset1+(int)length || right.data.dim < offset2+(int)length )
 	{
@@ -141,24 +141,24 @@ ostream& operator << (ostream &outputStr, const CSampleIDWeight &sample)
 	return outputStr; 
 }
 
-bool LoadSampleFromFile(const string &file_name, vector<CSampleIDWeight> &Y)
+std::vector<CSampleIDWeight> LoadSampleFromFile(const string &file_name)
 {
 	ifstream input_file(file_name.c_str(), ios::binary|ios::in);
 	if (!input_file)
-		return false;
+		return std::vector<CSampleIDWeight>(0); 	
 	CSampleIDWeight sample; 
 	read(input_file, &sample); 
 	input_file.seekg(0,ios::beg); 
 	input_file.seekg(0,ios::end); 
-	size_t lenFile = input_file.tellg(); 
-	size_t nSample = lenFile/sample.GetSize_Data(); 
-	Y.resize(nSample); 
+	int lenFile = input_file.tellg(); 
+	int nSample = lenFile/sample.GetSize_Data(); 
+	std::vector<CSampleIDWeight>Y(nSample); 
 	input_file.seekg(0, ios::beg); 
 	for (int i=0; i<(int)nSample; i++)	
 		read(input_file, &(Y[i])); 
 
 	input_file.close(); 
-	return true; 		
+	return Y; 		
 }
 
 bool SaveSampleToFile(const string &file_name, const vector<CSampleIDWeight> &Y)
@@ -171,3 +171,19 @@ bool SaveSampleToFile(const string &file_name, const vector<CSampleIDWeight> &Y)
 	output_file.close(); 
 	return true;  
 }
+
+bool compare_CSampleIDWeight(const CSampleIDWeight &i, const CSampleIDWeight &j)
+{
+        return i.weight < j.weight;
+}
+
+bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSampleIDWeight &j)
+{
+        return -i.weight < -j.weight;
+}
+
+bool compare_CSampleIDWeight_BasedOnID(const CSampleIDWeight &i, const CSampleIDWeight &j)
+{
+        return i.id < j.id;
+}
+

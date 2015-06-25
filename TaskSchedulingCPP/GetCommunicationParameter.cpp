@@ -5,7 +5,6 @@ bool GetCommunicationParameter(const double *rPackage, size_t package_size, CEES
 {
 	parameter->simulation_length = (size_t)(rPackage[LENGTH_INDEX]); 
 	parameter->burn_in_length = (size_t)(rPackage[BURN_INDEX]); 
-	parameter->thin = (size_t)(rPackage[thin_INDEX]); 
 	parameter->THIN = (size_t)(rPackage[THIN_INDEX]); 
 	parameter->pee = rPackage[PEE_INDEX]; 
 
