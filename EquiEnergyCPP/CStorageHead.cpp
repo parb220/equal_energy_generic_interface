@@ -161,7 +161,7 @@ void CStorageHead::ClearSample(int stage)
 }
 
 
-std::vector<CSampleIDWeight> CStorageHead::binning_equal_size(int stage, int bin_number)
+std::vector<CSampleIDWeight> CStorageHead::binning_equal_size(int stage, int bin_number, double lambda)
 {
 	if (stage < 0 || stage >=(int)bin.size())
         {
@@ -180,9 +180,10 @@ std::vector<CSampleIDWeight> CStorageHead::binning_equal_size(int stage, int bin
         {
                 cerr << "CStorageHead::binning_equal_size() : error occurred when loading all samples.\n";
                 abort();
-        } 
-	sort(sample.begin(), sample.end(), compare_CSampleIDWeight_BasedOnEnergy);
-	// ascending energy (equivalently, descending on weight)
+        }
+	CSampleIDWeight_Sorter comparator(lambda); 
+	sort(sample.begin(), sample.end(), comparator);
+	// descending on  lambda*log_likelihood + log_prior
         DisregardHistorySamples(stage);
 
         stringstream str, bin_id_string;
@@ -194,7 +195,8 @@ std::vector<CSampleIDWeight> CStorageHead::binning_equal_size(int stage, int bin
 	int iSample=0, iBin=0;
 	while (iSample < (int)(sample.size())) 
 	{
-		energy_lower_bound[stage].push_back(-sample[iSample].weight); 	
+		// energy_lower_bound[stage].push_back(-sample[iSample].weight); 	
+		energy_lower_bound[stage].push_back(-(sample[iSample].reserved*lambda + (sample[iSample].weight-sample[iSample].reserved))); 
 		bin_id_string.str(string());
                 bin_id_string << stage << "." << iBin;
                 bin[stage].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));

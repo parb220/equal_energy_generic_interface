@@ -34,7 +34,7 @@ public:
 	void ClearSample(int stage); 
 
 	bool DrawSample(int stage, int _bin_id, CSampleIDWeight &sample);
-	std::vector<CSampleIDWeight> binning_equal_size(int stage, int bin_number); 
+	std::vector<CSampleIDWeight> binning_equal_size(int stage, int bin_number, double lambda); 
 	std::vector<CSampleIDWeight> DrawAllSample(int stae); 
 		
 	/* for reassigning samples into different bins */

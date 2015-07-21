@@ -41,6 +41,15 @@ bool compare_CSampleIDWeight(const CSampleIDWeight &i, const CSampleIDWeight &j)
 bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSampleIDWeight &j);
 bool compare_CSampleIDWeight_BasedOnID(const CSampleIDWeight &i, const CSampleIDWeight &j);
 
+class CSampleIDWeight_Sorter
+{
+private:
+	double lambda; 
+public:
+	CSampleIDWeight_Sorter(double _lambda = 1.0); 
+	bool operator() (const CSampleIDWeight &left, const CSampleIDWeight &right); 
+}; 
+
 std::vector<CSampleIDWeight> LoadSampleFromFile(const string &file); 
 bool SaveSampleToFile(const string &file, const vector<CSampleIDWeight> &Y); 
 

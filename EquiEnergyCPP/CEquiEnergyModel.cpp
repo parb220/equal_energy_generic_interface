@@ -17,7 +17,13 @@ using namespace std;
 
 bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleIDWeight &y_initial)
 {
-	if(storage->DrawSample(energy_stage+1, storage->BinIndex(energy_stage+1,-y_initial.weight), y_end) ) // if a sample is successfully draw from bin
+	double heated_initial; 
+	if (energy_stage +1 == parameter->number_energy_stage)
+		heated_initial = y_initial.weight - y_initial.reserved; 
+	else 
+		heated_initial = y_initial.reserved * 1.0/parameter->t[energy_stage+1] + y_initial.weight - y_initial.reserved; 
+
+	if(storage->DrawSample(energy_stage+1, storage->BinIndex(energy_stage+1,-heated_initial), y_end) ) // if a sample is successfully draw from bin
 	{
 		// calculate log_ratio in the current and the higher stages
 		double log_ratio; 
@@ -36,7 +42,12 @@ bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleI
 
 void CEquiEnergyModel::SaveSampleToStorage(const CSampleIDWeight &sample)
 {
-        storage->DepositSample(energy_stage, storage->BinIndex(energy_stage, -sample.weight), sample);
+	double heated; 
+	if (energy_stage == parameter->number_energy_stage)
+		heated = sample.weight - sample.reserved; 
+	else 
+		heated = sample.reserved * 1.0/parameter->t[energy_stage] + (sample.weight - sample.reserved); 
+        storage->DepositSample(energy_stage, storage->BinIndex(energy_stage, -heated), sample);
 }
 
 void CEquiEnergyModel::Take_New_Sample_As_Current_Sample(const CSampleIDWeight &x_new)

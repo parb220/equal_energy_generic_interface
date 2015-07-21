@@ -187,3 +187,12 @@ bool compare_CSampleIDWeight_BasedOnID(const CSampleIDWeight &i, const CSampleID
         return i.id < j.id;
 }
 
+CSampleIDWeight_Sorter::CSampleIDWeight_Sorter(double _lambda) :
+lambda(_lambda)
+{}
+
+bool CSampleIDWeight_Sorter::operator()(const CSampleIDWeight &left, const CSampleIDWeight &right)
+{
+	return (left.reserved*lambda + (left.weight-left.reserved) ) > (right.reserved*lambda + (right.weight-right.reserved)); 
+}
+
