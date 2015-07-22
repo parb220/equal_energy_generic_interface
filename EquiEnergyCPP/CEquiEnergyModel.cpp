@@ -17,22 +17,12 @@ using namespace std;
 
 bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleIDWeight &y_initial)
 {
-	double heated_initial; 
-	if (energy_stage +1 == parameter->number_energy_stage)
-		heated_initial = y_initial.weight - y_initial.reserved; 
-	else 
-		heated_initial = y_initial.reserved * 1.0/parameter->t[energy_stage+1] + y_initial.weight - y_initial.reserved; 
-
+	double heated_initial = y_initial.reserved*parameter->lambda[energy_stage+1] + (y_initial.weight - y_initial.reserved); 
 	if(storage->DrawSample(energy_stage+1, storage->BinIndex(energy_stage+1,-heated_initial), y_end) ) // if a sample is successfully draw from bin
 	{
 		// calculate log_ratio in the current and the higher stages
-		double log_ratio; 
-
-		if (energy_stage == parameter->number_energy_stage-1)
-			log_ratio = 0.0; 
-		else 
-			log_ratio = parameter->LogRatio_Stage(-(y_initial.reserved), -(y_end.reserved), energy_stage+1);
-		log_ratio += parameter->LogRatio_Stage(-(y_end.reserved), -(y_initial.reserved), energy_stage); 
+		double log_ratio = parameter->LogRatio_Stage(y_initial, y_end, energy_stage+1); 
+		log_ratio += parameter->LogRatio_Stage(y_end, y_initial, energy_stage); 
 		if (log(dw_uniform_rnd()) <= log_ratio)
 			return true; 
 	}
@@ -42,11 +32,7 @@ bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleI
 
 void CEquiEnergyModel::SaveSampleToStorage(const CSampleIDWeight &sample)
 {
-	double heated; 
-	if (energy_stage == parameter->number_energy_stage)
-		heated = sample.weight - sample.reserved; 
-	else 
-		heated = sample.reserved * 1.0/parameter->t[energy_stage] + (sample.weight - sample.reserved); 
+	double heated = sample.reserved * parameter->lambda[energy_stage] + (sample.weight - sample.reserved); 
         storage->DepositSample(energy_stage, storage->BinIndex(energy_stage, -heated), sample);
 }
 
@@ -210,13 +196,13 @@ std::vector<int> CEquiEnergyModel::Simulation_Cross(bool if_storage, const strin
 CEquiEnergyModel::CEquiEnergyModel() : 
 gmm_mean(vector<TDenseVector>(0)), gmm_covariance_sqrt(vector<TDenseMatrix>(0)), 
 gmm_covariance_sqrt_log_determinant(vector<double>(0)), gmm_covariance_sqrt_inverse(vector<TDenseMatrix>(0)), 
-if_bounded(true), energy_stage(0), t_bound(1.0), current_sample(CSampleIDWeight()), timer_when_started(-1), metropolis(NULL), parameter(NULL), storage(NULL)
+if_bounded(true), energy_stage(0), lambda(1.0), current_sample(CSampleIDWeight()), timer_when_started(-1), metropolis(NULL), parameter(NULL), storage(NULL)
 {}
 
-CEquiEnergyModel::CEquiEnergyModel(bool _if_bounded, int eL, double _t, const CSampleIDWeight &_x, time_t _time, CMetropolis *_metropolis, CEESParameter *_parameter, CStorageHead *_storage) :
+CEquiEnergyModel::CEquiEnergyModel(bool _if_bounded, int eL, double _lambda, const CSampleIDWeight &_x, time_t _time, CMetropolis *_metropolis, CEESParameter *_parameter, CStorageHead *_storage) :
 gmm_mean(vector<TDenseVector>(0)), gmm_covariance_sqrt(vector<TDenseMatrix>(0)), 
 gmm_covariance_sqrt_log_determinant(vector<double>(0)), gmm_covariance_sqrt_inverse(vector<TDenseMatrix>(0)),
-if_bounded(_if_bounded), energy_stage(eL), t_bound(_t), current_sample(_x), timer_when_started(_time), metropolis(_metropolis), parameter(_parameter), storage(_storage) 
+if_bounded(_if_bounded), energy_stage(eL), lambda(_lambda), current_sample(_x), timer_when_started(_time), metropolis(_metropolis), parameter(_parameter), storage(_storage) 
 {
 }
 

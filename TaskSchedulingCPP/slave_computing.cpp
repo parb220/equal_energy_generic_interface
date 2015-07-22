@@ -59,7 +59,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 				cerr << "GetCommunicationParameter() : Error occurred.\n"; 
 				abort(); 
 			}
-			model.t_bound = model.parameter->t[model.energy_stage];
+			model.lambda = model.parameter->lambda[model.energy_stage];
 
 			if (!ExecutingTuningTask_BeforeSimulation(period, max_period, model, group_index) )
 			{
@@ -82,7 +82,7 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 				cout << "GetCommunicationParameter() : Error occurred.\n"; 
 				abort(); 
 			}
-			model.t_bound = model.parameter->t[model.energy_stage];
+			model.lambda = model.parameter->lambda[model.energy_stage];
 			std::vector<int> nJump = ExecutingSimulationTask(model, my_rank, group_index, nGroup,  mode, status.MPI_TAG); 
 			sPackage[RETURN_INDEX_1] = nJump[0];
                         sPackage[RETURN_INDEX_2] = nJump[1];

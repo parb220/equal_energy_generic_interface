@@ -81,7 +81,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 				time(&rawtime);			 
 				// cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
 
-				logMDD[stage+1][0] = LogMDD(samples, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, PRIOR_ONLY);
+				logMDD[stage+1][0] = LogMDD(samples, model, model.parameter->lambda[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
 				logMDD[stage+1][1] = 0.0;
 
 				// open MDD file for output and write log MDD for stage + 1
@@ -228,7 +228,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// logMDD using bridge's method
 		time(&rawtime);
 		// cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
-	     	logMDD[stage][0] = LogMDD(samples, model, model.parameter->t[stage], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
+	     	logMDD[stage][0] = LogMDD(samples, model, model.parameter->lambda[stage], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
 		
 		mdd_file << setprecision(20) << stage << "\t" << logMDD[stage][0] << "\t" << logMDD[stage][1] << endl;
 		mdd_file.flush();

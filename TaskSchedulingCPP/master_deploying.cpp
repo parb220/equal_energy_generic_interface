@@ -19,10 +19,7 @@ void master_deploying(int nNode, int nInitial, CEquiEnergyModel &model, const CS
 
 	if (model.parameter->highest_stage < model.parameter->number_energy_stage - 1)
 	{
-		if (model.parameter->highest_stage+1 == model.parameter->number_energy_stage)
-        		model.storage->binning_equal_size(model.parameter->highest_stage+1, model.parameter->number_striation, 0);
-		else 
-			model.storage->binning_equal_size(model.parameter->highest_stage+1, model.parameter->number_striation, 1.0/model.parameter->t[model.parameter->highest_stage+1]); 
+		model.storage->binning_equal_size(model.parameter->highest_stage+1, model.parameter->number_striation, model.parameter->lambda[model.parameter->highest_stage+1]); 
 
         	sPackage[LEVEL_INDEX] = (double)model.parameter->highest_stage+1;
         	sPackage[RESERVE_INDEX] = (double)(model.storage->GetNumber_Bin(model.parameter->highest_stage+1));

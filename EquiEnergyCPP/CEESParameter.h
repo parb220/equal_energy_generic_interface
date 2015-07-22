@@ -18,8 +18,8 @@ public:
 	int number_energy_stage;	// number of energy stages
 	int number_striation; 	// number of rings
 	double pee; 	// probability of equi-energy-jump
-	double tN_1; 	// temperature for the highest energy stage 
-	vector <double> t; 	// temperature for all stage 
+	double lambda_1;	// 1.0/tN_1
+	vector<double> lambda; 	// 1.0/t
 	
 	int highest_stage; 
 	int lowest_stage; 
@@ -34,6 +34,6 @@ public:
 	bool SetTemperature_quadratic();  
 	bool SetTemperature_polynomial(double r);
 
-	double LogRatio_Stage(double energy_x, double energy_y, int stage) const; 
+	double LogRatio_Stage(const CSampleIDWeight &x, const CSampleIDWeight &y, int stage) const; 
 };
 #endif

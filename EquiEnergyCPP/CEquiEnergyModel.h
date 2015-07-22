@@ -38,7 +38,7 @@ public:
 // Parameters for equi-energy sampling
 	bool if_bounded; 
  	int energy_stage;		
-	double t_bound; 
+	double lambda; 
 
 //////////////////////////////////////////////////////////////
 // Current sample holding the following 

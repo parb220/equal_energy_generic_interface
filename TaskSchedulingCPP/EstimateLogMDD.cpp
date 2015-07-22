@@ -25,7 +25,7 @@ TDenseVector GetRadiusFromSample(const vector<CSampleIDWeight> &sample, const TD
 
 bool GetCenterScaleFromSample(const vector<CSampleIDWeight> &sample, TDenseVector &center, TDenseMatrix &scale, double t, int posterior_type=POSTERIOR_HEATED); 
 
-TMatrix CreateProposalMatrix(int ndraws, CEquiEnergyModel &model, double t, const TElliptical *elliptical, int posterior_type)
+TMatrix CreateProposalMatrix(int ndraws, CEquiEnergyModel &model, double lambda, const TElliptical *elliptical, int posterior_type)
 {
 	if (ndraws <= 0)
 		return (TMatrix)NULL; 
@@ -48,11 +48,9 @@ TMatrix CreateProposalMatrix(int ndraws, CEquiEnergyModel &model, double t, cons
 		model.log_posterior_function(sample); 
 
 		if (posterior_type == POSTERIOR_HEATED)
-			log_posterior = sample.weight/t; 
-		else if (posterior_type == LIKELIHOOD_HEATED)
-			log_posterior = sample.reserved/t + (sample.weight-sample.reserved); 
-		else if (posterior_type == PRIOR_ONLY)
-			log_posterior = sample.weight-sample.reserved; 
+			log_posterior = sample.weight*lambda; 
+		else 
+			log_posterior = sample.reserved*lambda + (sample.weight-sample.reserved); 
 		ElementM(proposal, i, 1) = log_posterior; 
 	}
 
@@ -61,7 +59,7 @@ TMatrix CreateProposalMatrix(int ndraws, CEquiEnergyModel &model, double t, cons
 	return proposal; 
 }
 
-TMatrix CreatePosteriorMatrix(const vector<CSampleIDWeight> &sample, double t, const TElliptical *elliptical, int posterior_type)
+TMatrix CreatePosteriorMatrix(const vector<CSampleIDWeight> &sample, double lambda, const TElliptical *elliptical, int posterior_type)
 {
 	TMatrix posterior=CreateMatrix(sample.size(),2); 
 	int dim = elliptical ? elliptical->dim:0; 
@@ -72,11 +70,9 @@ TMatrix CreatePosteriorMatrix(const vector<CSampleIDWeight> &sample, double t, c
 		log_density = dim> 0 ? LogDensityElliptical_Draw(sample[i].data.vector, (TElliptical *)elliptical) : 0.0; 
 		ElementM(posterior, i, 0) = log_density; 
 		if (posterior_type == POSTERIOR_HEATED)
-			ElementM(posterior, i, 1) = sample[i].weight/t;
-		else if (posterior_type == LIKELIHOOD_HEATED)
-			ElementM(posterior, i, 1) = sample[i].reserved/t + (sample[i].weight-sample[i].reserved); 
-		else if (posterior_type == PRIOR_ONLY)
-			ElementM(posterior, i, 1) = sample[i].weight - sample[i].reserved; 
+			ElementM(posterior, i, 1) = sample[i].weight * lambda;
+		else
+			ElementM(posterior, i, 1) = sample[i].reserved * lambda + (sample[i].weight-sample[i].reserved); 
 	}
 	return posterior; 
 }
@@ -98,7 +94,7 @@ TDenseVector GetRadiusFromSample(const vector<CSampleIDWeight> &sample, const TD
 	return Radii; 
 }
 
-bool GetCenterScaleFromSample(const vector<CSampleIDWeight> &sample, TDenseVector &center, TDenseMatrix &scale, double t, int posterior_type)
+bool GetCenterScaleFromSample(const vector<CSampleIDWeight> &sample, TDenseVector &center, TDenseMatrix &scale, double lambda, int posterior_type)
 {
 	if (sample.empty())
 	{
@@ -113,14 +109,12 @@ bool GetCenterScaleFromSample(const vector<CSampleIDWeight> &sample, TDenseVecto
 	TDenseMatrix sample_square(sample[0].data.dim, sample[0].data.dim, 0.0); 
 	for (int i=0; i<(int)sample.size(); i++)
 	{
-		if (i==0 || (posterior_type == POSTERIOR_HEATED && sample[i].weight/t > max) || (posterior_type == LIKELIHOOD_HEATED && sample[i].reserved/t+(sample[i].weight-sample[i].reserved) > max) || (posterior_type == PRIOR_ONLY && (sample[i].weight-sample[i].reserved) > max))
+		if (i==0 || (posterior_type == POSTERIOR_HEATED && sample[i].weight*lambda > max) || (posterior_type != POSTERIOR_HEATED && sample[i].reserved*lambda+(sample[i].weight-sample[i].reserved) > max) )
 		{
 			if (posterior_type == POSTERIOR_HEATED)
-				max = sample[i].weight/t; 
-			else if (posterior_type == LIKELIHOOD_HEATED)
-				max = sample[i].reserved/t + (sample[i].weight-sample[i].reserved); 
-			else if (posterior_type == PRIOR_ONLY) 
-				max = sample[i].weight-sample[i].reserved; 
+				max = sample[i].weight*lambda; 
+			else
+				max = sample[i].reserved*lambda + (sample[i].weight-sample[i].reserved); 
 			mode = sample[i];  
 		}
 		sample_sum = sample_sum + sample[i].data; 
@@ -236,24 +230,20 @@ double CheckConvergency(std::vector<CSampleIDWeight> &samples, CEquiEnergyModel 
 	}
 	sort(samples.begin(), samples.end(), compare_CSampleIDWeight_BasedOnID);
 
-	double t_previous = model.parameter->t[previous_stage];
-        double t_current = model.parameter->t[stage];
+	double lambda_previous = model.parameter->lambda[previous_stage];
+        double lambda_current = model.parameter->lambda[stage];
 	vector<double> weight(samples.size(), 0.0); 
 	for(int i=0; i<(int)samples.size(); i++)
 	{
 		if (posterior_type == POSTERIOR_HEATED)
-                        weight[i] = samples[i].weight/t_current;
-                else if (posterior_type == LIKELIHOOD_HEATED)
-                        weight[i] = samples[i].reserved/t_current + (samples[i].weight-samples[i].reserved);
-                else if (posterior_type == PRIOR_ONLY)
-                        weight[i]  = samples[i].weight-samples[i].reserved;
+                        weight[i] = samples[i].weight*lambda_current;
+                else 
+                        weight[i] = samples[i].reserved*lambda_current + (samples[i].weight-samples[i].reserved);
 
-                if (previous_stage == model.parameter->number_energy_stage || posterior_type == PRIOR_ONLY)
-                        weight[i] -= (samples[i].weight-samples[i].reserved) - convergency_previous;
-                else if (posterior_type == POSTERIOR_HEATED)
-                        weight[i] -= samples[i].weight/t_previous - convergency_previous;
-                else if (posterior_type == LIKELIHOOD_HEATED)
-                        weight[i] -= samples[i].reserved/t_previous + (samples[i].weight-samples[i].reserved) - convergency_previous;
+                if (posterior_type == POSTERIOR_HEATED)
+                        weight[i] -= samples[i].weight*lambda_previous - convergency_previous;
+                else
+                        weight[i] -= samples[i].reserved*lambda_previous + (samples[i].weight-samples[i].reserved) - convergency_previous;
 	}
 
 	vector<double>group_consistency; 
@@ -305,25 +295,21 @@ double CheckConvergency(std::vector<CSampleIDWeight> &samples, CEquiEnergyModel 
 
 double LogMDD_Importance(const vector<CSampleIDWeight> &proposal, CEquiEnergyModel &model, int previous_stage, int current_stage, double logMDD_previous, int posterior_type)
 {
-	double t_previous = model.parameter->t[previous_stage]; 
-	double t_current = model.parameter->t[current_stage]; 
+	double lambda_previous = model.parameter->lambda[previous_stage]; 
+	double lambda_current = model.parameter->lambda[current_stage]; 
 
 	vector<double> weight(proposal.size(),0); 
 	for (int i=0; i<(int)proposal.size(); i++)
 	{
 		if (posterior_type == POSTERIOR_HEATED)
-			weight[i] = proposal[i].weight/t_current; 
-		else if (posterior_type == LIKELIHOOD_HEATED)
-			weight[i] = proposal[i].reserved/t_current + (proposal[i].weight-proposal[i].reserved); 
-		else if (posterior_type == PRIOR_ONLY)
-			weight[i]  = proposal[i].weight-proposal[i].reserved; 
+			weight[i] = proposal[i].weight * lambda_current; 
+		else
+			weight[i] = proposal[i].reserved * lambda_current + (proposal[i].weight-proposal[i].reserved); 
 
-		if (previous_stage == model.parameter->number_energy_stage || posterior_type == PRIOR_ONLY)
-			weight[i] -= (proposal[i].weight-proposal[i].reserved) - logMDD_previous; 
-		else if (posterior_type == POSTERIOR_HEATED)
-			weight[i] -= proposal[i].weight/t_previous - logMDD_previous; 
-		else if (posterior_type == LIKELIHOOD_HEATED)
-			weight[i] -= proposal[i].reserved/t_previous + (proposal[i].weight-proposal[i].reserved) - logMDD_previous;  
+		if (posterior_type == POSTERIOR_HEATED)
+			weight[i] -= proposal[i].weight * lambda_previous - logMDD_previous; 
+		else
+			weight[i] -= proposal[i].reserved * lambda_previous + (proposal[i].weight-proposal[i].reserved) - logMDD_previous;  
 	}
 	double sum_weight = weight[0];
 	for (int i=1; i<(int)weight.size(); i++)

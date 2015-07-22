@@ -122,10 +122,7 @@ std::vector<CSampleIDWeight> DispatchSimulation(int nNode, int nInitial, CEquiEn
 	// binning
 	if (message_tag != TUNE_TAG_SIMULATION_FIRST && message_tag != SCALE_MATRIX_FIT_TAG) 
 	{
-		if (stage == model.parameter->number_energy_stage)
-			samples = model.storage->binning_equal_size(stage, model.parameter->number_striation, 0);
-		else 
-			samples = model.storage->binning_equal_size(stage, model.parameter->number_striation, 1.0/model.parameter->t[stage]);
+		samples = model.storage->binning_equal_size(stage, model.parameter->number_striation, model.parameter->lambda[stage]);
 
 		sPackage[LEVEL_INDEX] = (double)stage;
         	sPackage[RESERVE_INDEX] = (double)(model.storage->GetNumber_Bin(stage));

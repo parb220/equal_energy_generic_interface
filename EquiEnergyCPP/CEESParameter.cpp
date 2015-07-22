@@ -14,8 +14,8 @@ CEESParameter::CEESParameter() :
 	number_energy_stage(0),
 	number_striation(0), 
 	pee(0.0),
-	tN_1(0.0), 
-	t(vector<double>(0)),
+	lambda_1(0.0), 
+	lambda(vector<double>(0)),
 	highest_stage(0), 
 	lowest_stage(0), 
 	THIN(0), 
@@ -29,50 +29,52 @@ CEESParameter::~CEESParameter()
 bool CEESParameter::SetTemperature_geometric()
 // t[i+1] = t[i] * r
 {
-	if (number_energy_stage < 0)
+	// lambda
+	if (number_energy_stage <= 0)
 		return false; 
-
-	t.resize(number_energy_stage+1); 
-	t[0] = 1.0;  
-	if (number_energy_stage > 1) 
+	lambda.resize(number_energy_stage+1); 
+	lambda[0] = 1.0;
+	lambda[number_energy_stage] = 0.0;  
+	if (number_energy_stage > 1)
 	{
-		double r=exp(log(tN_1)/double(number_energy_stage-1)); 
-		for (int i=1; i<(int)(t.size()); i++)
-			t[i] = t[i-1] * r; 
+		double r = log(lambda_1)/(number_energy_stage-1); 
+		for (int i=1; i<number_energy_stage; i++)
+			lambda[i] = exp((double)i*r); 	
 	}
-	else
-		t[1] = tN_1; 
 	return true; 
 }
 
 bool CEESParameter::SetTemperature_quadratic()
 {
-	if (number_energy_stage < 0)
+	// lambda
+	if (number_energy_stage <= 0)
 		return false; 
-
-	t.resize(number_energy_stage+1);
-	for (int i=0; i<number_energy_stage; i++)
-		t[i] = (double)number_energy_stage*(double)number_energy_stage/((double)(number_energy_stage-i) * (double)(number_energy_stage-i)); 
-
-	t[number_energy_stage] = PLUS_INFINITY; 
+	lambda.resize(number_energy_stage+1); 
+	lambda[0] = 1.0;
+	lambda[number_energy_stage] = 0.0; 
+	for (int i=1; i<number_energy_stage; i++)
+		lambda[i] = ((double)(number_energy_stage-i) * (double)(number_energy_stage-i)) /((double)number_energy_stage*(double)number_energy_stage ); 
 	return true; 
 }
 
 bool CEESParameter::SetTemperature_polynomial(double r)
 {
-	if (number_energy_stage < 0)
-		return false; 
-	t.resize(number_energy_stage+1);
-	for (int i=0; i<number_energy_stage; i++)
-		t[i] = pow((double)number_energy_stage,r)/pow((double)(number_energy_stage-i),r); 
-
-	t[number_energy_stage] = PLUS_INFINITY; 
+	if (number_energy_stage <= 0)
+		return false; 	
+	lambda.resize(number_energy_stage+1); 
+	lambda[0] = 1.0; 
+	lambda[number_energy_stage] = 0.0; 
+	double denominator = pow((double)number_energy_stage,r); 
+	for (int i=1; i<number_energy_stage; i++)
+		lambda[i] = pow((double)(number_energy_stage-i),r)/denominator; 
+	return true; 
 }
 
-double CEESParameter::LogRatio_Stage(double original_energy_x, double original_energy_y, int stage) const
+double CEESParameter::LogRatio_Stage(const CSampleIDWeight &x, const CSampleIDWeight &y, int stage) const 
 {
-	double log_prob_x_bounded = -original_energy_x/t[stage];
-        double log_prob_y_bounded = -original_energy_y/t[stage];
+	double log_prob_x_bounded = lambda[stage]*x.reserved + (x.weight-x.reserved); 
+	double log_prob_y_bounded = lambda[stage]*y.reserved + (y.weight-y.reserved); 
         return log_prob_x_bounded - log_prob_y_bounded;
 }
+
 
