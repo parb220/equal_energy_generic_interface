@@ -14,29 +14,7 @@ using namespace std;
 
 vector<string> glob(const string &pattern); 
 
-vector <CSampleIDWeight> ReadSampleFromFile(const string &file_name, int size_each_data) 
-{
-        struct stat file_status;
-        stat(file_name.c_str(), &file_status);
-        int lenFile = file_status.st_size;
-        int nRecord = lenFile/size_each_data;
-
-        if (nRecord <= 0)
-                return vector<CSampleIDWeight>(0);
-
-        fstream iFile;
-        iFile.open(file_name.c_str(), ios::in|ios::binary);
-        if (!iFile)
-		return vector<CSampleIDWeight>(0);
-	
-	vector <CSampleIDWeight> sample(nRecord);
-        for(int n=0; n<nRecord; n++)
-                read(iFile, &(sample[n]));
-	iFile.close();
-	return sample;
-}
-
-CStorageHead::CStorageHead(int _node_index, const string & _run_id, size_t _storage_marker, string _file_location, size_t _number_stage) : 
+CStorageHead::CStorageHead(int _node_index, const string & _run_id, int _storage_marker, string _file_location, int _number_stage) : 
 cluster_node(_node_index), 
 run_id(_run_id), 
 storage_marker(_storage_marker), 
@@ -46,7 +24,7 @@ energy_lower_bound(vector<vector<double> >(_number_stage+1))
 {
 }
 
-void CStorageHead::InitializeBin(int stage, int size_each_data)
+void CStorageHead::InitializeBin(int stage)
 {
 	if (stage < 0 || stage >= (int)bin.size())
 	{
@@ -66,7 +44,7 @@ void CStorageHead::InitializeBin(int stage, int size_each_data)
 	stringstream bin_id_string; 
 	// Each stage has one bin at the begging for depositing
 	bin_id_string << stage << ".0"; 
-	bin[stage].push_back(CPutGetBin(size_each_data, bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node)); 
+	bin[stage].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node)); 
 }
 
 CStorageHead::~CStorageHead()
@@ -91,10 +69,8 @@ bool CStorageHead::makedir()
 	status = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); 
 	if (status == 0 || errno == EEXIST)
 		return true; 
-	else { 
-		cerr << dir << endl;
-	  	return false; 
-	}
+	else { cerr << dir << endl;
+	  return false; }
 }
 
 int CStorageHead::BinIndex(int stage, double energy) const 
@@ -184,17 +160,8 @@ void CStorageHead::ClearSample(int stage)
 		bin[stage][j].DisregardHistorySamples(); 
 }
 
-bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSampleIDWeight &j)
-{
-	return -i.weight < -j.weight; 
-}
 
-bool compare_CSampleIDWeight_BasedOnID(const CSampleIDWeight &i, const CSampleIDWeight &j)
-{
-	return i.id < j.id; 
-}
-
-std::vector<CSampleIDWeight> CStorageHead::binning_equal_size(int stage, size_t bin_number, bool if_unstructured, int data_size)
+std::vector<CSampleIDWeight> CStorageHead::binning_equal_size(int stage, int bin_number, double lambda)
 {
 	if (stage < 0 || stage >=(int)bin.size())
         {
@@ -205,31 +172,34 @@ std::vector<CSampleIDWeight> CStorageHead::binning_equal_size(int stage, size_t 
         {
                 cerr << "CStorageHead::binning_equal_size() : it seems that binning has been done before.\n";
                 abort();
-        } 
-        std::vector<CSampleIDWeight> sample(0);
-        if (!DrawAllSample(stage, sample, if_unstructured, data_size) )
+        }
+	ClearStatus(stage);
+        consolidate(stage);
+        std::vector<CSampleIDWeight> sample = DrawAllSample(stage); 
+        if (sample.empty() )
         {
                 cerr << "CStorageHead::binning_equal_size() : error occurred when loading all samples.\n";
                 abort();
-        } 
-	sort(sample.begin(), sample.end(), compare_CSampleIDWeight_BasedOnEnergy);
-	// ascending energy (equivalently, descending on weight)
-	int size_each_data = (int)sample[0].GetSize_Data();
+        }
+	CSampleIDWeight_Sorter comparator(lambda); 
+	sort(sample.begin(), sample.end(), comparator);
+	// descending on  lambda*log_likelihood + log_prior
         DisregardHistorySamples(stage);
 
         stringstream str, bin_id_string;
         str << run_id << "/" << run_id << ".binary/";
         bin[stage].clear();
 	
-	size_t sBin = (size_t)ceil((double)(sample.size())/(double)bin_number);
+	int sBin = (int)ceil((double)(sample.size())/(double)bin_number);
 	
 	int iSample=0, iBin=0;
 	while (iSample < (int)(sample.size())) 
 	{
-		energy_lower_bound[stage].push_back(-sample[iSample].weight); 	
+		// energy_lower_bound[stage].push_back(-sample[iSample].weight); 	
+		energy_lower_bound[stage].push_back(-sample[iSample].weight*lambda); 
 		bin_id_string.str(string());
                 bin_id_string << stage << "." << iBin;
-                bin[stage].push_back(CPutGetBin(size_each_data, bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));
+                bin[stage].push_back(CPutGetBin(bin_id_string.str(),0,storage_marker,filename_base+str.str(), cluster_node));
 
 		sBin = iSample+sBin == (int)(sample.size())-1 ? sBin+1 : sBin;
                 for (int j=iSample; j<iSample+(int)sBin && j<(int)(sample.size()); j++)
@@ -237,49 +207,9 @@ std::vector<CSampleIDWeight> CStorageHead::binning_equal_size(int stage, size_t 
                	iSample += sBin;
                	iBin++;
 	}
-	// sample.clear(); 
+	finalize(stage); 
+	ClearDepositDrawHistory(stage); 
 	return sample; 
-}
-
-bool CStorageHead::DrawLeastWeightSample(int stage, int _bin_id, CSampleIDWeight &sample) 
-{
-	if (stage < 0 || stage >= (int)bin.size() || _bin_id < 0 || _bin_id >=(int)bin[stage].size() )
-	{
-		cerr << "CStorageHead::DrawLeastWeightSample(): stage or bin index exceeds the range.\n"; 
-		abort(); 
-	}
-	return bin[stage][_bin_id].DrawLeastWeightSample(sample); 
-}
-
-bool CStorageHead::Draw_K_LeastWeightSample(size_t K, int stage, int _bin_id, vector<CSampleIDWeight> &sample)
-{
-	if (stage < 0 || stage >= (int)bin.size() || _bin_id < 0 || _bin_id >= (int)bin[stage].size() )
-	{
-		cerr << "CStorageHead::Draw_K_LeastWeightSample(): stage or bin index exceeds the range.\n"; 
-		abort(); 
-	}
-        return bin[stage][_bin_id].Draw_K_LeastWeightSample(K, sample);
-}
-
-bool CStorageHead::DrawMostWeightSample(int stage, int _bin_id, CSampleIDWeight &sample) 
-{
-	if (stage < 0 || stage >=(int)bin.size() || _bin_id < 0 || _bin_id >=(int)bin[stage].size() )
-	{
-		cerr << "CStorageHead::DrawMostWeightSample(): stage or bin index exceeds the range.\n"; 
-		abort(); 
-	}
-	return bin[stage][_bin_id].DrawMostWeightSample(sample); 
-}
-
-bool CStorageHead::Draw_K_MostWeightSample(size_t K, int stage, int _bin_id, vector<CSampleIDWeight> &sample)
-{
-	if (stage < 0 || stage >=(int)bin.size() || _bin_id < 0 || _bin_id >= (int)bin[stage].size() )
-        {
-                cerr << "CStorageHead::Draw_K_MostWeightSample(): stage or bin index exceeds the range.\n";
-                abort();
-        }
-
-        return bin[stage][_bin_id].Draw_K_MostWeightSample(K, sample);
 }
 
 bool CStorageHead::DrawSample(int stage, int _bin_id, CSampleIDWeight &sample)
@@ -293,46 +223,25 @@ bool CStorageHead::DrawSample(int stage, int _bin_id, CSampleIDWeight &sample)
 	return bin[stage][_bin_id].DrawSample(sample); 	
 }
 
-bool CStorageHead::DrawAllSample(int stage, vector<CSampleIDWeight>&sample, bool unstructured, int data_size)
+std::vector<CSampleIDWeight>  CStorageHead::DrawAllSample(int stage)
 {
 	if (stage <0 || stage >= (int)bin.size())
 	{
 		cerr << "CStorageHead::DrawAllSample : stage index exceeds the range.\n"; 
 		abort(); 
 	}
-	if (unstructured)
-	{
-		stringstream convert; 
-        	convert << run_id << "/" << run_id << ".binary/" << stage << ".*.record"; 
-		string filename_pattern = filename_base+convert.str(); 
-		
-        	vector<string> filename = glob(filename_pattern); 
-		vector<CSampleIDWeight> sample_block;
-        	for (int i=0; i<(int)filename.size(); i++)
-        	{
-			sample_block = ReadSampleFromFile(filename[i], data_size); 
-			sample.insert(sample.end(), sample_block.begin(), sample_block.end()); 
-		}
+	stringstream convert; 
+       	convert << run_id << "/" << run_id << ".binary/" << stage << ".*.record"; 
+	string filename_pattern = filename_base+convert.str(); 
+	
+       	vector<string> filename = glob(filename_pattern); 
+	vector<CSampleIDWeight> sample(0);
+       	for (int i=0; i<(int)filename.size(); i++)
+       	{
+		std::vector<CSampleIDWeight> sample_block = LoadSampleFromFile(filename[i]); 
+		sample.insert(sample.end(), sample_block.begin(), sample_block.end()); 
 	}
-	else 
-	{
-		for (int ii=0; ii<(int)(bin[stage].size()); ii++)
-		{
-			if (!bin[stage][ii].DrawAllSample(sample))		
-				return false; 
-		}
-	}
-	return true; 
-}
-
-size_t CStorageHead::GetNumberRecrod(int stage, int index) const
-{
-	if (stage <0 || stage >= (int)bin.size() || index < 0 || index >= (int)bin[stage].size() )
-	{
-		cerr << "CStorageHead::GetNumberRecrod(): stage or bin index exceeds the range.\n";
-                abort();
-	}
-	return bin[stage][index].GetTotalNumberRecord();
+	return sample; 
 }
 
 void CStorageHead::DisregardHistorySamples(int stage)
@@ -406,7 +315,7 @@ double CStorageHead::GetEnergyLowerBound(int stage, int index) const
 	return energy_lower_bound[stage][index]; 
 }
 
-void CStorageHead::ResizeBin(int stage, int number, int size_each_data) 
+void CStorageHead::ResizeBin(int stage, int number)
 {
 	if (stage <0 || stage >= (int)bin.size() || number < 0 )
         {
@@ -414,7 +323,7 @@ void CStorageHead::ResizeBin(int stage, int number, int size_each_data)
                 abort();
         } 
 	if (bin[stage].empty())
-		InitializeBin(stage, size_each_data); 
+		InitializeBin(stage); 
 	bin[stage].resize(number, bin[stage][0]); 
 	stringstream convert; 
 	for (int i=0; i<number; i++)

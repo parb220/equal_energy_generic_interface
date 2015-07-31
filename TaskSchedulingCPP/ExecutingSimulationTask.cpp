@@ -10,9 +10,9 @@
 
 using namespace std; 
 
-double ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_index, int nGroup, const CSampleIDWeight &mode, int message_tag)
+std::vector<int> ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_index, int nGroup, const CSampleIDWeight &mode, int message_tag)
 {
-	model.storage->InitializeBin(model.energy_stage, model.current_sample.GetSize_Data()); 
+	model.storage->InitializeBin(model.energy_stage); 
 	// restore partial storage (previously obtained at this node) for updating
 	model.storage->ClearStatus(model.energy_stage); 
 	model.storage->restore(model.energy_stage); 
@@ -24,23 +24,21 @@ double ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_i
 		model.storage->RestoreForFetch(model.energy_stage+1);
 	}
 
-	double metropolis_accpt_rate = 0.0; 
-
+	std::vector<int> nTotalJump(2,0), nOneTimeJump(2,0); // nJump[0] = nEEJump, nJump[1] = nMHJump
 	if (message_tag == SIMULATION_PRIOR_TAG)
-		model.Simulation_Prior(true, string());	
+		nTotalJump = model.Simulation_Prior(true, string());	
 	else 
 	{
 		// start_point 
 		stringstream convert;
         	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_stage; // << "." << group_index;
         	string start_point_file = model.parameter->storage_dir + convert.str();
-		std::vector<CSampleIDWeight> start_points; 
-		if (!LoadSampleFromFile(start_point_file, start_points)) 
+		std::vector<CSampleIDWeight> start_points = LoadSampleFromFile(start_point_file);  
+		if (start_points.empty()) 
 		{
 			cerr << "ExecutingSimulationTask(): Error occurred reading start point files " << start_point_file << endl; 
 			abort(); 
 		}
-        	// if (!model.InitializeFromFile(start_point_file, group_index) )
 		
 		// metropolis
         	convert.str(string());
@@ -59,24 +57,20 @@ double ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_i
 			model.current_sample = start_points[group_index+iGroup]; 
 
 			// burn-in
-			metropolis_accpt_rate = model.BurnIn(model.parameter->burn_in_length); 
+			nOneTimeJump =  model.BurnIn(model.parameter->burn_in_length); 
 
 			// whether to write dw output file
 			if (message_tag == TUNE_TAG_SIMULATION_FIRST)
-			{
-				string sample_file_name; 
-				convert.str(string()); 
-				convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << model.energy_stage << "." << group_index+iGroup << "." << my_rank; 
-				sample_file_name = model.parameter->storage_dir + convert.str(); 
-				model.Simulation_Within(false, sample_file_name); 
-			}
+				nOneTimeJump = model.Simulation_Within(false, string()); 
 			else if (message_tag == SIMULATION_TAG)
 			{
 				if (model.energy_stage == model.parameter->number_energy_stage)
-					model.Simulation_Within(true, string());
+					nOneTimeJump = model.Simulation_Within(true, string());
 				else
-					model.Simulation_Cross(true, string()); 
+					nOneTimeJump = model.Simulation_Cross(true, string()); 
 			}
+			nTotalJump[0] += nOneTimeJump[0];
+                        nTotalJump[1] += nOneTimeJump[1];
 		}
 	}
 	// finalze and clear-up storage
@@ -86,5 +80,5 @@ double ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_i
 	if (model.energy_stage < model.parameter->number_energy_stage)
 		model.storage->ClearDepositDrawHistory(model.energy_stage+1); 
 
-	return metropolis_accpt_rate; 
+	return nTotalJump; 
 }

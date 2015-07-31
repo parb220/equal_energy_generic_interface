@@ -19,10 +19,7 @@ void master_deploying(int nNode, int nInitial, CEquiEnergyModel &model, const CS
 
 	if (model.parameter->highest_stage < model.parameter->number_energy_stage - 1)
 	{
-		model.storage->ClearStatus(model.parameter->highest_stage+1);
-        	model.storage->binning_equal_size(model.parameter->highest_stage+1, model.parameter->number_striation, true, model.current_sample.GetSize_Data());
-        	model.storage->finalize(model.parameter->highest_stage+1);
-        	model.storage->ClearDepositDrawHistory(model.parameter->highest_stage+1);
+        	model.storage->binning_equal_size(model.parameter->highest_stage+1, model.parameter->number_striation, model.parameter->lambda[model.parameter->highest_stage+1]);  
 
         	sPackage[LEVEL_INDEX] = (double)model.parameter->highest_stage+1;
         	sPackage[RESERVE_INDEX] = (double)(model.storage->GetNumber_Bin(model.parameter->highest_stage+1));

@@ -23,7 +23,6 @@ class MinusLogPosterior_NPSOL;
 class TDenseVector;
 class TDenseMatrix;
 
-// class MinusLogPosterior_CSMINWEL;
 
 class MinusLogPosterior_NPSOL
 {
@@ -32,12 +31,6 @@ public:
         static void *function(int *mode, int *n, double *x, double *f, double *g, int *nstate);
 };
 
-/*class MinusLogPosterior_CSMINWEL
-{
-public:
-        static CEquiEnergyModel *model;
-        static double function(double *x, int n, double **args, int *dims);
-};*/
 
 class CEquiEnergyModel
 {
@@ -53,7 +46,7 @@ public:
 // Parameters for equi-energy sampling
 	bool if_bounded; 
  	int energy_stage;		
-	double t_bound; 
+	double lambda; 
 
 //////////////////////////////////////////////////////////////
 // Current sample holding the following 
@@ -68,6 +61,7 @@ public:
 	CMetropolis *metropolis; 	// pointer to CMetropolis
 	CEESParameter *parameter;	// pointer to CEESParameter 
 	CStorageHead *storage; 		// pointer to CStorageHead
+	
 	virtual double log_posterior_function(CSampleIDWeight &x)=0;
         virtual double log_likelihood_function(const CSampleIDWeight &x)=0;
 	virtual double log_prior_function(const CSampleIDWeight &x) = 0; 
@@ -76,34 +70,24 @@ public:
 	virtual double log_prior_function(const double *x, int n) = 0;  
 
 	// Draw samples
-	int EE_Draw(int MH_thin); 	// equi-energy draw
-public:
-	double BurnIn(int burn_in_length);		// returns the maximum posteior during burn-in
-	bool Initialize(int desired_pool_size, int stage);	// Initialize model (setting values for current_sample) using bins indexed from start_bin through (including) end_bin. 
-	bool InitializeWithBestSample(int stage); 		// Initialize model using the best sample in the bins indexed from start_bin to end_bin
-	bool InitializeWith_Kth_BestSample(int K, int stage_index);
-	bool Initialize_RandomlyPickFrom_K_BestSample(int K, int stage_index); 
-	bool Initialize_KMeansClustering(int K, int stage_index, vector<CSampleIDWeight> &centers) const; 
-	bool Initialize_MostDistant_WithinPercentile(int K, int stage_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
-	bool Initialize_MostDistant_WithinPercentileBand(int K, int stage_index, vector<CSampleIDWeight > &starters, double percentile=0.50) const; 
-	bool Initialize_WeightedSampling(const std::vector<CSampleIDWeight> &, int K, int stage_index, vector<CSampleIDWeight> &starters); 
-	bool InitializeFromFile(const string &file_name); 
-
-	void Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy stage (no jumping across stages). Returns the maximum posterior during simulation
-	void Simulation_Cross(bool if_storage, const string &sample_file_name=string()); 	// Simulation across stages. Returns the maximum posterior during simulation 	
-	void Simulation_Prior(bool if_storage, const string &sample_file_name); 		// Simulation from prior
-	// Reweight samples
-	vector<double> Reweight(const vector<CSampleIDWeight> &samples, int current_stage, int previous_stage); 
-
-//////////////////////////////////////////////////////////////////////////////////////////
-// 	make a equi-energy jump
+	int EE_Draw(); 	// equi-energy draw
 	bool MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleIDWeight &y_initial); 
-
-///////////////////////////////////////////////////////////////////////////////////////////
-// IO 
-public:
 	virtual void SaveSampleToStorage(const CSampleIDWeight &sample); 
-	virtual void Take_Sample_Just_Drawn_From_Storage(const CSampleIDWeight &x); 
+	virtual void Take_New_Sample_As_Current_Sample(const CSampleIDWeight &x); 
+
+public:
+	std::vector<int> BurnIn(int burn_in_length);		// returns the maximum posteior during burn-in
+	std::vector<int>Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy stage (no jumping across stages). Returns the maximum posterior during simulation
+	std::vector<int> Simulation_Cross(bool if_storage, const string &sample_file_name=string()); 	// Simulation across stages. Returns the maximum posterior during simulation 	
+	std::vector<int> Simulation_Prior(bool if_storage, const string &sample_file_name); 		// Simulation from prior
+	virtual bool DrawParametersFromPrior(double *x) const = 0; 
+	
+	std::vector<CSampleIDWeight> Initialize_MostDistant_WithinPercentile(const std::vector<CSampleIDWeight> &, int K, int stage_index, double percentile=0.50) const; 
+	std::vector<CSampleIDWeight> Initialize_WeightedSampling(const std::vector<CSampleIDWeight> &, int K, int stage_index) const; 
+
+	// Reweight samples
+	vector<double> Reweight(const vector<CSampleIDWeight> &samples, int current_stage, int previous_stage) const; 
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 // Construction & Destruction functions here
@@ -116,32 +100,18 @@ public:
 // HillClimb
 public: 
 	virtual double HillClimb_NPSOL(int nSolution, int =10, int =10, double = 1.0, double = 1000.0, const TDenseVector &start_point=TDenseVector(0)); 
-	// virtual double HillClimb_CSMINWEL(int nSolution); 
-	virtual bool DrawParametersFromPrior(double *x) const = 0; 
-	double GMM_Simulation(int simulation_length);
-	bool StudentT_DrawSample(CSampleIDWeight &y); 
-	double StudentT_LogPDF(const CSampleIDWeight &x) const; 
-	double StudentT_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const; 
-	bool Cauchy_DrawSample(CSampleIDWeight &y); 
-	double Cauchy_LogPDF(const CSampleIDWeight &x) const; 
-	double Cauchy_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const; 
-	bool GMM_DrawSample(CSampleIDWeight &y); 
-	double GMM_LogPDF(const CSampleIDWeight &x) const; 
-	double GMM_LogRatio(const CSampleIDWeight &x, const CSampleIDWeight &y) const; 
 	bool WriteGaussianMixtureModelParameters(const string &file_name) const; 
 	bool WriteGaussianMixtureModelMeanAscii(const string &file_name) ; 
 	bool ReadGaussianMixtureModelParameters(const string &file_name); 
 	bool AggregateGaussianMixtureModelParameters(const string &file_name);
 	void ClearGaussianMixtureModelParameters(); 
 	void KeepOptimalGaussianMixtureModelParameters(); 
-	bool ConsolidateSampleForCovarianceEstimation(const vector<string> &filenames_merge, const string &variance_file); 
 	const TDenseVector & GetGMM_Mean(int i) const { return gmm_mean[i]; }
 	const TDenseMatrix & GetGMM_CovarianceSqrt(int i) const { return gmm_covariance_sqrt[i]; }
 	double GetGMM_CovarianceSqrtLogDeterminant(int i) const { return gmm_covariance_sqrt_log_determinant[i]; }
 	const TDenseMatrix & GetGMM_CovarianceSqrtInverse(int i) const { return gmm_covariance_sqrt_inverse[i]; }
 	
 friend class MinusLogPosterior_NPSOL; 
-// friend class MinusLogPosterior_CSMINWEL; 
 };
 
 #endif

@@ -19,11 +19,10 @@
 #include "mdd_function.h"
 #include "master_deploying.h"
 #include "EstimateLogMDD.hpp"
+
 #include <time.h>
 
 using namespace std; 
-
-double CheckConvergency (std::vector<CSampleIDWeight> &samples, CEquiEnergyModel &model, int stage, int previous_stage,  double convergency_previous, double &average_consistency, double &std_consistency, double &LB_ESS, int posterior_type, int nGroup_NSE); 
 
 vector<string> glob(const string &pattern);
 void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage, const std::vector<CSampleIDWeight> &); 
@@ -31,23 +30,6 @@ void AggregateScaleMatrix(CEquiEnergyModel &model, int stage);
 bool ScaleMatrixFileExist(CEquiEnergyModel &model, int stage); 
 bool RenameScaleMatrixFile(CEquiEnergyModel &model, int p_stage, int c_stage); 
 bool ScaleMatrixeFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, double lower_bound, double upper_bound );
-
-std::vector<CSampleIDWeight> LoadSamplesFromFile(const string &file_name)
-{
-	CSampleIDWeight x;
-        ifstream input_file;
-        input_file.open(file_name.c_str(), ios::binary|ios::in);
-        if (!input_file)
-                return std::vector<CSampleIDWeight> (0); 
-	std::vector<CSampleIDWeight> points; 
-	while(!input_file.eof())
-	{
-        	read(input_file, &(x));
-		points.push_back(x); 
-	}
-        input_file.close();
-	return points; 
-}
 
 void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag, int nGroup_NSE)
 {
@@ -59,29 +41,21 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	// logMDD[i][0], constant of integration using ellipticals as proposals
 	// logMDD[i][1], constant of integration using draws from the previous stage and importance.
 	vector<vector<double> > logMDD(model.parameter->number_energy_stage+1, vector<double>(2, 0.0)); 
-	vector<double> consistency(model.parameter->number_energy_stage, 0.0);
-	vector<double> average_consistency(model.parameter->number_energy_stage, 0.0); 
-	vector<double> std_consistency(model.parameter->number_energy_stage, 0.0);
-	vector<double> LB_ESS(model.parameter->number_energy_stage, 0.0); 
+	vector<double> consistency(model.parameter->number_energy_stage, 0.0), average_consistency(model.parameter->number_energy_stage, 0.0), std_consistency(model.parameter->number_energy_stage, 0.0), LB_ESS(model.parameter->number_energy_stage, 0.0); 
 
 	vector<CSampleIDWeight> samples;
-	int data_size = model.current_sample.GetSize_Data();
-	bool unstructured = true;
 
-	stringstream convert; 
 	ifstream input_file;
-	ofstream output_file;
+	ofstream output_file, mdd_file;
 
 	// log MDD filename and stream
-	string mdd_filename; 
-	ofstream mdd_file;
+	stringstream convert; 
 	convert.str(string());
 	convert << model.parameter->storage_dir << model.parameter->run_id << "/" << model.parameter->run_id << ".LogMDD.txt";
-	mdd_filename=convert.str();
+	string mdd_filename=convert.str();
 
 	time_t rawtime;
 
-	
 	for (int stage=model.parameter->highest_stage; stage>=model.parameter->lowest_stage; stage--)
 	{
 	  	time(&rawtime);
@@ -90,15 +64,15 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// Highest + 1 stage 
 		if (stage == model.parameter->highest_stage)
 		{
-			model.storage->InitializeBin(stage+1, model.current_sample.GetSize_Data());
+			model.storage->InitializeBin(stage+1);
 			if (stage == model.parameter->number_energy_stage-1)
-			  {
+			{
 		                // draw highest stage + 1 sample
 				time(&rawtime);
 				// cout << "DispatchTuneSimulation() - drawing from prior: stage=" << stage+1 << " temperature: " << model.parameter->t[stage+1] << " " << ctime(&rawtime) << endl;
 
 				// samples = samples of highest+1 stage
-				samples = HighestPlus1Stage(nNode, nInitial, model);   // Sample from likelihood-heated only at the very high temperature 
+				samples = HighestPlus1Stage(nNode, nInitial, model);   // Sample from prior
 
 				time(&rawtime);
 				// cout << "DispatchTuneSimulation() - done drawing from prior: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
@@ -107,99 +81,87 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 				time(&rawtime);			 
 				// cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
 
-				/* get draws of the highest+1 stage
-				samples.clear(); 
-				if (!model.storage->DrawAllSample(stage+1, samples, unstructured, data_size))
-				{
-				    cerr << "DispatchTuneSimulation: error occurred when loading all samples.\n";
-				    abort();
-				}*/
-
-				logMDD[stage+1][0] = LogMDD(samples, model, model.parameter->t[stage+1], USE_TRUNCATED_POWER, POSTERIOR_HEATED);
-				logMDD[stage+1][1] = 0.0;
+				logMDD[stage+1][0] = logMDD[stage+1][1] = LogMDD(samples, model, model.parameter->lambda[stage+1], USE_TRUNCATED_POWER, POSTERIOR_HEATED);
 
 				// open MDD file for output and write log MDD for stage + 1
 				mdd_file.open(mdd_filename.c_str());
 				if (!mdd_file.is_open())
 				{
-				    cerr << "DispatchTuneSimulation: Error opening " << mdd_filename << endl; 
-				    abort(); 	
+					cerr << "DispatchTuneSimulation: Error opening " << mdd_filename << endl; 
+				    	abort(); 	
 				}
-				mdd_file << stage+1 << "\t" << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << endl; 
-				// cout << setprecision(20) << "logMDD at stage " << stage+1 << ": " << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << endl; 
-
+				mdd_file << setprecision(20) << stage+1 << "\t" << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << endl; 
 				time(&rawtime);
 				// cout << "DispatchTuneSimulation() - done computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
-			  }
+			}
 			else
-			  {
-			    // read log MDD info
-			    input_file.open(mdd_filename.c_str());
-			    if (!input_file.is_open())
-			      {
-				cerr << "Error opening " << mdd_filename << endl; 
-				abort(); 
-			      }	
-			    int mdd_stage=stage+2;
-			    while (true)
-			      if (!(input_file >> mdd_stage) || !(input_file  >> logMDD[mdd_stage][0] >> logMDD[mdd_stage][1])) break;
-			    input_file.close();
-			    if (mdd_stage > stage+1)
-			      {
-				cerr << "DispatchTuneSimulation: stage " << stage+1 << " not in " << mdd_filename << endl;
-				abort();
-			      }
+			{
+			    	// read log MDD info
+			    	input_file.open(mdd_filename.c_str());
+			    	if (!input_file.is_open())
+			      	{
+					cerr << "Error opening " << mdd_filename << endl; 
+					abort(); 
+			      	}	
+			    	int mdd_stage=stage+2;
+			    	while (true)
+				{
+			      		if (!(input_file >> mdd_stage) || !(input_file  >> logMDD[mdd_stage][0] >> logMDD[mdd_stage][1]))
+						break;
+				}
+			    	input_file.close();
+			    	if (mdd_stage > stage+1)
+			      	{
+					cerr << "DispatchTuneSimulation: stage " << stage+1 << " not in " << mdd_filename << endl;
+					abort();
+			      	}
 
-			    // open MDD file for output and write log MDD
-			    mdd_file.open(mdd_filename.c_str());
-			    if (!mdd_file.is_open())
-			      {
-				cerr << "Error opening " << mdd_filename << endl; 
-				abort(); 	
-			      }
-			    for (mdd_stage=logMDD.size()-1; mdd_stage >= stage+1; mdd_stage--)
-			      {
-				mdd_file << mdd_stage << "\t" << logMDD[mdd_stage][0] << "\t" << logMDD[mdd_stage][1] << endl;
-				// cout << setprecision(20) << "logMDD at stage " << mdd_stage << ": " << logMDD[mdd_stage][0] << "\t" << logMDD[mdd_stage][1] << endl;
-			      }
+			    	// open MDD file for output and write log MDD
+			    	mdd_file.open(mdd_filename.c_str());
+			    	if (!mdd_file.is_open())
+			      	{
+					cerr << "Error opening " << mdd_filename << endl; 
+					abort(); 	
+			      	}
+			    	for (mdd_stage=logMDD.size()-1; mdd_stage >= stage+1; mdd_stage--)
+					mdd_file << setprecision(20) << mdd_stage << "\t" << logMDD[mdd_stage][0] << "\t" << logMDD[mdd_stage][1] << endl;
 
-			    // get samples of the previous stage 
-			    samples.clear(); 
-			    if (!model.storage->DrawAllSample(stage+1, samples, unstructured, data_size))
-			      {
-                		cerr << "DispatchTuneSimulation: error occurred when loading all samples.\n";
-                       		abort();
-			      }
+			    	// get samples of the previous stage 
+			    	samples = model.storage->DrawAllSample(stage+1); 
+			    	if (samples.empty())
+			      	{
+                			cerr << "DispatchTuneSimulation: error occurred when loading all samples.\n";
+                       			abort();
+			      	}
 			  }			
-
-			// // debugging
-			// ofstream out;
-			// out.open("tmp.tmp");
-			// for (unsigned int i=0; i < samples.size(); i++)
-			//   out << model.log_prior_function(samples[i]) << endl; //samples[i].weight << '\t' << samples[i].reserved << endl;
-			// out.close();
-			// abort();
 		}
-
+		// samples = samples of the previous stage
+		// Check Convergency & logMDD with the importance weight method
+		if (stage == model.parameter->number_energy_stage-1 )
+			logMDD[stage][1] = consistency[stage] = CheckConvergency(samples, model, stage, stage+1, logMDD[stage+1][1], average_consistency[stage], std_consistency[stage], LB_ESS[stage], POSTERIOR_HEATED, nGroup_NSE);
+		else
+			logMDD[stage][1] = consistency[stage] = CheckConvergency(samples, model, stage, stage+1, consistency[stage+1], average_consistency[stage], std_consistency[stage], LB_ESS[stage], POSTERIOR_HEATED, nGroup_NSE); 
+                cout << "Convergency Measure at Stage " << stage << ": " << setprecision(20) << consistency[stage] << "\t" << average_consistency[stage] << "\t" << std_consistency[stage]<< "\t" << LB_ESS[stage] << endl;  
+		
 		////////////////////////////////////////////////////////////////////////////////
 		// Starting points
 		time(&rawtime);
 		// cout << "DispatchTuneSimulation() - getting initial points: stage=" << stage << " " << ctime(&rawtime) << endl;
-		vector<CSampleIDWeight> start_points(nInitial); 
-		model.storage->InitializeBin(stage, model.current_sample.GetSize_Data()); 
-		// if (model.storage->empty(stage+1) || !model.Initialize_WeightedSampling(samples, nInitial, stage+1, start_points)) // samples = samples of the previous stage 
-		if (samples.empty() || !model.Initialize_WeightedSampling(samples, nInitial, stage+1, start_points)) // samples = samples of the previous stage 
+		model.storage->InitializeBin(stage); 
+		vector<CSampleIDWeight> start_points; 
+		if (!samples.empty() )
+			start_points = model.Initialize_WeightedSampling(samples, nInitial, stage+1);
+		if (samples.empty() || start_points.empty())
 		{
+			start_points.resize(nInitial); 
 			for (int i=0; i<nInitial; i++)
 				start_points[i] = mode; 
-		} 
-		model.storage->ClearDepositDrawHistory(stage+1); 
+		}
+		/*model.storage->ClearDepositDrawHistory(stage+1); 
 		model.storage->ClearStatus(stage+1); 
-		model.storage->RestoreForFetch(stage+1); 
+		model.storage->RestoreForFetch(stage+1); */
 
 		string start_point_file; 
-		// for (int i=0; i<nInitial; i++)
-		// {
 		convert.str(string());
         	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << stage; // << "." << i;
         	start_point_file = model.parameter->storage_dir + convert.str();
@@ -215,7 +177,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
                			write(output_file, &(start_points[i]));
 		}
         	output_file.close();
-		//}
 		time(&rawtime);
 		// cout << "DispatchTuneSimulation() - done getting initial points: stage=" << stage << " " << ctime(&rawtime) << endl;
 
@@ -231,9 +192,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			GetWeightedVarianceMatrix(model, stage, samples); 
 		
 			sPackage[LEVEL_INDEX] = stage; 
-			sPackage[thin_INDEX] = model.parameter->thin; 
 			sPackage[THIN_INDEX] = model.parameter->THIN; 
-			sPackage[PEE_INDEX] = model.parameter->pee/(model.parameter->THIN/model.parameter->thin); 
+			sPackage[PEE_INDEX] = model.parameter->pee; 
 
 			time(&rawtime);
 			// cout << "DispatchTuneSimulation() - dispatching tuning: stage=" << stage << " " << ctime(&rawtime) << endl;
@@ -253,20 +213,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			// cout << "DispatchTuneSimulation() - done tuning: stage=" << stage << " " << ctime(&rawtime);
 		}
 	
-		// Check Convergency
-		if (stage == model.parameter->number_energy_stage-1 )
-		{
-			consistency[stage] = CheckConvergency(samples, model, stage, stage+1, 0.0, average_consistency[stage], std_consistency[stage], LB_ESS[stage], POSTERIOR_HEATED, nGroup_NSE);
-		}
-		else
-		{
-			consistency[stage] = CheckConvergency(samples, model, stage, stage+1, consistency[stage+1], average_consistency[stage], std_consistency[stage], LB_ESS[stage], POSTERIOR_HEATED, nGroup_NSE); 
-		}
-                cout << "Convergency Measure at Stage " << stage << ": " << setprecision(20) << consistency[stage] << "\t" << average_consistency[stage] << "\t" << std_consistency[stage]<< "\t" << LB_ESS[stage] << endl;  
-		
-		// logMDD using importance sampling	
-		// samples = samples of the previous stage
-		logMDD[stage][1] = LogMDD_Importance(samples, model, stage+1, stage, logMDD[stage+1][1], POSTERIOR_HEATED); 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simualtion
 		//cout << "Simulation at " << stage << " for " << model.parameter->simulation_length << endl; 
@@ -281,10 +227,9 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// logMDD using bridge's method
 		time(&rawtime);
 		// cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
-
-	     	logMDD[stage][0] = LogMDD(samples, model, model.parameter->t[stage], USE_TRUNCATED_POWER, POSTERIOR_HEATED);
+	     	logMDD[stage][0] = LogMDD(samples, model, model.parameter->lambda[stage], USE_TRUNCATED_POWER, POSTERIOR_HEATED);
 		
-		mdd_file << stage << "\t" << logMDD[stage][0] << "\t" << logMDD[stage][1] << endl;
+		mdd_file << setprecision(20) << stage << "\t" << logMDD[stage][0] << "\t" << logMDD[stage][1] << endl;
 		mdd_file.flush();
 		cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][0] << "\t" << logMDD[stage][1] << endl; 
 		cout.flush();
@@ -292,7 +237,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// to save space, remove stage+1 samples
 		time(&rawtime);
 		// cout << "DispatchTuneSimulation() - deleting files: stage=" << stage << " " << ctime(&rawtime) << endl;
-                if (save_space_flag  && stage > 0 ) //&& stage+1 < model.parameter->number_energy_stage-1 )
+                if (save_space_flag ) 
 		{
 			model.storage->ClearSample(stage+1);  
 			convert.str(string());
@@ -312,7 +257,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		model.storage->ClearBin(stage+1); 
 		time(&rawtime);
 		// cout << "DispatchTuneSimulation() - bottom of loop: stage=" << stage << " " << ctime(&rawtime) << endl;
-}
+	}
 
 	mdd_file.close();
 
@@ -414,7 +359,6 @@ bool ScaleMatrixeFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial
 {
         double *sPackage = new double [N_MESSAGE];
         double *rPackage = new double [N_MESSAGE];
-        sPackage[thin_INDEX] = 1;
         sPackage[THIN_INDEX] = 1;
         sPackage[LEVEL_INDEX] = stage;
         sPackage[PEE_INDEX] = 0;
@@ -430,13 +374,14 @@ bool ScaleMatrixeFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, SCALE_MATRIX_FIT_TAG, MPI_COMM_WORLD); 
 	}
 
-	double avg_accpt_rate = 0.0; 
+	std::vector<int> nJump(2,0);
 	for (int i=1; i<nNode; i++)
 	{
 		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, SCALE_MATRIX_FIT_TAG, MPI_COMM_WORLD, &status);
-		avg_accpt_rate += rPackage[RETURN_INDEX_5]; 
+		nJump[0] += rPackage[RETURN_INDEX_1]; // EE jump
+                nJump[1] += rPackage[RETURN_INDEX_2]; // MH jump
 	}
-	avg_accpt_rate = avg_accpt_rate/(nNode-1); 
+	double avg_accpt_rate = (double)nJump[1]/((nNode-1)*sPackage[BURN_INDEX]); 
 
 	delete [] sPackage; 
 	delete [] rPackage; 

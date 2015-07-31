@@ -16,40 +16,33 @@ void master_mode_finding_deploying(int nNode, int nInitial, CEquiEnergyModel &mo
 	MPI_Status status;
 
 	// binning 
-	model.storage->ClearStatus(0);	
-        model.storage->binning_equal_size(0, model.parameter->number_striation, true, model.current_sample.GetSize_Data()); 
-        model.storage->finalize(0);
-        model.storage->ClearDepositDrawHistory(0);
+        model.storage->binning_equal_size(0, model.parameter->number_striation, 1.0); 
 
 	// Starting points
-	vector<CSampleIDWeight> start_points(nInitial);
-	if (model.storage->empty(0) || !model.Initialize_MostDistant_WithinPercentile(nInitial, 0, start_points, pctl))	
+	vector<CSampleIDWeight> samples = model.storage->DrawAllSample(0), start_points; 
+	if (!samples.empty())
+		start_points = model.Initialize_MostDistant_WithinPercentile(samples, nInitial, 0, pctl); 
+	if (samples.empty() || start_points.empty())
 	{
+		start_points.resize(nInitial); 
 		for (int i=0; i<nInitial; i++)
-                	start_points[i] = mode;
+			start_points[i]  = mode; 
 	}
-	model.storage->ClearDepositDrawHistory(0);
-        model.storage->ClearStatus(0);
-        model.storage->RestoreForFetch(0);
 
 	stringstream convert;
-        string start_point_file;
         ofstream output_file;
-        for (int i=0; i<nInitial; i++)
+        convert.str(string());
+        convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << "0";
+        string start_point_file = model.parameter->storage_dir + convert.str();
+        output_file.open(start_point_file.c_str(), ios::binary|ios::out);
+        if (!output_file)
         {
-        	convert.str(string());
-        	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << "0." << i;
-        	start_point_file = model.parameter->storage_dir + convert.str();
-        	output_file.open(start_point_file.c_str(), ios::binary|ios::out);
-        	if (!output_file)
-        	{
-        		cerr << "Error in writing to " << start_point_file << endl;
-        		abort();
-        	}
-        	else
-        		write(output_file, &(start_points[i]));
-        	output_file.close();
+        	cerr << "Error in writing to " << start_point_file << endl;
+        	abort();
         }
+	for (int i=0; i<nInitial; i++)
+       		write(output_file, &(start_points[i]));
+       	output_file.close();
 
 	// send out hill_climb jobs
 	vector<int> available_node(nNode-1);

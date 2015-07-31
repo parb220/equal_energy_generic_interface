@@ -13,22 +13,21 @@ class CEquiEnergyModel;
 class CSampleIDWeight
 {
 public:
-	bool calculated; 
-public:
 	TDenseVector data; 
 	int id; 
 	double weight;
 	double reserved;  
+	bool calculated; 
 
 	CSampleIDWeight(const TDenseVector &_x=TDenseVector(), int _id=0, double _weight=0.0, double _reserved=0.0, bool _calculated=false); 
 	CSampleIDWeight(const CSampleIDWeight &); 
 	~CSampleIDWeight();
 
 	CSampleIDWeight & operator=(const CSampleIDWeight &);
-	bool PartialCopyFrom(const CSampleIDWeight &, int offset, size_t length);
-	bool PartialCopyFrom(int offset1, const CSampleIDWeight &, int offset2, size_t length);
+	bool PartialCopyFrom(const CSampleIDWeight &, int offset, int length);
+	bool PartialCopyFrom(int offset1, const CSampleIDWeight &, int offset2, int length);
 
-	size_t GetSize_Data() const; 
+	int GetSize_Data() const; 
 	void DataChanged(); 
 
 	friend istream& read(istream &, CSampleIDWeight *); 
@@ -38,7 +37,20 @@ public:
 	friend ostream& operator<<(ostream &, const CSampleIDWeight &); 
 }; 
 
-bool LoadSampleFromFile(const string &file, vector<CSampleIDWeight> &Y); 
+bool compare_CSampleIDWeight(const CSampleIDWeight &i, const CSampleIDWeight &j);
+bool compare_CSampleIDWeight_BasedOnEnergy(const CSampleIDWeight &i, const CSampleIDWeight &j);
+bool compare_CSampleIDWeight_BasedOnID(const CSampleIDWeight &i, const CSampleIDWeight &j);
+
+class CSampleIDWeight_Sorter
+{
+private:
+	double lambda; 
+public:
+	CSampleIDWeight_Sorter(double _lambda = 1.0); 
+	bool operator() (const CSampleIDWeight &left, const CSampleIDWeight &right); 
+}; 
+
+std::vector<CSampleIDWeight> LoadSampleFromFile(const string &file); 
 bool SaveSampleToFile(const string &file, const vector<CSampleIDWeight> &Y); 
 
 #endif

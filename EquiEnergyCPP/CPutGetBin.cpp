@@ -71,13 +71,10 @@ bool CPutGetBin::Dump(const string &_filename)
 bool CPutGetBin::Fetch()
 {
 	if (filename_fetch.empty() && (int)capacity > nPutUsed)
-	{
-		// cerr << "Error in Fetch(): files are empty and bins are not full yet.\n"; 
 		return false;
-	}
 
-	size_t nFetchFile = filename_fetch.size(); 
-	if (dataGet.size() < capacity)
+	int nFetchFile = (int)filename_fetch.size(); 
+	if ((int)dataGet.size() < capacity)
 		dataGet.resize(capacity);  
 	
 	int select; 
@@ -118,12 +115,13 @@ bool CPutGetBin::ReadFromOneFile(const string &file_name, int &counter, const ve
 	fstream iFile; 
         iFile.open(file_name.c_str(), ios::in|ios::binary);
         if (!iFile)
-	{
-		//lock
-		// releaseLock(lock_fd, file_name); 
         	return false;
-	}
 	// determine the dimension of CSampleIDWeight
+	CSampleIDWeight sample;
+        read(iFile, &sample);
+        iFile.seekg(0, ios::beg); 
+	int size_each_data = sample.GetSize_Data(); 
+
         for (int n=0; n<(int)index.size(); n++)
         {
         	iFile.seekg(size_each_data*index[n], ios_base::beg);
@@ -131,117 +129,35 @@ bool CPutGetBin::ReadFromOneFile(const string &file_name, int &counter, const ve
                 counter ++;
         }
       	iFile.close();
-
-	// lock
-	// releaseLock(lock_fd, file_name); 
 	return true; 
-}
-
-vector <CSampleIDWeight> CPutGetBin::ReadSampleFromFile(const string &file_name) const
-{
-	int nRecord = NumberRecord(file_name); 
-	if (nRecord <= 0)
-		return vector<CSampleIDWeight>(0);
-
-	fstream iFile;
-        iFile.open(file_name.c_str(), ios::in|ios::binary);
-        if (!iFile)
-	{
-		// releaseLock(lock_fd, file_name); 
-        	return vector<CSampleIDWeight>(0); 
-	}
-
-        vector <CSampleIDWeight> sample(nRecord); 
-        for(int n=0; n<nRecord; n++)
-		read(iFile, &(sample[n]));
-        iFile.close();
-
-	// releaseLock(lock_fd, file_name); 
-	return sample; 
 }
 
 int CPutGetBin::NumberRecord(const string &file_name) const
 {
-	struct stat file_status; 
-	stat(file_name.c_str(), &file_status); 
-	int lenFile = file_status.st_size; 
-	int number_record = lenFile/size_each_data; 
-	return number_record; 
-}
+	ifstream input_file(file_name.c_str(), ios::binary|ios::in);
+        if (!input_file)
+                return -1;
+        CSampleIDWeight sample;
+        read(input_file, &sample);
+        input_file.seekg(0,ios::beg);
+        input_file.seekg(0,ios::end);
 
-bool compare_CSampleIDWeight(const CSampleIDWeight &i, const CSampleIDWeight &j) 
-{
-	return i.weight < j.weight; 
-}
-
-bool CPutGetBin::Load_K_MostWeightSample(size_t K, const string &file_name, vector<CSampleIDWeight> &best_samples) const
-{
-	vector <CSampleIDWeight> samples = ReadSampleFromFile(file_name); 
-	if (samples.empty())
-		return false; 
-	samples.insert(samples.end(), best_samples.begin(), best_samples.end()); // merge sampels and best_samples together
-	sort(samples.begin(), samples.end(), compare_CSampleIDWeight); // ascending based on weight
-	if (samples.size() <=K)
-		best_samples = samples; 
-	else 
+	int lenFile = input_file.tellg();
+	int nSample = lenFile/sample.GetSize_Data();
+	if (lenFile % nSample)
 	{
-		best_samples.resize(K); 
-		copy(samples.end()-K, samples.end(), best_samples.begin()); 
+		cerr << "CPutGetBin::NumberRecord(): number of data is not an integer " << file_name << endl; 
+		return -1; 
 	}
-	reverse(best_samples.begin(), best_samples.end()); 
-	return true; 
+
+	input_file.close(); 
+	return nSample;  
 }
 
-bool CPutGetBin::Load_K_LeastWeightSample(size_t K, const string &file_name, vector<CSampleIDWeight> &best_samples) const
-{
-	vector <CSampleIDWeight > samples = ReadSampleFromFile(file_name); 
-	if (samples.empty()) 
-		return false; 
-	samples.insert(samples.end(), best_samples.begin(), best_samples.end()); // merge sampels and best_samples together
-	sort(samples.begin(), samples.end(), compare_CSampleIDWeight); // ascending based on weight
-	if (samples.size() <= K)
-		best_samples = samples; 
-	else 
-	{
-		best_samples.resize(K); 
-		copy(samples.begin(), samples.begin()+K, best_samples.begin()); 
-	}
-	return true; 
-}
-
-bool CPutGetBin::LoadLeastWeightSample(const string &file_name, CSampleIDWeight &best) const
-{
-	vector <CSampleIDWeight > samples = ReadSampleFromFile(file_name); 
-	if ( samples.empty() )
-		return false; 
-	best = samples[0]; 
-	for (int i=1; i<(int)samples.size(); i++)
-	{
-		if (samples[i].weight < best.weight )
-			best = samples[i]; 
-	}
-	return true; 
-}
-
-bool CPutGetBin::LoadMostWeightSample(const string &file_name, CSampleIDWeight &best) const
-{
-	vector <CSampleIDWeight> samples = ReadSampleFromFile(file_name); 
-	if ( samples.empty() )
-		return false; 
-	best = samples[0]; 
-	for (int i=1; i<(int)samples.size(); i++)
-	{
-		if (samples[i].weight > best.weight )
-			best = samples[i]; 
-	}
-	return true; 
-}
-
-CPutGetBin::CPutGetBin(int _size_each_data, const string & _id, int _nDumpFile, size_t _capacity, string _grandPrefix, int _suffix ) : 
+CPutGetBin::CPutGetBin(const string & _id, int _nDumpFile, int _capacity, string _grandPrefix, int _suffix ) : 
 check_file_fetch_consolidate(false),
 filename_fetch(vector<string>(0)), 
 filename_consolidate(vector<string>(0)),  
-size_each_data(_size_each_data), 
 suffix(_suffix), id(_id),  nDumpFile(_nDumpFile), capacity(_capacity), 
 nPutUsed(0), nGetUsed(_capacity), filename_prefix(_grandPrefix), 
 dataPut(vector<CSampleIDWeight>(0)), dataGet(vector<CSampleIDWeight>(0)) 
@@ -252,7 +168,6 @@ CPutGetBin::CPutGetBin(const CPutGetBin &right) :
 check_file_fetch_consolidate(false),
 filename_fetch(vector<string>(0)), 
 filename_consolidate(vector<string>(0)), 
-size_each_data(right.size_each_data), 
 suffix(right.suffix), id(right.id), nDumpFile(right.nDumpFile), capacity(right.capacity),
 nPutUsed(right.nPutUsed), nGetUsed(right.nGetUsed), filename_prefix(right.filename_prefix),
 dataPut(right.dataPut), dataGet(right.dataGet)
@@ -264,7 +179,6 @@ CPutGetBin & CPutGetBin::operator=(const CPutGetBin &right)
 	check_file_fetch_consolidate = false; 
 	filename_fetch.clear(); 
 	filename_consolidate.clear(); 
-	size_each_data= right.size_each_data; 
 	suffix = right.suffix; 
 	id = right.id; 
 	nDumpFile = right.nDumpFile; 
@@ -285,33 +199,17 @@ CPutGetBin::~CPutGetBin()
 	dataGet.clear();
 }
 
-size_t CPutGetBin::GetNumberFileForFetch() 
+int CPutGetBin::GetNumberFileForDump() const
 {
-	if (!check_file_fetch_consolidate)
-		GetFileNameForFetchConsolidate();
-	return filename_fetch.size(); 
+        stringstream convert;
+        convert.str(string());
+        convert << id << ".*." << suffix << ".record";
+
+        string filename_pattern = filename_prefix + convert.str();
+
+        std::vector<string> filename = glob(filename_pattern);
+        return (int)filename.size();
 }
-
-
-size_t CPutGetBin::GetNumberFileForDump() const
-{
-	stringstream convert; 
-	convert.str(string()); 
-	convert << id << ".*." << suffix << ".record"; // << "." << cluster_node; 
-
-	string filename_pattern = filename_prefix + convert.str(); 
-	
-	vector<string> filename = glob(filename_pattern); 
-	return filename.size(); 
-}
-
-size_t CPutGetBin::GetNumberFileForConsolidate()
-{
-	if (!check_file_fetch_consolidate)
-		GetFileNameForFetchConsolidate(); 
-	return filename_consolidate.size(); 
-}
-
 
 int CPutGetBin::DepositSample(const CSampleIDWeight &sample)
 {
@@ -329,120 +227,6 @@ int CPutGetBin::DepositSample(const CSampleIDWeight &sample)
 	}
 	
 	return nDumpFile*capacity+nPutUsed; 
-}
-
-bool CPutGetBin::Draw_K_MostWeightSample(size_t K, vector<CSampleIDWeight> &sample)
-{
-	if (!check_file_fetch_consolidate)
-        	GetFileNameForFetchConsolidate();
-	vector<string> file; 
-	file.insert(file.end(), filename_consolidate.begin(), filename_consolidate.end()); 	
-        file.insert(file.end(), filename_fetch.begin(), filename_fetch.end());
-
-	if (file.empty())
-		return false; 
-        
-        for (int i=0; i<(int)file.size(); i++)
-        {
-                if (!Load_K_MostWeightSample(K, file[i], sample) )
-                {
-                        cerr << "Draw_K_MostWeightSample : Error in opening " << file[i] << " for reading data.\n";
-                        return false;
-                }
-        }
-        return true;
-}
-
-bool CPutGetBin::Draw_K_LeastWeightSample(size_t K, vector<CSampleIDWeight> &sample)
-{
-	if (!check_file_fetch_consolidate)
-        	GetFileNameForFetchConsolidate();
-	vector<string> file; 
-	file.insert(file.end(), filename_consolidate.begin(), filename_consolidate.end()); 
-	file.insert(file.end(), filename_fetch.begin(), filename_fetch.end());
-
-	if (file.empty())
-		return false; 	
-
-	for (int i=0; i<(int)file.size(); i++)
-	{
-		if (!Load_K_LeastWeightSample(K, file[i], sample) )
-		{
-			cerr << "Draw_K_LeastWeightSample : Error in opening " << file[i] << " for reading data.\n"; 
-			return false; 
-		}
-	}
-	return true; 
-}
-
-bool CPutGetBin::DrawAllSample(vector<CSampleIDWeight> &sample)
-{
-	if (!check_file_fetch_consolidate)
-        	GetFileNameForFetchConsolidate();
-	vector<string>file; 
-	file.insert(file.end(), filename_consolidate.begin(), filename_consolidate.end()); 
-        file.insert(file.end(), filename_fetch.begin(), filename_fetch.end());
-
-        if (file.empty())
-                return false;
-	vector<CSampleIDWeight> sample_block;  
-	for (int i=0; i<(int)file.size(); i++)
-	{
-		sample_block = ReadSampleFromFile(file[i]); 
-		sample.insert(sample.end(), sample_block.begin(), sample_block.end()); 
-	}
-	return true; 
-}
-
-bool CPutGetBin::DrawLeastWeightSample(CSampleIDWeight &sample)
-{
-	CSampleIDWeight temp_sample; 
-
-	if (!check_file_fetch_consolidate)
-		GetFileNameForFetchConsolidate();
-	vector<string> file; 
-	file.insert(file.end(), filename_consolidate.begin(), filename_consolidate.end());  
-	file.insert(file.end(), filename_fetch.begin(), filename_fetch.end()); 
-	if (file.empty())
-		return false; 	 
-
-	for (int i=0; i<(int)file.size(); i++)
-	{
-		if (!LoadLeastWeightSample(file[i], temp_sample)) 
-		{
-			cerr << "DrawLeastWeightSample : Error in opening " << file[i] << " for reading data.\n"; 
-			return false; 
-		}
-		if (i==0 || temp_sample.weight < sample.weight)
-			sample = temp_sample; 
-	}
-	return true; 	
-}
-
-bool CPutGetBin::DrawMostWeightSample(CSampleIDWeight &sample)
-{
-        CSampleIDWeight temp_sample;
-
-        if(!check_file_fetch_consolidate)
-		GetFileNameForFetchConsolidate();
-	vector<string> file; 
-	file.insert(file.end(), filename_consolidate.begin(), filename_consolidate.end()); 
-        file.insert(file.end(), filename_fetch.begin(), filename_fetch.end());
-	
-	if (file.empty())
-		return false; 
-
-        for (int i=0; i<(int)file.size(); i++)
-        {
-                if (!LoadMostWeightSample(file[i], temp_sample))
-                {
-                        cerr << "Error in opening " << file[i] << " for reading data.\n";
-                        return false;
-                }
-                if (i==0 || temp_sample.weight > sample.weight)
-                        sample = temp_sample;
-        }
-        return true;
 }
 
 bool CPutGetBin::DrawSample(CSampleIDWeight &sample)
@@ -524,12 +308,12 @@ void CPutGetBin::consolidate()
 		vector <CSampleIDWeight> temp_sample; 
 		for (int i=0; i<(int)filename_consolidate.size(); i++)
 		{
-			temp_sample = ReadSampleFromFile(filename_consolidate[i]); 
+			temp_sample = LoadSampleFromFile(filename_consolidate[i]); 
 			sample_consolidate.insert(sample_consolidate.end(), temp_sample.begin(), temp_sample.end()); 
 			remove(filename_consolidate[i].c_str()); 
 		}
-		size_t nComplete = sample_consolidate.size()/capacity; 
-		size_t nRemaining = sample_consolidate.size()%capacity; 
+		int nComplete = (int)sample_consolidate.size()/capacity; 
+		int nRemaining = (int)sample_consolidate.size()%capacity; 
 		dataPut.resize(capacity); 
 		for (int iComplete=0; iComplete<(int)nComplete; iComplete ++)
 		{
@@ -541,7 +325,7 @@ void CPutGetBin::consolidate()
 		}
 		if (nRemaining > 0)
 		{
-			if (dataPut.size() < nRemaining)
+			if ((int)dataPut.size() < nRemaining)
 				dataPut.resize(nRemaining); 
 			copy(sample_consolidate.begin()+nComplete*capacity, sample_consolidate.begin()+nComplete*capacity+nRemaining, dataPut.begin()); 
 			//for (int j=0; j<nRemaining; j++)
@@ -564,8 +348,8 @@ void CPutGetBin::restore()
         	convert.str(string());
         	convert << id << "." << nDumpFile-1 << "." << suffix << ".record"; 
          	file_name = filename_prefix + convert.str();
-		dataPut = ReadSampleFromFile(file_name); 
-		nPutUsed = dataPut.size(); 
+		dataPut = LoadSampleFromFile(file_name); 
+		nPutUsed = (int)dataPut.size(); 
  
 		if (nPutUsed >0 && nPutUsed < (int)capacity)
 			nDumpFile --; 
@@ -581,10 +365,10 @@ void CPutGetBin::RestoreForFetch()
 	// After consolidation, there should be at most 1 partial file
 	if (!filename_consolidate.empty())
 	{
-		vector<CSampleIDWeight> tempSample = ReadSampleFromFile(filename_consolidate[0]); 
+		vector<CSampleIDWeight> tempSample = LoadSampleFromFile(filename_consolidate[0]); 
 		if (!tempSample.empty())
 		{
-			nPutUsed = tempSample.size(); 
+			nPutUsed = (int)tempSample.size(); 
 			if (dataPut.size() < tempSample.size())
 				dataPut.resize(capacity);
 			copy(tempSample.begin(), tempSample.end(), dataPut.begin());
@@ -643,20 +427,3 @@ void CPutGetBin::ClearDepositDrawHistory()
 	filename_fetch.clear(); 
 	filename_consolidate.clear(); 
 }
-
-size_t CPutGetBin::GetTotalNumberRecord() const
-{
-	stringstream convert;
-        convert.str(string());
-        convert << id << ".*.*.record"; 
-	string filename_pattern = filename_prefix + convert.str();
-
-	vector<string> filename = glob(filename_pattern); 
-	int nRecord=0; 
-        for (int i=0; i<(int)filename.size(); i++)
-        	nRecord += NumberRecord(filename[i]);
-	return nRecord; 
-}
-
-
-

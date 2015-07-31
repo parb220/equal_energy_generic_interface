@@ -18,11 +18,6 @@ using namespace std;
 
 vector<string> glob(const string &pattern); 
 
-std::vector<CSampleIDWeight> HighestPlus1Stage_Prior(int nNode, int nInitial, CEquiEnergyModel &model)
-{
-	return DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length,  model.parameter->number_energy_stage, SIMULATION_PRIOR_TAG);
-}
-
 std::vector<CSampleIDWeight> HighestPlus1Stage(int nNode, int nInitial, CEquiEnergyModel &model)
 {
 	// HillClimb to aquire an appropriate starting point
@@ -39,32 +34,29 @@ std::vector<CSampleIDWeight> HighestPlus1Stage(int nNode, int nInitial, CEquiEne
         }
                 
 	vector<CSampleIDWeight> start_points(nInitial); 
-        string start_point_file; 
-	ofstream output_file;
         for (int i=0; i<nInitial; i++)
-        {
         	start_points[i] = CSampleIDWeight(model.GetGMM_Mean(0)); 
-                convert.str(string());
-                convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.parameter->number_energy_stage << "." << i;
-                start_point_file = model.parameter->storage_dir + convert.str();
-                output_file.open(start_point_file.c_str(), ios::binary|ios::out);
-                if (!output_file)
-                {
-                	cerr << "Error in writing to " << start_point_file << endl;
-                        abort();
-                }
-                else 
-                	write(output_file, &(start_points[i]));
-                output_file.close();
-       }
+
+	ofstream output_file;
+        convert.str(string());
+        convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.parameter->number_energy_stage;  //<< "." << i;
+        string start_point_file = model.parameter->storage_dir + convert.str();
+        output_file.open(start_point_file.c_str(), ios::binary|ios::out);
+        if (!output_file)
+        {
+        	cerr << "Error in writing to " << start_point_file << endl;
+                abort();
+        }
+	for (int i=0; i<nInitial; i++)
+                write(output_file, &(start_points[i]));
+        output_file.close();
 
 	// Adaptive and simulate o aquire covariance matrix	
 	double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];
         MPI_Status status;
 	sPackage[LEVEL_INDEX] = model.parameter->number_energy_stage;
-        sPackage[thin_INDEX] = model.parameter->thin;
         sPackage[THIN_INDEX] = model.parameter->THIN;
-        sPackage[PEE_INDEX] = model.parameter->pee/(model.parameter->THIN/model.parameter->thin);
+        sPackage[PEE_INDEX] = model.parameter->pee;
        
 	// Only need to run adaptive on each computing node once, because the results will be aggregated 
 	for (int i=1; i<nNode; i++)
@@ -92,11 +84,5 @@ std::vector<CSampleIDWeight> HighestPlus1Stage(int nNode, int nInitial, CEquiEne
 		abort(); 
 	}
 
-	// Simulate to estimate covariance matrix
-	// int estimation_length = 5000; 
-	// DispatchSimulation(nNode, nInitial, model, estimation_length, model.parameter->number_energy_stage, TUNE_TAG_SIMULATION_FIRST);
-
-	// Dispatch simulation
 	return DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length,  model.parameter->number_energy_stage, SIMULATION_TAG);
-	// DispatchGMMSimulationTask(nNode, nInitial, model, model.parameter->simulation_length); 
 }
