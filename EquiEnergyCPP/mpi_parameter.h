@@ -5,6 +5,7 @@ const size_t N_MESSAGE = 1000; // to be safe
 const int LENGTH_INDEX = 0; 
 const int LEVEL_INDEX = 1; 
 const int BURN_INDEX = 2; 
+const int SCALE_INDEX = 3; 
 const int THIN_INDEX = 4; 
 const int GROUP_INDEX = 5; 
 const int PEE_INDEX = 6; 

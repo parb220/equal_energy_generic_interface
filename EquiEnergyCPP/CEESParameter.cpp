@@ -16,6 +16,7 @@ CEESParameter::CEESParameter() :
 	pee(0.0),
 	lambda_1(0.0), 
 	lambda(vector<double>(0)),
+	scale(0.0),
 	highest_stage(0), 
 	lowest_stage(0), 
 	THIN(0), 

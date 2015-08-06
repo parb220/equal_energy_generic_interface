@@ -26,6 +26,7 @@ std::vector<CSampleIDWeight> DispatchSimulation(int nNode, int nInitial, CEquiEn
 	sPackage[THIN_INDEX] = model.parameter->THIN;
        	sPackage[LEVEL_INDEX] = stage;
 	sPackage[PEE_INDEX] = model.parameter->pee; 
+	sPackage[SCALE_INDEX] = model.parameter->scale; 
 	std::vector<CSampleIDWeight> samples(0); 
 
 	MPI_Status status;

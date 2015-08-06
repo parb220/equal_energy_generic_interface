@@ -26,10 +26,10 @@ using namespace std;
 
 vector<string> glob(const string &pattern);
 void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage, const std::vector<CSampleIDWeight> &); 
-void AggregateScaleMatrix(CEquiEnergyModel &model, int stage); 
-bool ScaleMatrixFileExist(CEquiEnergyModel &model, int stage); 
-bool RenameScaleMatrixFile(CEquiEnergyModel &model, int p_stage, int c_stage); 
-bool ScaleMatrixeFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, double lower_bound, double upper_bound );
+bool ReadScaleFromFile(const string &file_name, double &c); 
+bool WriteScaleToFile(const string &file_name, double c); 
+bool ScaleFileExist(const string &file_name); 
+double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, double c);
 
 void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag, int nGroup_NSE)
 {
@@ -164,7 +164,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 		string start_point_file; 
 		convert.str(string());
-        	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << stage; // << "." << i;
+        	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT;  // << stage; // << "." << i;
         	start_point_file = model.parameter->storage_dir + convert.str();
         	output_file.open(start_point_file.c_str(), ios::binary|ios::out);
         	if (!output_file)
@@ -181,38 +181,42 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		time(&rawtime);
 		// cout << "DispatchTuneSimulation() - done getting initial points: stage=" << stage << " " << ctime(&rawtime) << endl;
 
-		if (!ScaleMatrixFileExist(model, stage+1) || (RenameScaleMatrixFile(model, stage+1, stage) && !ScaleMatrixeFit(model, stage, nNode, nInitial, 0.234*0.8, 0.234*1.25)) )
-		/////////////////////////////////////////////////////////////////////////////////
-		// Send out tuning jobs when the existing scale matrix does not fit anymore
+
+		/////////////////////// Tuning
+		//
+		//
+		time(&rawtime);
+		GetWeightedVarianceMatrix(model, stage, samples); 
+		model.parameter->scale = 1.0; 
+		string scale_file = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + SCALE; 
+		if (ScaleFileExist(scale_file) )
 		{
-			// Only need to tune on each slave node noce, because the results will be aggregated
-			time(&rawtime);
-			// cout << "DispatchTuneSimulation() - getting weighted variance matrix: stage=" << stage << " " << ctime(&rawtime) << endl;
-		
-			// samples = samples of the previous stage
-			GetWeightedVarianceMatrix(model, stage, samples); 
-		
-			sPackage[LEVEL_INDEX] = stage; 
-			sPackage[THIN_INDEX] = model.parameter->THIN; 
-			sPackage[PEE_INDEX] = model.parameter->pee; 
-
-			time(&rawtime);
-			// cout << "DispatchTuneSimulation() - dispatching tuning: stage=" << stage << " " << ctime(&rawtime) << endl;
-
-			for (int i=1; i<nNode; i++)
+			if (!ReadScaleFromFile(scale_file, model.parameter->scale))
 			{
-				sPackage[GROUP_INDEX] = dw_uniform_int(nInitial); 
-				sPackage[GROUP_NUMBER_INDEX] = 1; 
-				MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD); 
-			}
-
-			for (int i=1; i<nNode; i++)
-				MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, TUNE_TAG_BEFORE_SIMULATION, MPI_COMM_WORLD, &status);
-
-			AggregateScaleMatrix(model, stage);
-			time(&rawtime);
-			// cout << "DispatchTuneSimulation() - done tuning: stage=" << stage << " " << ctime(&rawtime);
+				cerr << "Error in reading the scale from file.\n"; 
+				exit(-1); 
+			} 
 		}
+		bool continue_flag = true; 
+		double alpha_0 = 0.234*0.8, alpha_1 = 0.234*1.25; 
+		while (continue_flag)
+		{
+			double alpha = ScaleFit(model, stage, nNode, nInitial, model.parameter->scale); 
+			if (alpha > alpha_0 && alpha < alpha_1) 
+				continue_flag = false; 
+			else if (log(alpha) <= 5.0*log(0.5*(alpha_0+alpha_1)))
+				model.parameter->scale = 0.2 * model.parameter->scale; 
+			else if (5.0*log(0.5*(alpha_0+alpha_1)) < log(alpha) && log(alpha) < 0.2*log(0.5*(alpha_0+alpha_1)))
+				model.parameter->scale = log(0.5*(alpha_0+alpha_1))/log(alpha) * model.parameter->scale; 
+			else if (log(alpha) >= 0.2*log(0.5*(alpha_0+alpha_1) ) )
+				model.parameter->scale = 5.0 * model.parameter->scale; 
+		} 
+		if (!WriteScaleToFile(scale_file, model.parameter->scale))
+		{
+			cerr << "Error in writing the scale to file.\n"; 
+			exit(-1); 
+		}
+		time(&rawtime);
 	
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simualtion
@@ -291,72 +295,51 @@ void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage, const std::ve
 	convert.str(string());
         convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_SCHEME;
         string block_scheme_file_name = model.parameter->storage_dir  + convert.str();
-	std::vector<TIndex> block_scheme = ReadBlockScheme(block_scheme_file_name);
-	if (block_scheme.empty())
-                block_scheme.push_back(TIndex(0, samples[0].data.dim-1));
-			
-	vector<TDenseMatrix>B_matrix = GetBlockMatrix_WeightedSampling(samples, weight, block_scheme); 
+	if (!model.metropolis->ReadBlockScheme(block_scheme_file_name)) 
+		model.metropolis->SetBlockScheme(vector<TIndex>(1,TIndex(0,samples[0].data.dim-1))); 
+
+	model.metropolis->GetBlockMatrix_WeightedSampling(samples, weight); 
 
 	// Bmatrix file
 	convert.str(string());
-       	convert << model.parameter->run_id << "/" << model.parameter->run_id << BMATRIX; 
+       	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK; 
 	string bmatrix_file_name = model.parameter->storage_dir  + convert.str();
-	if (!WriteBMatrixFile(bmatrix_file_name, B_matrix))
+	if (!model.metropolis->WriteBlocks(bmatrix_file_name))
 	{
 		cerr << "DispatchTuneSimulation() : Error in writing BMatrix file.\n"; 
 		abort(); 
 	}
 }
 
-void AggregateScaleMatrix(CEquiEnergyModel &model, int stage)
-// Aggregate the scales obtained from computing nodes
+bool ScaleFileExist(const string &file_name)
 {
-	stringstream convert; 
-	convert.str(string()); 
-	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << stage << ".*";
-	string block_file_pattern = model.parameter->storage_dir + convert.str();
-	vector<string> block_file = glob(block_file_pattern);
-		
-	convert.str(string());
-       	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << stage;
-       	string block_file_name = model.parameter->storage_dir + convert.str();
-	if (!model.metropolis->AggregateBlocksAndRemoveFiles(block_file, block_file_name))
-       	{
-               	cerr << "Error in reading " << block_file_pattern << " or writing " << block_file_name << endl;
-               	abort();
-       	}
-
-	convert.str(string());
-        convert << model.parameter->run_id << "/" << model.parameter->run_id << BMATRIX;
-        string bmatrix_file_name = model.parameter->storage_dir  + convert.str();
-	remove(bmatrix_file_name.c_str()); 
-}
-
-bool ScaleMatrixFileExist(CEquiEnergyModel &model, int stage)
-{
-	stringstream convert; 
-        convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << stage;
-        string block_file_name = model.parameter->storage_dir + convert.str();
-
 	struct stat buffer;   
-  	return (stat (block_file_name.c_str(), &buffer) == 0);			
+  	return (stat (file_name.c_str(), &buffer) == 0);			
 }
 
-bool RenameScaleMatrixFile(CEquiEnergyModel &model, int p_stage, int c_stage)
+bool ReadScaleFromFile(const string &file_name, double &c)
 {
-	stringstream convert; 
-	convert.str(string()); 
-        convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << p_stage;
-        string p_name = model.parameter->storage_dir + convert.str();
-	
-	convert.str(string()); 
-        convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << c_stage;
-        string c_name = model.parameter->storage_dir + convert.str();
-
-	return (rename(p_name.c_str(), c_name.c_str()) == 0); 	
+	ifstream iFile; 
+	iFile.open(file_name.c_str(), iostream::in | iostream::binary); 
+	if (!iFile)
+		return false; 
+	iFile.read((char *)&c, sizeof(double)); 
+	iFile.close(); 
+	return true; 
 }
 
-bool ScaleMatrixeFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, double lower_bound, double upper_bound )
+bool WriteScaleToFile(const string &file_name, double c)
+{
+	ofstream oFile; 
+	oFile.open(file_name.c_str(), iostream::out | iostream::binary); 
+	if (!oFile)
+		return false; 
+	oFile.write((char *)&c, sizeof(double)); 
+	oFile.close(); 
+	return true; 
+}
+
+double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, double c )
 {
         double *sPackage = new double [N_MESSAGE];
         double *rPackage = new double [N_MESSAGE];
@@ -364,7 +347,8 @@ bool ScaleMatrixeFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial
         sPackage[LEVEL_INDEX] = stage;
         sPackage[PEE_INDEX] = 0;
        	sPackage[LENGTH_INDEX] = 0;
-        sPackage[BURN_INDEX] = 1000;
+        sPackage[BURN_INDEX] = 500;
+	sPackage[SCALE_INDEX] = c; 
 
         MPI_Status status;
 
@@ -387,7 +371,7 @@ bool ScaleMatrixeFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial
 	delete [] sPackage; 
 	delete [] rPackage; 
 	cout << "Metropolis acceptance rate at stage " << stage << " using the scale matrix of the previous stage " << avg_accpt_rate << endl; 
-	return (avg_accpt_rate >= lower_bound && avg_accpt_rate <= upper_bound); 
+	return avg_accpt_rate; 
 }
 
 

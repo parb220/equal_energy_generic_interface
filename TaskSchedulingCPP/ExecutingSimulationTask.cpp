@@ -31,7 +31,7 @@ std::vector<int> ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, i
 	{
 		// start_point 
 		stringstream convert;
-        	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT << model.energy_stage; // << "." << group_index;
+        	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT; // << model.energy_stage; // << "." << group_index;
         	string start_point_file = model.parameter->storage_dir + convert.str();
 		std::vector<CSampleIDWeight> start_points = LoadSampleFromFile(start_point_file);  
 		if (start_points.empty()) 
@@ -42,14 +42,15 @@ std::vector<int> ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, i
 		
 		// metropolis
         	convert.str(string());
-       		convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_1ST << model.energy_stage; 
+       		convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK ; 
        		string block_file_name = model.parameter->storage_dir + convert.str();
        		if (!model.metropolis->ReadBlocks(block_file_name) )
        		{
        			cerr << "ExectuingSimulationTask: Error occurred while reading " << block_file_name << endl;
        			abort();
        		}
-
+		model.metropolis->SetScale(model.parameter->scale); 
+		
 		int eGroup = group_index+nGroup <= (int)(start_points.size()) ? nGroup : (int)start_points.size()-group_index; 
 		for (int iGroup = 0; iGroup < eGroup; iGroup++)
 		{

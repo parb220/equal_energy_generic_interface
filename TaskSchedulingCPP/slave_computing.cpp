@@ -48,27 +48,6 @@ void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel
 			sPackage[RETURN_INDEX_1] = 0;
                         sPackage[RETURN_INDEX_2] = 0;
 		}		
-		else if (status.MPI_TAG == TUNE_TAG_BEFORE_SIMULATION) 
-		{
-		  // cout << "* TUNE_TAG_BEFORE_SIMULATION\n";
-			model.energy_stage = (int)(rPackage[LEVEL_INDEX]);
-			group_index = (int)(rPackage[GROUP_INDEX]); 
-			model.timer_when_started = group_index; 
-			if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
-			{
-				cerr << "GetCommunicationParameter() : Error occurred.\n"; 
-				abort(); 
-			}
-			model.lambda = model.parameter->lambda[model.energy_stage];
-
-			if (!ExecutingTuningTask_BeforeSimulation(period, max_period, model, group_index) )
-			{
-				cerr << "ExecutingTuningTask_BeforeSimulation() : Error occurred :: sample file reading or block_file writing or start_tune_point writing error.\n"; 
-				abort(); 
-			}
-			sPackage[RETURN_INDEX_1] = 0;
-                        sPackage[RETURN_INDEX_2] = 0;
-		}
 		else if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == SIMULATION_TAG || status.MPI_TAG == SIMULATION_PRIOR_TAG || status.MPI_TAG == SCALE_MATRIX_FIT_TAG) 
 		{	
 		  // cout << "* TUNE_TAG_SIMULATION_FIRST || SIMULATION_TAG || SIMULATION_PRIOR_TAG\n";
