@@ -15,7 +15,7 @@
 
 using namespace std;
 
-void slave_computing(int period, int max_period, int n_initial, CEquiEnergyModel &model, const CSampleIDWeight &mode)
+void slave_computing(CEquiEnergyModel &model, const CSampleIDWeight &mode)
 {
 	int my_rank, nNode; 
 	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank); 

@@ -347,7 +347,7 @@ double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, dou
         sPackage[LEVEL_INDEX] = stage;
         sPackage[PEE_INDEX] = 0;
        	sPackage[LENGTH_INDEX] = 0;
-        sPackage[BURN_INDEX] = 500;
+        sPackage[BURN_INDEX] = 2000;
 	sPackage[SCALE_INDEX] = c; 
 
         MPI_Status status;
