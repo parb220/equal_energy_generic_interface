@@ -63,6 +63,13 @@ std::vector<int> ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, i
 			// whether to write dw output file
 			if (message_tag == TUNE_TAG_SIMULATION_FIRST)
 				nOneTimeJump = model.Simulation_Within(false, string()); 
+			else if (message_tag == SCALE_MATRIX_FIT_TAG)
+			{
+				if (model.energy_stage == model.parameter->number_energy_stage)
+					nOneTimeJump = model.Simulation_Within(false, string());
+				else
+					nOneTimeJump = model.Simulation_Cross(false, string()); 
+			}
 			else if (message_tag == SIMULATION_TAG)
 			{
 				if (model.energy_stage == model.parameter->number_energy_stage)

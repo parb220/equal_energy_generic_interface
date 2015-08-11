@@ -345,9 +345,9 @@ double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, dou
         double *rPackage = new double [N_MESSAGE];
         sPackage[THIN_INDEX] = 1;
         sPackage[LEVEL_INDEX] = stage;
-        sPackage[PEE_INDEX] = 0;
-       	sPackage[LENGTH_INDEX] = 0;
-        sPackage[BURN_INDEX] = 2000;
+        sPackage[PEE_INDEX] = model.parameter->pee;
+       	sPackage[LENGTH_INDEX] = 5000;
+        sPackage[BURN_INDEX] = model.parameter->burn_in_length;
 	sPackage[SCALE_INDEX] = c; 
 
         MPI_Status status;
@@ -366,7 +366,7 @@ double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, dou
 		nJump[0] += rPackage[RETURN_INDEX_1]; // EE jump
                 nJump[1] += rPackage[RETURN_INDEX_2]; // MH jump
 	}
-	double avg_accpt_rate = (double)nJump[1]/((nNode-1)*sPackage[BURN_INDEX]); 
+	double avg_accpt_rate = (double)nJump[1]/((nNode-1)*sPackage[LENGTH_INDEX]); 
 
 	delete [] sPackage; 
 	delete [] rPackage; 
