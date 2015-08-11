@@ -20,6 +20,7 @@ protected:
 public:
 	// learning blocks
 	void BlockAdaptive(const CSampleIDWeight &adaptive_start_point, const vector<TDenseMatrix > &B, double target_ratio, size_t period, size_t max_period, bool if_eejump =false); 
+	void SimpleBlockAdaptive(const CSampleIDWeight &adaptive_start_point, const vector<TDenseMatrix> &B, int period, double lower_bound, double upper_bound, bool if_eejump=false); 
 	
 	bool AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adaptive_start_point, size_t period, size_t max_period, const string &block_file_name=string(), bool if_eejump=false, const string &block_scheme_file_name=string());
 

@@ -7,6 +7,87 @@
 
 using namespace std; 
 
+void CMetropolis::SimpleBlockAdaptive(const CSampleIDWeight &adaptive_start_point, const vector<TDenseMatrix> &B, int period, double lower_bound, double upper_bound, bool if_eejump)
+// Makes block-wise random-walk Metropolis draws, adjusting the block scale until the target acceptance rate 
+// is hit.
+//
+// 	adaptive_start_point:	n*1 column vector, initial value
+// 	B:			k matrices, each of which is n*b(i) consisting of the direction vectors of the i-th block
+// 	lower_bound:		lower_bound, target acceptance ratio
+// 	upper_bound:		upper_bound, target acceptance ratio
+// 	period:			number of draws to make before recomputing scale. i
+//
+// For each draw, the block i jumping kernel is as follows
+// 	(1) draw z from the b(i)-dimensional standard normal distribution
+// 	(2) let x = scale(i)*B{i}*z
+// 	(3) if y is the current point, then y+x is the proposal point
+//
+// Usually b(1)+...+b(k) = n and the matrix[B{1} ... B{k}] has orthogonal columsn, though this is not checked	
+{
+	size_t k = B.size(); 	// number of blocks
+	blocks = vector<TDenseMatrix>(k);  
+	
+	vector<int> n_accepted(k,0); 
+	TDenseVector previous_ratio(k,0.0); 
+	TDenseVector scale(k,1.0); 
+
+	vector<size_t> b(k,0); // b(i): size of the i-th block
+	for (int i=0; i<k; i++)
+		b[i] = B[i].cols;  
+
+	// Beginning adaptive burn-in 
+	CSampleIDWeight y=adaptive_start_point, x; 
+	double log_previous = model->log_posterior_function(y), log_current; 
+	bool done = false; 
+	int check = period; 
+	while (!done)
+	{
+		n_accepted = vector<int>(k,0); 
+		for (int i_period=0; i_period < period; i_period++)
+		{
+			if (if_eejump && dw_uniform_rnd() <= model->parameter->pee && model->MakeEquiEnergyJump(x,y))
+			{
+				y = x; 
+				log_previous = model->log_posterior_function(y); 
+			}
+			// draw metropolis blocks
+			for (int i=0; i<k; i++)
+			{
+				x.data = y.data + scale[i]*(B[i]*RandomNormalVector(b[i]));
+				x.DataChanged(); 
+				log_current = model->log_posterior_function(x); 
+
+				if (log_current-log_previous >= log(dw_uniform_rnd()) )
+				{
+					y= x; 
+					log_previous = log_current; 
+					n_accepted[i] ++; 
+				}
+			}
+		}
+		done = true; 
+		for (int i=0; i<k; i++)
+		{
+			// jump ratio
+			previous_ratio[i] = (double)(n_accepted[i])/(double)(period); 
+			if (previous_ratio[i] >= upper_bound || previous_ratio[i] <= lower_bound)
+			{
+				done = false; 
+				if (log(previous_ratio[i]) <= 5.0*log((lower_bound+upper_bound)*0.5) )
+					scale[i] *= 0.2; 
+				else if (log(previous_ratio[i]) >= 0.2*log((lower_bound+upper_bound)*0.5))
+					scale[i] *= 5.0; 
+				else  
+					scale[i] *= log((lower_bound+upper_bound)*0.5) / log(previous_ratio[i]); 
+
+			}
+		}
+	}
+	
+	for (int i=0; i<k; i++)
+		//blocks[i] = B[i]*best_scale[i]; 
+		blocks[i] = B[i]*scale[i]; // testing 
+}
 void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, const vector<TDenseMatrix> &B, double mid, size_t period, size_t max_period, bool if_eejump)
 // Makes block-wise random-walk Metropolis draws, adjusting the block scale until the target acceptance rate 
 // is hit.
@@ -59,7 +140,7 @@ void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, con
 	int check = period; 
 	while (!done)
 	{
-		if (if_eejump && model->MakeEquiEnergyJump(x,y))
+		if (if_eejump && dw_uniform_rnd() <= model->parameter->pee && model->MakeEquiEnergyJump(x,y))
 		{
 			y = x; 
 			log_previous = model->log_posterior_function(y); 
@@ -148,7 +229,8 @@ void CMetropolis::BlockAdaptive(const CSampleIDWeight &adaptive_start_point, con
 	}
 	
 	for (int i=0; i<k; i++)
-		blocks[i] = B[i]*best_scale[i]; 
+		//blocks[i] = B[i]*best_scale[i]; 
+		blocks[i] = B[i]*best_scale[i]*0.5; // testing 
 }
 
 bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDWeight &y, const CSampleIDWeight &initial_v, size_t thin)
@@ -313,7 +395,8 @@ bool CMetropolis::AdaptiveBeforeSimulation_OnePass(const CSampleIDWeight &adapti
 
 	// double accP=1.0- exp(log(1.0-0.25)/(double)block_scheme.size());
 	double accP = 0.234;
-	BlockAdaptive(x, B_matrix, accP, period, max_period, if_eejump); 
+	// BlockAdaptive(x, B_matrix, accP, period, max_period, if_eejump); 
+	SimpleBlockAdaptive(x, B_matrix, period, 0.8*accP, 1.25*accP, if_eejump); 
 
 	if (block_file_name.empty())
 		return true; 
@@ -330,7 +413,8 @@ bool CMetropolis::AdaptiveAfterSimulation_WeightedSampling_OnePass(const CSample
 
 	// double accP=1.0- exp(log(1.0-0.25)/(double)block_scheme.size());
 	double accP = 0.234; 
-	BlockAdaptive(x, B_matrix, accP, period, max_period, if_eejump); 
+	// BlockAdaptive(x, B_matrix, accP, period, max_period, if_eejump); 
+	SimpleBlockAdaptive(x, B_matrix, period, 0.8*accP, 1.25*accP, if_eejump); 
 
 	if (block_file_name.empty())
 		return true; 
