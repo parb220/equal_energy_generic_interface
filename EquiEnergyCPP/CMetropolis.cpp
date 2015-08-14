@@ -7,14 +7,20 @@
 
 using namespace std; 
 
-void CMetropolis::SetScale(const vector<double> &_scale)
+bool CMetropolis::SetScale(const vector<double> &_scale)
 {
-	scale = _scale; 
+	if (_scale.size() != blocks.size() )
+		return false; 
+	for (int i=0; i<(int)blocks.size(); i++)
+		blocks[i] = blocks[i] * _scale[i];  
+	return true; 
 }
 
-void CMetropolis::SetScale(double _scale)
+bool CMetropolis::SetScale(double _scale)
 {
-	scale = vector<double>(blocks.size(),_scale); 
+	for (int i=0; i<(int)blocks.size(); i++)
+		blocks[i] = blocks[i] * _scale; 
+	return true; 
 }
 
 void CMetropolis::SetBlocks(const vector<TDenseMatrix> &_blocks)
@@ -54,7 +60,7 @@ bool CMetropolis:: BlockRandomWalkMetropolis(double &log_posterior_y, CSampleIDW
 	{
 		for (int i=0; i<k; i++)
 		{
-			y.data = x.data+scale[i] * blocks[i]*RandomNormalVector(b[i]); 
+			y.data = x.data+ blocks[i]*RandomNormalVector(b[i]); 
 			y.DataChanged(); 
 			log_current = model->log_posterior_function(y); 
 			if (log_current - log_previous >= log(dw_uniform_rnd()) )
@@ -80,7 +86,6 @@ bool CMetropolis::ReadBlocks(const string &file_name)
 	int n_blocks; 
 	iFile.read((char*)(&n_blocks),sizeof(int) ); 
 	blocks = vector<TDenseMatrix>(n_blocks); 
-	scale = vector<double>(n_blocks, 1.0); 
 	for (int i=0; i<n_blocks; i++)
 	{
 		int m, n; 

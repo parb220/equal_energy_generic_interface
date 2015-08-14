@@ -28,8 +28,8 @@ vector<string> glob(const string &pattern);
 void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage, const std::vector<CSampleIDWeight> &); 
 bool ReadScaleFromFile(const string &file_name, double &c); 
 bool WriteScaleToFile(const string &file_name, double c); 
-bool ScaleFileExist(const string &file_name); 
-double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, double c);
+bool FileExist(const string &file_name); 
+double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial);
 
 void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag, int nGroup_NSE)
 {
@@ -49,12 +49,10 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	ofstream output_file, mdd_file;
 
 	// log MDD filename and stream
-	stringstream convert; 
-	convert.str(string());
-	convert << model.parameter->storage_dir << model.parameter->run_id << "/" << model.parameter->run_id << ".LogMDD.txt";
-	string mdd_filename=convert.str();
+	string mdd_filename = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + string(".LogMDD.txt") ; 
 
 	time_t rawtime;
+	double alpha_0 = 0.234*0.8, alpha_1 = 0.234*1.25; 
 
 	for (int stage=model.parameter->highest_stage; stage>=model.parameter->lowest_stage; stage--)
 	{
@@ -158,14 +156,8 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			for (int i=0; i<nInitial; i++)
 				start_points[i] = mode; 
 		}
-		/*model.storage->ClearDepositDrawHistory(stage+1); 
-		model.storage->ClearStatus(stage+1); 
-		model.storage->RestoreForFetch(stage+1); */
 
-		string start_point_file; 
-		convert.str(string());
-        	convert << model.parameter->run_id << "/" << model.parameter->run_id << START_POINT;  // << stage; // << "." << i;
-        	start_point_file = model.parameter->storage_dir + convert.str();
+		string start_point_file = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + START_POINT; 
         	output_file.open(start_point_file.c_str(), ios::binary|ios::out);
         	if (!output_file)
 		{
@@ -186,36 +178,37 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		//
 		//
 		time(&rawtime);
-		GetWeightedVarianceMatrix(model, stage, samples); 
-		model.parameter->scale = 1.0; 
-		string scale_file = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + SCALE; 
-		if (ScaleFileExist(scale_file) )
+		string block_file_name = model.parameter->storage_dir  + model.parameter->run_id + string("/") + model.parameter->run_id + BLOCK;
+		if (!FileExist(block_file_name))
+                        GetWeightedVarianceMatrix(model, stage, samples);
+	
+		double alpha = ScaleFit(model, stage, nNode, nInitial); 
+		int counter = 0; 
+		while (alpha <= alpha_0 || alpha >= alpha_1) 
 		{
-			if (!ReadScaleFromFile(scale_file, model.parameter->scale))
+			if (counter == 0)
+				GetWeightedVarianceMatrix(model, stage, samples); 
+			else 
 			{
-				cerr << "Error in reading the scale from file.\n"; 
-				exit(-1); 
-			} 
-		}
-		bool continue_flag = true; 
-		double alpha_0 = 0.234*0.8, alpha_1 = 0.234*1.25; 
-		while (continue_flag)
-		{
-			double alpha = ScaleFit(model, stage, nNode, nInitial, model.parameter->scale); 
-			if (alpha > alpha_0 && alpha < alpha_1) 
-				continue_flag = false; 
-			else if (log(alpha) <= 5.0*log(0.5*(alpha_0+alpha_1)))
-				model.parameter->scale = 0.2 * model.parameter->scale; 
-			else if (5.0*log(0.5*(alpha_0+alpha_1)) < log(alpha) && log(alpha) < 0.2*log(0.5*(alpha_0+alpha_1)))
-				model.parameter->scale = log(0.5*(alpha_0+alpha_1))/log(alpha) * model.parameter->scale; 
-			else if (log(alpha) >= 0.2*log(0.5*(alpha_0+alpha_1) ) )
-				model.parameter->scale = 5.0 * model.parameter->scale; 
+				if (log(alpha) <= 5.0*log(0.5*(alpha_0+alpha_1)))
+					model.metropolis->SetScale(0.2); 
+				else if (5.0*log(0.5*(alpha_0+alpha_1)) < log(alpha) && log(alpha) < 0.2*log(0.5*(alpha_0+alpha_1)))
+					model.metropolis->SetScale(log(0.5*(alpha_0+alpha_1))/log(alpha)); 
+				else if (log(alpha) >= 0.2*log(0.5*(alpha_0+alpha_1) ) )
+					model.metropolis->SetScale(5.0); 
+
+        			if (!model.metropolis->WriteBlocks(block_file_name))
+        			{
+                			cerr << "DispatchTuneSimulation() : Error in writing BMatrix file.\n";
+                			abort();
+        			}
+			}
+			
+			counter ++; 
+
+			alpha = ScaleFit(model, stage, nNode, nInitial); 
 		} 
-		if (!WriteScaleToFile(scale_file, model.parameter->scale))
-		{
-			cerr << "Error in writing the scale to file.\n"; 
-			exit(-1); 
-		}
+
 		time(&rawtime);
 	
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -245,6 +238,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
                 if (save_space_flag ) 
 		{
 			model.storage->ClearSample(stage+1);  
+			stringstream convert; 
 			convert.str(string());
                         convert << model.parameter->run_id << "/" << model.parameter->run_id << "*." << stage+1 << "*";;
                         string remove_file_pattern = model.parameter->storage_dir + convert.str();
@@ -273,14 +267,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage, const std::vector<CSampleIDWeight> &samples)
 {
 	// Calculate B for AdaptiveAfterSimulation_WeightedSampling_OnePass
-	/*samples
-	vector<CSampleIDWeight> samples;
-        if (!model.storage->DrawAllSample(stage+1, samples) || samples.empty() )
-        {
-        	cerr << "DispatchTuneSimulation() : Error in loading samples of previous stage.\n";
-        	abort();
-        }*/
-
 	// weight
 	vector<double> log_weight = model.Reweight(samples, stage, stage+1);
        	double log_weight_sum = log_weight[0];
@@ -291,19 +277,14 @@ void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage, const std::ve
                 weight[i] = exp(log_weight[i] - log_weight_sum);
 			
 	// block_scheme
-	stringstream convert; 
-	convert.str(string());
-        convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK_SCHEME;
-        string block_scheme_file_name = model.parameter->storage_dir  + convert.str();
+        string block_scheme_file_name = model.parameter->storage_dir  + model.parameter->run_id + string("/") + model.parameter->run_id + BLOCK_SCHEME;
 	if (!model.metropolis->ReadBlockScheme(block_scheme_file_name)) 
 		model.metropolis->SetBlockScheme(vector<TIndex>(1,TIndex(0,samples[0].data.dim-1))); 
 
 	model.metropolis->GetBlockMatrix_WeightedSampling(samples, weight); 
 
 	// Bmatrix file
-	convert.str(string());
-       	convert << model.parameter->run_id << "/" << model.parameter->run_id << BLOCK; 
-	string bmatrix_file_name = model.parameter->storage_dir  + convert.str();
+	string bmatrix_file_name = model.parameter->storage_dir  + model.parameter->run_id  + string("/") + model.parameter->run_id + BLOCK; 
 	if (!model.metropolis->WriteBlocks(bmatrix_file_name))
 	{
 		cerr << "DispatchTuneSimulation() : Error in writing BMatrix file.\n"; 
@@ -311,7 +292,7 @@ void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage, const std::ve
 	}
 }
 
-bool ScaleFileExist(const string &file_name)
+bool FileExist(const string &file_name)
 {
 	struct stat buffer;   
   	return (stat (file_name.c_str(), &buffer) == 0);			
@@ -339,16 +320,15 @@ bool WriteScaleToFile(const string &file_name, double c)
 	return true; 
 }
 
-double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial, double c )
+double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial)
 {
         double *sPackage = new double [N_MESSAGE];
         double *rPackage = new double [N_MESSAGE];
         sPackage[THIN_INDEX] = 1;
         sPackage[LEVEL_INDEX] = stage;
         sPackage[PEE_INDEX] = model.parameter->pee;
-       	sPackage[LENGTH_INDEX] = 5000;
+       	sPackage[LENGTH_INDEX] = 500;
         sPackage[BURN_INDEX] = model.parameter->burn_in_length;
-	sPackage[SCALE_INDEX] = c; 
 
         MPI_Status status;
 

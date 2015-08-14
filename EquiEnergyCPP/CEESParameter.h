@@ -20,7 +20,6 @@ public:
 	double pee; 	// probability of equi-energy-jump
 	double lambda_1;	// 1.0/tN_1
 	vector<double> lambda; 	// 1.0/t
-	double scale; 	// scale for MH
 	
 	int highest_stage; 
 	int lowest_stage; 
