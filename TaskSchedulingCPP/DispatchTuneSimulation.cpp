@@ -30,6 +30,7 @@ bool ReadScaleFromFile(const string &file_name, double &c);
 bool WriteScaleToFile(const string &file_name, double c); 
 bool FileExist(const string &file_name); 
 double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial);
+vector<int> StriationDistribution(const vector<CSampleIDWeight> &samples, const CEquiEnergyModel &model, int stage); 
 
 void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag, int nGroup_NSE)
 {
@@ -42,13 +43,13 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	// logMDD[i][1], constant of integration using draws from the previous stage and importance.
 	vector<vector<double> > logMDD(model.parameter->number_energy_stage+1, vector<double>(2, 0.0)); 
 	vector<double> consistency(model.parameter->number_energy_stage, 0.0), average_consistency(model.parameter->number_energy_stage, 0.0), std_consistency(model.parameter->number_energy_stage, 0.0), LB_ESS(model.parameter->number_energy_stage, 0.0); 
+	vector<vector<int > > striation_distribution(model.parameter->number_energy_stage); 
 
 	vector<CSampleIDWeight> samples;
 
 	ifstream input_file;
 	ofstream output_file, mdd_file;
 
-	// log MDD filename and stream
 	string mdd_filename = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + string(".LogMDD.txt") ; 
 
 	time_t rawtime;
@@ -76,7 +77,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 				// cout << "DispatchTuneSimulation() - done drawing from prior: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
 
 				// compute log MDD
-				time(&rawtime);			 
 				// cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
 
 				logMDD[stage+1][0] = LogMDD(samples, model, model.parameter->lambda[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
@@ -91,7 +91,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 				}
 				mdd_file << setprecision(20) << stage+1 << "\t" << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << endl; 
 				time(&rawtime);
-				// cout << "DispatchTuneSimulation() - done computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
+				// cout << "DispatchTuneSimulation() - done computing MDD: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
 			}
 			else
 			{
@@ -175,9 +175,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 
 		/////////////////////// Tuning
-		//
-		//
-		time(&rawtime);
 		string block_file_name = model.parameter->storage_dir  + model.parameter->run_id + string("/") + model.parameter->run_id + BLOCK;
 		if (!FileExist(block_file_name))
                         GetWeightedVarianceMatrix(model, stage, samples);
@@ -208,22 +205,26 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 
 			alpha = ScaleFit(model, stage, nNode, nInitial); 
 		} 
-
 		time(&rawtime);
 	
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simualtion
-		//cout << "Simulation at " << stage << " for " << model.parameter->simulation_length << endl; 
-		time(&rawtime);
 		// cout << "DispatchTuneSimulation() - dispatching simulation (" << model.parameter->simulation_length << "): stage=" << stage << " " << " temperature: " << model.parameter->t[stage] << " " << ctime(&rawtime) << endl;
 		// samples = samples of the current stage
 		samples = DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length, stage, SIMULATION_TAG) ;
 		time(&rawtime);
 		// cout << "DispatchTuneSimulation() - done simulating (" << model.parameter->simulation_length << "): stage=" << stage << " " << ctime(&rawtime) << endl;
-		
+	
+		// Number of draws in each striation where the striation is defined at the pervious stage	
+		striation_distribution[stage] = StriationDistribution(samples, model, stage+1);
+		for (int i=0; i<(int)(striation_distribution[stage].size()); i++)
+		{
+			if (striation_distribution[stage][i])
+				cout << "Number of sampels in striation " << i << " at stage " << stage << " " << striation_distribution[stage][i] << endl; 
+		} 	
+	
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// logMDD using bridge's method
-		time(&rawtime);
 		// cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
 	     	logMDD[stage][0] = LogMDD(samples, model, model.parameter->lambda[stage], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
 		
@@ -354,4 +355,17 @@ double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial)
 	return avg_accpt_rate; 
 }
 
+vector<int> StriationDistribution(const vector<CSampleIDWeight> &samples, const CEquiEnergyModel &model, int stage)
+{
+	int bin_index; 
+	double log_posterior_stage; 
+	vector<int> distribution(model.parameter->number_striation+1,0); 
+	for (int i=0; i<(int)samples.size(); i++)
+	{
+		log_posterior_stage = samples[i].reserved*model.parameter->lambda[stage] + (samples[i].weight-samples[i].reserved); 
+		bin_index = model.storage->BinIndex(stage,-log_posterior_stage); 
+		distribution[bin_index]	++; 
+	}
+	return distribution; 
+}
 
