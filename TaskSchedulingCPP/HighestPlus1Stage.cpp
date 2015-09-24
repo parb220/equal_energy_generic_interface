@@ -18,7 +18,7 @@ using namespace std;
 
 vector<string> glob(const string &pattern); 
 
-std::vector<CSampleIDWeight> HighestPlus1Stage_Prior(int nNode, int nInitial, CEquiEnergyModel &model)
+std::vector<CSampleIDWeight> HighestPlus1Stage_Prior(double *sPackage, double *rPackage, const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model)
 {
-	return DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length,  model.parameter->number_energy_stage, SIMULATION_PRIOR_TAG);
+	return DispatchSimulation(sPackage, rPackage, N_MESSAGE, nNode, nInitial, model, model.parameter->simulation_length,  model.parameter->number_energy_stage, SIMULATION_PRIOR_TAG);
 }

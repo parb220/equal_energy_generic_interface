@@ -15,7 +15,7 @@
 
 using namespace std;
 
-void slave_computing(CEquiEnergyModel &model, const CSampleIDWeight &mode)
+void slave_computing(const int N_MESSAGE, CEquiEnergyModel &model, const CSampleIDWeight &mode)
 {
 	int my_rank, nNode; 
 	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank); 
@@ -39,10 +39,10 @@ void slave_computing(CEquiEnergyModel &model, const CSampleIDWeight &mode)
 		{
 		  // cout << "* BINNING_INFO\n";
 			model.energy_stage = (int)(rPackage[LEVEL_INDEX]); 
-			int number_ring = (int)(rPackage[RESERVE_INDEX]); 
+			int number_ring = (int)(rPackage[RESERVE_INDEX_START]); 
 			model.storage-> ResizeBin(model.energy_stage, number_ring); 
 			for (int i=0; i<number_ring; i++)
-				model.storage->SetEnergyLowerBound(model.energy_stage, i, rPackage[RESERVE_INDEX+i+1]);
+				model.storage->SetEnergyLowerBound(model.energy_stage, i, rPackage[RESERVE_INDEX_START+i+1]);
 			if (model.energy_stage+1 <= model.parameter->number_energy_stage)
 				model.storage->ClearBin(model.energy_stage+1); 
 			sPackage[RETURN_INDEX_1] = 0;

@@ -15,6 +15,18 @@
 
 using namespace std;
 
+bool CEquiEnergyModel::JumpAcrossStriation(const CSampleIDWeight &y_end, const CSampleIDWeight &y_initial, TDenseMatrix &jump_table) const 
+{
+	double heated_initial = y_initial.reserved*parameter->lambda[energy_stage+1] + (y_initial.weight - y_initial.reserved);
+	double heated_end = y_end.reserved*parameter->lambda[energy_stage+1] + (y_end.weight - y_end.reserved); 
+	int bin_initial = storage->BinIndex(energy_stage+1, -heated_initial); 
+	int bin_end = storage->BinIndex(energy_stage+1, -heated_end); 
+	if (jump_table.rows <= bin_initial || jump_table.cols <= bin_end) 
+		return false; 
+	jump_table(bin_initial,bin_end) ++; 
+	return true;  
+}
+
 bool CEquiEnergyModel::MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleIDWeight &y_initial)
 {
 	double heated_initial = y_initial.reserved*parameter->lambda[energy_stage+1] + (y_initial.weight - y_initial.reserved); 
@@ -42,7 +54,7 @@ void CEquiEnergyModel::Take_New_Sample_As_Current_Sample(const CSampleIDWeight &
 	current_sample.id = timer_when_started;
 }
 
-int CEquiEnergyModel::EE_Draw()
+int CEquiEnergyModel::EE_Draw(TDenseMatrix &jump_table)
 {
 	CSampleIDWeight x_new; 
 	int new_sample_code = NO_JUMP; 
@@ -62,6 +74,8 @@ int CEquiEnergyModel::EE_Draw()
 		{
 			Take_New_Sample_As_Current_Sample(x_new); 
 			new_sample_code = METROPOLIS_JUMP; 
+			if (jump_table.rows && jump_table.cols)
+				JumpAcrossStriation(x_new, current_sample, jump_table);
 		}
 	}
 	
@@ -69,17 +83,20 @@ int CEquiEnergyModel::EE_Draw()
 }
 
 
-std::vector<int> CEquiEnergyModel::BurnIn(int burn_in_length)
+std::vector<int> CEquiEnergyModel::BurnIn(TDenseMatrix &jump_table, int burn_in_length)
 {
 	CSampleIDWeight x_new; 
 	int nMHJump =0; 
 	double bounded_log_posterior_new; 
+
 	for (int i=0; i<burn_in_length; i++)
 	{
 		if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1) )
 		{
 			Take_New_Sample_As_Current_Sample(x_new); 
 			nMHJump ++; 
+			if (jump_table.rows && jump_table.cols )
+				JumpAcrossStriation(x_new, current_sample, jump_table);
 		}
 	}
 	std::vector<int> nJump(2);
@@ -119,7 +136,7 @@ std::vector<int> CEquiEnergyModel::Simulation_Prior(bool if_storage, const strin
 	return std::vector<int>(2,0); 
 }
 
-std::vector<int> CEquiEnergyModel::Simulation_Within(bool if_storage, const string &sample_file_name)
+std::vector<int> CEquiEnergyModel::Simulation_Within(TDenseMatrix &jump_table, bool if_storage, const string &sample_file_name) 
 {
 	CSampleIDWeight x_new; 
 	int nMHJump =0; 
@@ -138,7 +155,11 @@ std::vector<int> CEquiEnergyModel::Simulation_Within(bool if_storage, const stri
 		for (int j=0; j<parameter->THIN; j++)
 		{
 			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1))
+			{
                         	nMHJump ++;
+				if (jump_table.rows && jump_table.cols)
+					JumpAcrossStriation(x_new, current_sample, jump_table); 
+			}
 		}
 		Take_New_Sample_As_Current_Sample(x_new);
 		
@@ -155,7 +176,7 @@ std::vector<int> CEquiEnergyModel::Simulation_Within(bool if_storage, const stri
 	return nJump; 
 }
 
-std::vector<int> CEquiEnergyModel::Simulation_Cross(bool if_storage, const string &sample_file_name)
+std::vector<int> CEquiEnergyModel::Simulation_Cross(TDenseMatrix &jump_table, bool if_storage, const string &sample_file_name)
 {
 	CSampleIDWeight x_new;
 
@@ -172,7 +193,7 @@ std::vector<int> CEquiEnergyModel::Simulation_Cross(bool if_storage, const strin
 	{
 		for (int j=0; j<parameter->THIN; j++)
 		{
-			int jump_code = EE_Draw(); 
+			int jump_code = EE_Draw(jump_table); 
 			if (jump_code == EQUI_ENERGY_JUMP)
 				nJump[0] ++; // nEEJump++; 
 			else if (jump_code == METROPOLIS_JUMP)

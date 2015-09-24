@@ -18,11 +18,8 @@ using namespace std;
 
 vector<string> glob(const string &pattern); 
 
-std::vector<CSampleIDWeight> DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int simulation_length, int stage, int message_tag)
+std::vector<CSampleIDWeight> DispatchSimulation(double *sPackage, double *rPackage, const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model, int simulation_length, int stage, int message_tag)
 {
-	double *sPackage = new double [N_MESSAGE]; 
-	double *rPackage = new double [N_MESSAGE]; 
-	
 	sPackage[THIN_INDEX] = model.parameter->THIN;
        	sPackage[LEVEL_INDEX] = stage;
 	sPackage[PEE_INDEX] = model.parameter->pee; 
@@ -119,15 +116,17 @@ std::vector<CSampleIDWeight> DispatchSimulation(int nNode, int nInitial, CEquiEn
                 nTotalJump[1] += (int) rPackage[RETURN_INDEX_2];
 	}
 
+	cout << "At stage " << stage << " EE jump rate " << (double) nTotalJump[0]/(double)(model.parameter->simulation_length*model.parameter->THIN) << " MH Jump rate " << (double)nTotalJump[1]/(double)(model.parameter->simulation_length*model.parameter->THIN) << endl; 
+
 	// binning
 	if (message_tag != TUNE_TAG_SIMULATION_FIRST && message_tag != SCALE_MATRIX_FIT_TAG) 
 	{
 		samples = model.storage->binning_equal_size(stage, model.parameter->number_striation, model.parameter->lambda[stage]);
 
 		sPackage[LEVEL_INDEX] = (double)stage;
-        	sPackage[RESERVE_INDEX] = (double)(model.storage->GetNumber_Bin(stage));
+        	sPackage[RESERVE_INDEX_START] = (double)(model.storage->GetNumber_Bin(stage));
         	for (int i=0; i<model.storage->GetNumber_Bin(stage); i++)
-        		sPackage[RESERVE_INDEX + i + 1] = model.storage->GetEnergyLowerBound(stage, i);
+        		sPackage[RESERVE_INDEX_START + i + 1] = model.storage->GetEnergyLowerBound(stage, i);
 
         	for (int i=1; i<nNode; i++)
         		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, BINNING_INFO, MPI_COMM_WORLD);
@@ -135,8 +134,5 @@ std::vector<CSampleIDWeight> DispatchSimulation(int nNode, int nInitial, CEquiEn
         	for (int i=1; i<nNode; i++)
         		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, BINNING_INFO, MPI_COMM_WORLD, &status);
 	}
-	
-	delete [] sPackage;
-	delete [] rPackage;
 	return samples;
 }

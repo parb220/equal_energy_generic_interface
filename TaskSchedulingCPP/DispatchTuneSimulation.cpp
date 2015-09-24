@@ -29,15 +29,11 @@ void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage, const std::ve
 bool ReadScaleFromFile(const string &file_name, double &c); 
 bool WriteScaleToFile(const string &file_name, double c); 
 bool FileExist(const string &file_name); 
-double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial);
+double ScaleFit(double*, double*, const int, CEquiEnergyModel &model, int stage, int nNode, int nInitial);
 vector<int> StriationDistribution(const vector<CSampleIDWeight> &samples, const CEquiEnergyModel &model, int stage); 
 
-void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag, int nGroup_NSE)
+void DispatchTuneSimulation(double *sPackage, double *rPackage, const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag, int nGroup_NSE)
 {
-	double *sPackage = new double[N_MESSAGE], *rPackage = new double[N_MESSAGE];  
-	MPI_Status status; 
-
-
 	// diagnostic statistics
 	// logMDD[i][0], constant of integration using ellipticals as proposals
 	// logMDD[i][1], constant of integration using draws from the previous stage and importance.
@@ -71,7 +67,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 				// cout << "DispatchTuneSimulation() - drawing from prior: stage=" << stage+1 << " temperature: " << model.parameter->t[stage+1] << " " << ctime(&rawtime) << endl;
 
 				// samples = samples of highest+1 stage
-				samples = HighestPlus1Stage_Prior(nNode, nInitial, model);   // Sample from prior
+				samples = HighestPlus1Stage_Prior(sPackage, rPackage, N_MESSAGE, nNode, nInitial, model);   // Sample from prior
 
 				time(&rawtime);
 				// cout << "DispatchTuneSimulation() - done drawing from prior: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
@@ -179,7 +175,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		if (!FileExist(block_file_name))
                         GetWeightedVarianceMatrix(model, stage, samples);
 	
-		double alpha = ScaleFit(model, stage, nNode, nInitial); 
+		double alpha = ScaleFit(sPackage, rPackage, N_MESSAGE, model, stage, nNode, nInitial); 
 		int counter = 0; 
 		while (alpha <= alpha_0 || alpha >= alpha_1) 
 		{
@@ -203,7 +199,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 			
 			counter ++; 
 
-			alpha = ScaleFit(model, stage, nNode, nInitial); 
+			alpha = ScaleFit(sPackage, rPackage, N_MESSAGE, model, stage, nNode, nInitial); 
 		} 
 		time(&rawtime);
 	
@@ -211,7 +207,7 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 		// simualtion
 		// cout << "DispatchTuneSimulation() - dispatching simulation (" << model.parameter->simulation_length << "): stage=" << stage << " " << " temperature: " << model.parameter->t[stage] << " " << ctime(&rawtime) << endl;
 		// samples = samples of the current stage
-		samples = DispatchSimulation(nNode, nInitial, model, model.parameter->simulation_length, stage, SIMULATION_TAG) ;
+		samples = DispatchSimulation(sPackage, rPackage, N_MESSAGE, nNode, nInitial, model, model.parameter->simulation_length, stage, SIMULATION_TAG) ;
 		time(&rawtime);
 		// cout << "DispatchTuneSimulation() - done simulating (" << model.parameter->simulation_length << "): stage=" << stage << " " << ctime(&rawtime) << endl;
 	
@@ -260,9 +256,6 @@ void DispatchTuneSimulation(int nNode, int nInitial, CEquiEnergyModel &model,con
 	}
 
 	mdd_file.close();
-
-	delete []sPackage; 
-	delete []rPackage; 
 }
 
 void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage, const std::vector<CSampleIDWeight> &samples)
@@ -321,10 +314,8 @@ bool WriteScaleToFile(const string &file_name, double c)
 	return true; 
 }
 
-double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial)
+double ScaleFit(double *sPackage, double *rPackage, const int N_MESSAGE, CEquiEnergyModel &model, int stage, int nNode, int nInitial)
 {
-        double *sPackage = new double [N_MESSAGE];
-        double *rPackage = new double [N_MESSAGE];
         sPackage[THIN_INDEX] = 1;
         sPackage[LEVEL_INDEX] = stage;
         sPackage[PEE_INDEX] = model.parameter->pee;
@@ -349,8 +340,6 @@ double ScaleFit(CEquiEnergyModel &model, int stage, int nNode, int nInitial)
 	}
 	double avg_accpt_rate = (double)nJump[1]/((nNode-1)*sPackage[LENGTH_INDEX]); 
 
-	delete [] sPackage; 
-	delete [] rPackage; 
 	cout << "Metropolis acceptance rate at stage " << stage << " using the scale matrix of the previous stage " << avg_accpt_rate << endl; 
 	return avg_accpt_rate; 
 }

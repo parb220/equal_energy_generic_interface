@@ -45,7 +45,8 @@ std::vector<int> ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, i
        			cerr << "ExectuingSimulationTask: Error occurred while reading " << block_file_name << endl;
        			abort();
        		}
-		
+	
+		TDenseMatrix jump_table(model.parameter->number_striation, model.parameter->number_striation, 0.0), temp_jump_table; 
 		int eGroup = group_index+nGroup <= (int)(start_points.size()) ? nGroup : (int)start_points.size()-group_index; 
 		for (int iGroup = 0; iGroup < eGroup; iGroup++)
 		{
@@ -53,24 +54,28 @@ std::vector<int> ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, i
 			model.current_sample = start_points[group_index+iGroup]; 
 
 			// burn-in
-			nOneTimeJump =  model.BurnIn(model.parameter->burn_in_length); 
+			temp_jump_table.Zeros(0,0); 
+			nOneTimeJump =  model.BurnIn(temp_jump_table, model.parameter->burn_in_length); 
 
 			// whether to write dw output file
+
 			if (message_tag == TUNE_TAG_SIMULATION_FIRST)
-				nOneTimeJump = model.Simulation_Within(false, string()); 
+				nOneTimeJump = model.Simulation_Within(temp_jump_table, false, string()); 
 			else if (message_tag == SCALE_MATRIX_FIT_TAG)
 			{
 				if (model.energy_stage == model.parameter->number_energy_stage)
-					nOneTimeJump = model.Simulation_Within(false, string());
+					nOneTimeJump = model.Simulation_Within(temp_jump_table, false, string());
 				else
-					nOneTimeJump = model.Simulation_Cross(false, string()); 
+					nOneTimeJump = model.Simulation_Cross(temp_jump_table, false, string()); 
 			}
 			else if (message_tag == SIMULATION_TAG)
 			{
+				temp_jump_table.Zeros(model.parameter->number_striation, model.parameter->number_striation); 
 				if (model.energy_stage == model.parameter->number_energy_stage)
-					nOneTimeJump = model.Simulation_Within(true, string());
+					nOneTimeJump = model.Simulation_Within(temp_jump_table, true, string() );
 				else
-					nOneTimeJump = model.Simulation_Cross(true, string()); 
+					nOneTimeJump = model.Simulation_Cross(temp_jump_table, true, string()); 
+				jump_table = jump_table + temp_jump_table; 
 			}
 			nTotalJump[0] += nOneTimeJump[0];
                         nTotalJump[1] += nOneTimeJump[1];

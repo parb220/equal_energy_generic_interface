@@ -62,15 +62,16 @@ public:
 	virtual double log_prior_function(const double *x, int n) = 0;  
 
 	// Draw samples
-	int EE_Draw(); 	// equi-energy draw
+	int EE_Draw(TDenseMatrix & jump_table); 	// equi-energy draw
 	bool MakeEquiEnergyJump(CSampleIDWeight &y_end, const CSampleIDWeight &y_initial); 
+	bool JumpAcrossStriation(const CSampleIDWeight &y_end, const CSampleIDWeight &y_initial, TDenseMatrix &) const; 
 	virtual void SaveSampleToStorage(const CSampleIDWeight &sample); 
 	virtual void Take_New_Sample_As_Current_Sample(const CSampleIDWeight &x); 
 
 public:
-	std::vector<int> BurnIn(int burn_in_length);		// returns the maximum posteior during burn-in
-	std::vector<int> Simulation_Within(bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy stage (no jumping across stages). Returns the maximum posterior during simulation
-	std::vector<int> Simulation_Cross(bool if_storage, const string &sample_file_name=string()); 	// Simulation across stages. Returns the maximum posterior during simulation 	
+	std::vector<int> BurnIn(TDenseMatrix &jump_table, int burn_in_length) ;	
+	std::vector<int> Simulation_Within(TDenseMatrix &jump_table, bool if_storage, const string &sample_file_name=string()); 	// Simulation within the same energy stage (no jumping across stages). Returns the maximum posterior during simulation
+	std::vector<int> Simulation_Cross(TDenseMatrix &jump_table, bool if_storage, const string &sample_file_name=string()); 	// Simulation across stages. Returns the maximum posterior during simulation 	
 	std::vector<int> Simulation_Prior(bool if_storage, const string &sample_file_name=string()); 	// Simulation from prior
 	virtual bool DrawParametersFromPrior(double *x) const = 0;
 	
