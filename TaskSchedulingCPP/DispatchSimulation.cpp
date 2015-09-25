@@ -27,6 +27,7 @@ std::vector<CSampleIDWeight> DispatchSimulation(double *sPackage, double *rPacka
 
 	MPI_Status status;
 	std::vector<int> nTotalJump(2,0.0); // nTotalJump[0]: EE, nTotalJump[1] : MH
+	TDenseMatrix jump_table(model.parameter->number_striation, model.parameter->number_striation,0.0); 
 	
 	vector<int> available_node(nNode-1); 
 	for (int i=0; i<(int)(available_node.size()); i++)
@@ -86,6 +87,14 @@ std::vector<CSampleIDWeight> DispatchSimulation(double *sPackage, double *rPacka
 					MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status); 
 					nTotalJump[0] += (int) rPackage[RETURN_INDEX_1];
                                         nTotalJump[1] += (int) rPackage[RETURN_INDEX_2];
+					if ((int)rPackage[RESERVE_INDEX_START]) 
+					{
+						TDenseMatrix tmp_jump_table(model.parameter->number_striation, model.parameter->number_striation,0.0); 
+						for (int j=0; j<tmp_jump_table.cols; j++)
+							for (int i=0; i<tmp_jump_table.rows; i++)
+								tmp_jump_table(i,j) = rPackage[RESERVE_INDEX_START+1 + j*tmp_jump_table.rows + i]; 
+						jump_table = jump_table + tmp_jump_table; 
+					}
 					available_node.push_back(status.MPI_SOURCE); 
 				}
 				MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, available_node.back(), message_tag, MPI_COMM_WORLD);
@@ -114,9 +123,26 @@ std::vector<CSampleIDWeight> DispatchSimulation(double *sPackage, double *rPacka
 		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status);
 		nTotalJump[0] += (int) rPackage[RETURN_INDEX_1];
                 nTotalJump[1] += (int) rPackage[RETURN_INDEX_2];
+		if ((int)rPackage[RESERVE_INDEX_START])
+  		{
+                	TDenseMatrix tmp_jump_table(model.parameter->number_striation, model.parameter->number_striation,0.0);
+                	for (int j=0; j<tmp_jump_table.cols; j++)
+                		for (int i=0; i<tmp_jump_table.rows; i++)
+                			tmp_jump_table(i,j) = rPackage[RESERVE_INDEX_START+1 + j*tmp_jump_table.rows + i];
+                	jump_table = jump_table + tmp_jump_table;
+                }
 	}
 
-	cout << "At stage " << stage << " EE jump rate " << (double) nTotalJump[0]/(double)(model.parameter->simulation_length*model.parameter->THIN) << " MH Jump rate " << (double)nTotalJump[1]/(double)(model.parameter->simulation_length*model.parameter->THIN) << endl; 
+	cout << "At stage " << stage  << endl; 
+	cout << " EE jump rate " << (double) nTotalJump[0]/(double)(model.parameter->simulation_length*model.parameter->THIN) << " MH Jump rate " << (double)nTotalJump[1]/(double)(model.parameter->simulation_length*model.parameter->THIN) << endl; 
+	for (int j=0; j<jump_table.cols; j++)
+	{
+		for (int i=0; i<jump_table.rows; i++)
+		{
+			if (i!=j && jump_table(i,j))
+				cout << "Number of jumps from striation " << i << " to striation " << j << " " << jump_table(i,j) << endl; 
+		}
+	}
 
 	// binning
 	if (message_tag != TUNE_TAG_SIMULATION_FIRST && message_tag != SCALE_MATRIX_FIT_TAG) 

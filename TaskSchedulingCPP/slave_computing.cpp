@@ -62,9 +62,20 @@ void slave_computing(const int N_MESSAGE, CEquiEnergyModel &model, const CSample
 				abort(); 
 			}
 			model.lambda = model.parameter->lambda[model.energy_stage];
-			std::vector<int> nJump = ExecutingSimulationTask(model, my_rank, group_index, nGroup,  mode, status.MPI_TAG); 
+			TDenseMatrix jump_table; 
+			std::vector<int> nJump = ExecutingSimulationTask(jump_table, model, my_rank, group_index, nGroup,  mode, status.MPI_TAG); 
 			sPackage[RETURN_INDEX_1] = nJump[0];
                         sPackage[RETURN_INDEX_2] = nJump[1];
+
+			if (jump_table.rows && jump_table.cols)
+			{
+				sPackage[RESERVE_INDEX_START] = jump_table.rows*jump_table.cols; 
+				for (int j=0; j<jump_table.cols; j++)
+					for (int i=0; i<jump_table.rows; i++)
+						sPackage[RESERVE_INDEX_START+1 + j*jump_table.rows +i ] = jump_table(i,j); 
+			}
+			else 
+				sPackage[RESERVE_INDEX_START] = 0; 
 		}
 		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, 0, status.MPI_TAG, MPI_COMM_WORLD); 
 	}

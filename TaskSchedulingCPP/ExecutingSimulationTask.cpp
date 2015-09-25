@@ -10,7 +10,7 @@
 
 using namespace std; 
 
-std::vector<int> ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, int group_index, int nGroup, const CSampleIDWeight &mode, int message_tag)
+std::vector<int> ExecutingSimulationTask(TDenseMatrix &jump_table, CEquiEnergyModel &model, int my_rank, int group_index, int nGroup, const CSampleIDWeight &mode, int message_tag)
 {
 	model.storage->InitializeBin(model.energy_stage); 
 	// restore partial storage (previously obtained at this node) for updating
@@ -46,7 +46,8 @@ std::vector<int> ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, i
        			abort();
        		}
 	
-		TDenseMatrix jump_table(model.parameter->number_striation, model.parameter->number_striation, 0.0), temp_jump_table; 
+		jump_table.Zeros(model.parameter->number_striation, model.parameter->number_striation); 
+		TDenseMatrix temp_jump_table; 
 		int eGroup = group_index+nGroup <= (int)(start_points.size()) ? nGroup : (int)start_points.size()-group_index; 
 		for (int iGroup = 0; iGroup < eGroup; iGroup++)
 		{
@@ -54,11 +55,11 @@ std::vector<int> ExecutingSimulationTask(CEquiEnergyModel &model, int my_rank, i
 			model.current_sample = start_points[group_index+iGroup]; 
 
 			// burn-in
-			temp_jump_table.Zeros(0,0); 
-			nOneTimeJump =  model.BurnIn(temp_jump_table, model.parameter->burn_in_length); 
+			nOneTimeJump =  model.BurnIn(model.parameter->burn_in_length); 
 
 			// whether to write dw output file
 
+			temp_jump_table.Zeros(0,0); 
 			if (message_tag == TUNE_TAG_SIMULATION_FIRST)
 				nOneTimeJump = model.Simulation_Within(temp_jump_table, false, string()); 
 			else if (message_tag == SCALE_MATRIX_FIT_TAG)
