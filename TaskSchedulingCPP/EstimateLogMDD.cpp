@@ -2,15 +2,15 @@
 #include <string>
 #include <iomanip>
 #include <algorithm>
-#include "CEquiEnergyModel.h"
-#include "CSampleIDWeight.h"
-#include "CStorageHead.h"
+#include "CEquiEnergyModel.hpp"
+#include "CSampleIDWeight.hpp"
+#include "CStorageHead.hpp"
 #include "dw_matrix.h"
-#include "storage_parameter.h" 
+#include "storage_constant.hpp" 
 #include "prcsn.h"
 #include "dw_math.h"
 #include "mdd_function.h"
-#include "mdd.hpp"
+#include "mdd_constant.hpp"
 #include "dw_elliptical.h"
 #include "EstimateLogMDD.hpp"
 

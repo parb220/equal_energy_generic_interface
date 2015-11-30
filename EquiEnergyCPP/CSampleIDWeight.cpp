@@ -1,6 +1,6 @@
 #include <string>
 #include "dw_dense_matrix.hpp"
-#include "CSampleIDWeight.h"
+#include "CSampleIDWeight.hpp"
 
 using namespace std; 
 

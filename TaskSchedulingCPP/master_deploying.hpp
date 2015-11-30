@@ -1,5 +1,5 @@
-#ifndef _MASTER_DEPLOY_HEADER_
-#define _MASTER_DEPLOY_HEADER_
+#ifndef MASTER_DEPLOY_HEADER_
+#define MASTER_DEPLOY_HEADER_
 
 std::vector<CSampleIDWeight> HighestPlus1Stage_Prior(double *, double *, const int, int nNode, int nInitial, CEquiEnergyModel &model);
 

@@ -6,9 +6,9 @@
 #include <cstdlib>
 #include <cmath>
 #include <algorithm>
-#include "CSampleIDWeight.h"
-#include "CStorageHead.h"
-#include "CPutGetBin.h"
+#include "CSampleIDWeight.hpp"
+#include "CStorageHead.hpp"
+#include "CPutGetBin.hpp"
 
 using namespace std;
 

@@ -3,15 +3,14 @@
 #include <cstdlib>
 #include <fstream>
 #include "dw_dense_matrix.hpp"
-#include "CEquiEnergyModel.h"
-#include "CEESParameter.h"
-#include "CStorageHead.h"
-#include "CSampleIDWeight.h"
-#include "mpi_parameter.h"
-#include "storage_parameter.h"
+#include "CEquiEnergyModel.hpp"
+#include "CEESParameter.hpp"
+#include "CStorageHead.hpp"
+#include "CSampleIDWeight.hpp"
+#include "mpi_constant.hpp"
+#include "storage_constant.hpp"
 #include "prcsn.h"
-
-#include "slave_computing.h"
+#include "slave_computing.hpp"
 
 using namespace std;
 

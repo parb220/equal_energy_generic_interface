@@ -1,12 +1,12 @@
 #include <cstdlib>
 #include <sstream>
-#include "CEquiEnergyModel.h"
-#include "CMetropolis.h"
-#include "CStorageHead.h"
-#include "CEESParameter.h"
-#include "CSampleIDWeight.h"
-#include "mpi_parameter.h"
-#include "storage_parameter.h"
+#include "CEquiEnergyModel.hpp"
+#include "CMetropolis.hpp"
+#include "CStorageHead.hpp"
+#include "CEESParameter.hpp"
+#include "CSampleIDWeight.hpp"
+#include "mpi_constantr.hpp"
+#include "storage_constant.hpp"
 
 using namespace std; 
 

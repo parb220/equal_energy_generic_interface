@@ -1,5 +1,5 @@
-#include "CEESParameter.h"
-#include "mpi_parameter.h"
+#include "CEESParameter.hpp"
+#include "mpi_constant.hpp"
 
 bool GetCommunicationParameter(const double *rPackage, size_t package_size, CEESParameter *parameter)
 {

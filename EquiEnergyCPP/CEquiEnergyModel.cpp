@@ -4,13 +4,13 @@
 #include <functional>
 #include <ctime>
 #include <fstream>
-#include "CSampleIDWeight.h"
-#include "CEESParameter.h"
-#include "CStorageHead.h"
+#include "CSampleIDWeight.hpp"
+#include "CEESParameter.hpp"
+#include "CStorageHead.hpp"
 #include "dw_dense_matrix.hpp"
 #include "dw_math.h"
-#include "CEquiEnergyModel.h"
-#include "CMetropolis.h"
+#include "CEquiEnergyModel.hpp"
+#include "CMetropolis.hpp"
 #include "dw_rand.h"
 
 using namespace std;

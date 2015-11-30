@@ -1,18 +1,8 @@
-#include <cmath>
 #include <vector>
-#include <mpi.h>
-#include <iostream>
-#include <fstream>
-#include <sstream>
 #include <string>
-#include "dw_rand.h"
-#include "dw_matrix.h"
-#include "CSampleIDWeight.h"
-#include "CEquiEnergyModel.h"
-#include "CMetropolis.h"
-#include "storage_parameter.h"
-#include "mpi_parameter.h"
-#include "master_deploying.h"
+#include "CEquiEnergyModel.hpp"
+#include "mpi_constant.hpp"
+#include "master_deploying.hpp"
 
 using namespace std; 
 

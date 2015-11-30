@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include "dw_rand.h"
 
-#include "CSampleIDWeight.h"
-#include "CPutGetBin.h"
+#include "CSampleIDWeight.hpp"
+#include "CPutGetBin.hpp"
 
 vector<string> glob(const string &pattern); 
 

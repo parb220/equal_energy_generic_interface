@@ -2,8 +2,8 @@
 #include <cmath>
 
 #include "prcsn.h"
-#include "CSampleIDWeight.h"
-#include "CEESParameter.h"
+#include "CSampleIDWeight.hpp"
+#include "CEESParameter.hpp"
 
 using namespace std; 
 

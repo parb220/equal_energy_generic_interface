@@ -9,15 +9,15 @@
 #include <cstdio>
 #include "dw_rand.h"
 #include "dw_math.h"
-#include "CSampleIDWeight.h"
-#include "CEquiEnergyModel.h"
-#include "CMetropolis.h"
-#include "storage_parameter.h"
-#include "mpi_parameter.h"
+#include "CSampleIDWeight.hpp"
+#include "CEquiEnergyModel.hpp"
+#include "CMetropolis.hpp"
+#include "storage_constant.hpp"
+#include "mpi_constant.hpp"
 #include "dw_matrix.h"
-#include "mdd.hpp"
+#include "mdd_constant.hpp"
 #include "mdd_function.h"
-#include "master_deploying.h"
+#include "master_deploying.hpp"
 #include "EstimateLogMDD.hpp"
 
 #include <time.h>

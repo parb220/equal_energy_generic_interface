@@ -2,7 +2,7 @@
 #include <algorithm>
 #include "dw_rand.h"
 #include "dw_math.h"
-#include "CEquiEnergyModel.h"
+#include "CEquiEnergyModel.hpp"
 
 vector<double> CEquiEnergyModel::Reweight(const vector<CSampleIDWeight> &samples, int current_stage, int previous_stage) 
 {

@@ -1,5 +1,5 @@
-#ifndef _SLAVE_COMPUTING_HEADER
-#define _SLAVE_COMPUTING_HEADER
+#ifndef SLAVE_COMPUTING_HEADER
+#define SLAVE_COMPUTING_HEADER
 
 bool GetCommunicationParameter(const double *, size_t, CEESParameter *); 
 // CEESParameter cannot be const, because its h and t will be altered upon the received message

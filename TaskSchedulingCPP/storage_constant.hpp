@@ -1,5 +1,6 @@
-#ifndef STORAGE_CONSTANT
-#define STORAGE_CONSTANT
+#ifndef STORAGE_CONSTANT_HEADER
+#define STORAGE_CONSTANT_HEADER
+
 #include <string>
 #include <cstring>
 

@@ -2,12 +2,12 @@
 #include <sstream>
 #include <fstream>
 #include "dw_math.h"
-#include "CEquiEnergyModel.h"
-#include "CStorageHead.h"
-#include "CEESParameter.h"
-#include "CMetropolis.h"
-#include "CSampleIDWeight.h"
-#include "storage_parameter.h"
+#include "CEquiEnergyModel.hpp"
+#include "CStorageHead.hpp"
+#include "CEESParameter.hpp"
+#include "CMetropolis.hpp"
+#include "CSampleIDWeight.hpp"
+#include "storage_constant..hpp"
 
 using namespace std; 
 

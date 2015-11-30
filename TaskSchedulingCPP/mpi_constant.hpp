@@ -1,7 +1,6 @@
-#ifndef _MPI_PARAMETER_HEADER_
-#define _MPI_PARAMETER_HEADER_
+#ifndef MPI_CONSTANT_HEADER_
+#define MPI_CONSTANT_HEADER_
 
-// const size_t N_MESSAGE = 1000; // to be safe
 const int LENGTH_INDEX = 0; 
 const int LEVEL_INDEX = 1; 
 const int BURN_INDEX = 2; 

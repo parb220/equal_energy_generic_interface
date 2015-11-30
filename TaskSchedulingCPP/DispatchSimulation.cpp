@@ -7,12 +7,12 @@
 #include <iostream>
 #include <iomanip>
 #include "dw_math.h"
-#include "CSampleIDWeight.h"
-#include "CEquiEnergyModel.h"
-#include "CEESParameter.h"
-#include "CStorageHead.h"
-#include "storage_parameter.h"
-#include "mpi_parameter.h"
+#include "CSampleIDWeight.hpp"
+#include "CEquiEnergyModel.hpp"
+#include "CEESParameter.hpp"
+#include "CStorageHead.hpp"
+#include "storage_constant.hpp"
+#include "mpi_constant.hpp"
 
 using namespace std;  
 

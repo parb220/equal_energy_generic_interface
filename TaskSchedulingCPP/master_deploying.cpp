@@ -3,9 +3,9 @@
 #include <vector>
 #include <cmath>
 #include <mpi.h>
-#include "CEquiEnergyModel.h"
-#include "mpi_parameter.h"
-#include "master_deploying.h"
+#include "CEquiEnergyModel.hpp"
+#include "mpi_constant.hpp"
+#include "master_deploying.hpp"
 
 using namespace std;
 

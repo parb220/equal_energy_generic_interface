@@ -26,7 +26,7 @@
 #include "dw_elliptical.h"
 #include "dw_parse_cmd.h"
 #include "dw_std.h"
-#include "mdd.hpp"
+#include "mdd_constant.hpp"
 
 #include <math.h>
 #include <string.h>
