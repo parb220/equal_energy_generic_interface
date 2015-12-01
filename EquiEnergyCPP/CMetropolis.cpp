@@ -1,9 +1,9 @@
 #include <cmath>
 #include <fstream>
 #include "dw_rand.h"
-#include "CSampleIDWeight.h"
-#include "CEquiEnergyModel.h"
-#include "CMetropolis.h"
+#include "CSampleIDWeight.hpp"
+#include "CEquiEnergyModel.hpp"
+#include "CMetropolis.hpp"
 
 using namespace std; 
 

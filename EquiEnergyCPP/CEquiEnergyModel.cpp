@@ -151,11 +151,16 @@ std::vector<int> CEquiEnergyModel::Simulation_Within(TDenseMatrix &jump_table, b
 		for (int j=0; j<parameter->THIN; j++)
 		{
 			if (metropolis->BlockRandomWalkMetropolis(bounded_log_posterior_new, x_new, current_sample, 1))
+			{// when x_new is accepted
+				if (jump_table.rows && jump_table.cols)
+					JumpAcrossStriation(x_new, current_sample, jump_table); 
+				Take_New_Sample_As_Current_Sample(x_new);
                         	nMHJump ++;
+			}
 		}
-		if (jump_table.rows && jump_table.cols)
-			JumpAcrossStriation(x_new, current_sample, jump_table); 
-		Take_New_Sample_As_Current_Sample(x_new);
+		// if (jump_table.rows && jump_table.cols)
+		// 	JumpAcrossStriation(x_new, current_sample, jump_table); 
+		// Take_New_Sample_As_Current_Sample(x_new);
 		
 		if (if_storage)
 			SaveSampleToStorage(current_sample);
@@ -185,17 +190,21 @@ std::vector<int> CEquiEnergyModel::Simulation_Cross(TDenseMatrix &jump_table, bo
         }
 	for (int i=0; i<parameter->simulation_length; i++)
 	{
-		x_old = current_sample; 
 		for (int j=0; j<parameter->THIN; j++)
 		{
+			x_old = current_sample; 
 			int jump_code = EE_Draw(); 
 			if (jump_code == EQUI_ENERGY_JUMP)
 				nJump[0] ++; // nEEJump++; 
 			else if (jump_code == METROPOLIS_JUMP)
+			{ // current_sample is already the new sample
 				nJump[1] ++; // nMHJump++; 
+				if (jump_table.rows && jump_table.cols )
+					JumpAcrossStriation(current_sample, x_old, jump_table);
+			}
 		}	
-		if (jump_table.rows && jump_table.cols )
-			JumpAcrossStriation(current_sample, x_old, jump_table);
+		//if (jump_table.rows && jump_table.cols )
+		//	JumpAcrossStriation(current_sample, x_old, jump_table);
 	
 		if (if_storage)
 			SaveSampleToStorage(current_sample); 

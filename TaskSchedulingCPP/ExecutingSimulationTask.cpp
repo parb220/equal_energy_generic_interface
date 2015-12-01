@@ -5,7 +5,7 @@
 #include "CStorageHead.hpp"
 #include "CEESParameter.hpp"
 #include "CSampleIDWeight.hpp"
-#include "mpi_constantr.hpp"
+#include "mpi_constant.hpp"
 #include "storage_constant.hpp"
 
 using namespace std; 

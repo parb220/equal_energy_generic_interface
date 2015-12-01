@@ -4,9 +4,9 @@
 #include <vector>
 #include <ctime>
 #include <cstdio>
-#include "CSampleIDWeight.h"
-#include "CEESParameter.h"
-#include "CStorageHead.h"
+#include "CSampleIDWeight.hpp"
+#include "CEESParameter.hpp"
+#include "CStorageHead.hpp"
 
 using namespace std;
 
