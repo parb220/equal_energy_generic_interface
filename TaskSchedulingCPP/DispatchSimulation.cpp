@@ -18,7 +18,7 @@ using namespace std;
 
 vector<string> glob(const string &pattern); 
 
-std::vector<CSampleIDWeight> DispatchSimulation(double *sPackage, double *rPackage, const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model, int simulation_length, int stage, int message_tag)
+std::vector<CSampleIDWeight> DispatchSimulation(double *sPackage, double *rPackage, const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model, int simulation_length, int stage, int message_tag, ofstream &jump_file)
 {
 	sPackage[THIN_INDEX] = model.parameter->THIN;
        	sPackage[LEVEL_INDEX] = stage;
@@ -133,14 +133,19 @@ std::vector<CSampleIDWeight> DispatchSimulation(double *sPackage, double *rPacka
                 }
 	}
 
-	cout << "At stage " << stage  << endl; 
-	cout << " EE jump rate " << (double) nTotalJump[0]/(double)(model.parameter->simulation_length*model.parameter->THIN) << " MH Jump rate " << (double)nTotalJump[1]/(double)(model.parameter->simulation_length*model.parameter->THIN) << endl; 
-	for (int j=0; j<jump_table.cols; j++)
+	if (jump_file.is_open())
 	{
-		for (int i=0; i<jump_table.rows; i++)
+		jump_file << "Stage " << stage  << endl; 
+		jump_file << "EE jump rate " << (double) nTotalJump[0]/(double)(model.parameter->simulation_length*model.parameter->THIN) << endl;
+		jump_file << "MH jump rate " << (double)nTotalJump[1]/(double)(model.parameter->simulation_length*model.parameter->THIN) << endl; 
+		jump_file << "Out of " << nTotalJump[1] << " MH jumps:" << endl; 
+		for (int j=0; j<jump_table.cols; j++)
 		{
-			if (i!=j && jump_table(i,j))
-				cout << "Number of jumps from striation " << i << " to striation " << j << " " << jump_table(i,j) << endl; 
+			for (int i=0; i<jump_table.rows; i++)
+			{
+				if (i!=j && jump_table(i,j))
+					jump_file << "Number of jumps from striation " << i << " to striation " << j << " " << jump_table(i,j) << endl; 
+			}
 		}
 	}
 

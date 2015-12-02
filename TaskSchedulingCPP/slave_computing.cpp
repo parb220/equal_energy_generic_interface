@@ -29,14 +29,12 @@ void slave_computing(const int N_MESSAGE, CEquiEnergyModel &model, const CSample
 		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status); 
 		if (status.MPI_TAG == END_TAG)
 		{
-		  // cout << "* END_TAG\n";
 			delete []rPackage; 
 			delete []sPackage; 
 			exit(0); 
 		}
 		else if (status.MPI_TAG == BINNING_INFO)
 		{
-		  // cout << "* BINNING_INFO\n";
 			model.energy_stage = (int)(rPackage[LEVEL_INDEX]); 
 			int number_ring = (int)(rPackage[RESERVE_INDEX_START]); 
 			model.storage-> ResizeBin(model.energy_stage, number_ring); 
@@ -49,7 +47,6 @@ void slave_computing(const int N_MESSAGE, CEquiEnergyModel &model, const CSample
 		}		
 		else if (status.MPI_TAG == TUNE_TAG_SIMULATION_FIRST || status.MPI_TAG == SIMULATION_TAG || status.MPI_TAG == SIMULATION_PRIOR_TAG || status.MPI_TAG == SCALE_MATRIX_FIT_TAG) 
 		{	
-		  // cout << "* TUNE_TAG_SIMULATION_FIRST || SIMULATION_TAG || SIMULATION_PRIOR_TAG\n";
 			model.energy_stage = (int)(rPackage[LEVEL_INDEX]);
 			group_index = (int)(rPackage[GROUP_INDEX]); 
 			int nGroup = (int)(rPackage[GROUP_NUMBER_INDEX]); 
@@ -57,7 +54,7 @@ void slave_computing(const int N_MESSAGE, CEquiEnergyModel &model, const CSample
 		
 			if (!GetCommunicationParameter(rPackage, N_MESSAGE, model.parameter))
 			{
-				cout << "GetCommunicationParameter() : Error occurred.\n"; 
+				cerr << "GetCommunicationParameter() : Error occurred.\n"; 
 				abort(); 
 			}
 			model.lambda = model.parameter->lambda[model.energy_stage];

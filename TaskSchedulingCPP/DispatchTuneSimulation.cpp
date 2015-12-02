@@ -19,6 +19,7 @@
 #include "mdd_function.h"
 #include "master_deploying.hpp"
 #include "EstimateLogMDD.hpp"
+#include "option.hpp"
 
 #include <time.h>
 
@@ -32,29 +33,68 @@ bool FileExist(const string &file_name);
 double ScaleFit(double*, double*, const int, CEquiEnergyModel &model, int stage, int nNode, int nInitial);
 vector<int> StriationDistribution(const vector<CSampleIDWeight> &samples, const CEquiEnergyModel &model, int stage); 
 
-void DispatchTuneSimulation(double *sPackage, double *rPackage, const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, size_t simulation_length, bool save_space_flag, int nGroup_NSE)
+void DispatchTuneSimulation(double *sPackage, double *rPackage, const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model,const CSampleIDWeight &mode, int simulation_length, const Diagnosis &option, bool save_space_flag)
 {
+	// log_file
+	string log_filename = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + string(".log");
+	ofstream log_file(log_filename.c_str(), iostream::out); 
+	if (!log_file)
+	{
+		cerr << "DispatchTuneSimulation: Error opening " << log_filename << endl; 
+		exit(1); 
+	}
 	// diagnostic statistics
-	// logMDD[i][0], constant of integration using ellipticals as proposals
-	// logMDD[i][1], constant of integration using draws from the previous stage and importance.
-	vector<vector<double> > logMDD(model.parameter->number_energy_stage+1, vector<double>(2, 0.0)); 
+	// consistency
 	vector<double> consistency(model.parameter->number_energy_stage, 0.0), average_consistency(model.parameter->number_energy_stage, 0.0), std_consistency(model.parameter->number_energy_stage, 0.0), LB_ESS(model.parameter->number_energy_stage, 0.0); 
-	vector<vector<int > > striation_distribution(model.parameter->number_energy_stage); 
+	string consistency_filename = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + string(".LogMDD.txt") ; 
+	ofstream consistency_file(consistency_filename.c_str(), iostream::out); 
+	if (!consistency_file)
+        {
+        	cerr << "DispatchTuneSimulation: Error opening " << consistency_filename << endl;
+                exit(1); 
+        }
+	
+	vector<vector<int > > striation_distribution; 
+	string distribution_filename; 
+	ofstream distribution_file; 
+	if (option & Diagnosis::OPT_DSTR_STR)
+	{
+		striation_distribution.resize(model.parameter->number_energy_stage); 
+		distribution_filename = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + string(".Distribution.txt"); 
+		distribution_file.open(distribution_filename.c_str(), iostream::out); 
+		if (!distribution_file.is_open())
+		{
+                	cerr << "DispatchTuneSimulation: Error opening " << distribution_filename << endl;
+                	exit(1);
+        	}	
+	}
+
+	string jump_filename; 
+	ofstream jump_file; 
+	if (option & Diagnosis::OPT_JMP_RT || option & Diagnosis::OPT_TRAN_STR)
+	{
+		jump_filename = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + string(".Jump.txt");
+		jump_file.open(jump_filename.c_str(), iostream::out); 
+		if (!jump_file.is_open())
+		{
+			cerr << "DispatchTuneSimulation: Error opening " << jump_filename << endl;
+                        exit(1);
+		}
+	}
+	
+	vector<double> logMDD; 
+	if (option & Diagnosis::OPT_MLLR)
+		logMDD.resize(model.parameter->number_energy_stage+1); 
 
 	vector<CSampleIDWeight> samples;
-
-	ifstream input_file;
-	ofstream output_file, mdd_file;
-
-	string mdd_filename = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + string(".LogMDD.txt") ; 
+	string start_point_filename; 
+	ofstream output_file; 
 
 	time_t rawtime;
-	double alpha_0 = 0.234*0.8, alpha_1 = 0.234*1.25; 
+	double alpha_0 = LOWER_ALPHA, alpha_1 = UPPER_ALPHA; 
 
 	for (int stage=model.parameter->highest_stage; stage>=model.parameter->lowest_stage; stage--)
 	{
-	  	time(&rawtime);
-	  	// cout << "DispatchTuneSimulation() - top of loop: stage=" << stage << " " << ctime(&rawtime) << endl;
 		/////////////////////////////////////////////////////////////////////////////////
 		// Highest + 1 stage 
 		if (stage == model.parameter->highest_stage)
@@ -64,84 +104,34 @@ void DispatchTuneSimulation(double *sPackage, double *rPackage, const int N_MESS
 			{
 		                // draw highest stage + 1 sample
 				time(&rawtime);
-				// cout << "DispatchTuneSimulation() - drawing from prior: stage=" << stage+1 << " temperature: " << model.parameter->t[stage+1] << " " << ctime(&rawtime) << endl;
+				log_file << "DispatchTuneSimulation() - drawing from prior: stage=" << stage+1  << " " << ctime(&rawtime) << endl;
 
 				// samples = samples of highest+1 stage
-				samples = HighestPlus1Stage_Prior(sPackage, rPackage, N_MESSAGE, nNode, nInitial, model);   // Sample from prior
-
+				samples = HighestPlus1Stage_Prior(sPackage, rPackage, N_MESSAGE, nNode, nInitial, model, jump_file);   // Sample from prior
+				
 				time(&rawtime);
-				// cout << "DispatchTuneSimulation() - done drawing from prior: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
+				log_file << "DispatchTuneSimulation() - done drawing from prior: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
 
-				// compute log MDD
-				// cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
-
-				logMDD[stage+1][0] = LogMDD(samples, model, model.parameter->lambda[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
-				logMDD[stage+1][1] = 0.0;
-
-				// open MDD file for output and write log MDD for stage + 1
-				mdd_file.open(mdd_filename.c_str());
-				if (!mdd_file.is_open())
+				if (option & Diagnosis::OPT_MLLR)
 				{
-					cerr << "DispatchTuneSimulation: Error opening " << mdd_filename << endl; 
-				    	abort(); 	
+					logMDD[stage+1] = LogMDD(samples, model, model.parameter->lambda[stage+1], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
+					consistency_file << "Stage " << stage+1 << ":\t\t\t\t" << logMDD[stage+1] << endl; 
+					time(&rawtime);
+					log_file << "DispatchTuneSimulation() - done computing MDD: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
 				}
-				mdd_file << setprecision(20) << stage+1 << "\t" << logMDD[stage+1][0] << "\t" << logMDD[stage+1][1] << endl; 
-				time(&rawtime);
-				// cout << "DispatchTuneSimulation() - done computing MDD: stage=" << stage+1 << " " << ctime(&rawtime) << endl;
 			}
-			else
-			{
-			    	// read log MDD info
-			    	input_file.open(mdd_filename.c_str());
-			    	if (!input_file.is_open())
-			      	{
-					cerr << "Error opening " << mdd_filename << endl; 
-					abort(); 
-			      	}	
-			    	int mdd_stage=stage+2;
-			    	while (true)
-				{
-			      		if (!(input_file >> mdd_stage) || !(input_file  >> logMDD[mdd_stage][0] >> logMDD[mdd_stage][1]))
-						break;
-				}
-			    	input_file.close();
-			    	if (mdd_stage > stage+1)
-			      	{
-					cerr << "DispatchTuneSimulation: stage " << stage+1 << " not in " << mdd_filename << endl;
-					abort();
-			      	}
-
-			    	// open MDD file for output and write log MDD
-			    	mdd_file.open(mdd_filename.c_str());
-			    	if (!mdd_file.is_open())
-			      	{
-					cerr << "Error opening " << mdd_filename << endl; 
-					abort(); 	
-			      	}
-			    	for (mdd_stage=logMDD.size()-1; mdd_stage >= stage+1; mdd_stage--)
-					mdd_file << setprecision(20) << mdd_stage << "\t" << logMDD[mdd_stage][0] << "\t" << logMDD[mdd_stage][1] << endl;
-
-			    	// get samples of the previous stage 
-			    	samples = model.storage->DrawAllSample(stage+1); 
-			    	if (samples.empty())
-			      	{
-                			cerr << "DispatchTuneSimulation: error occurred when loading all samples.\n";
-                       			abort();
-			      	}
-			  }			
 		}
 		// samples = samples of the previous stage
-		// Check Convergency & logMDD with the importance weight method
 		if (stage == model.parameter->number_energy_stage-1 )
-			logMDD[stage][1] = consistency[stage] = CheckConvergency(samples, model, stage, stage+1, 0.0, average_consistency[stage], std_consistency[stage], LB_ESS[stage], LIKELIHOOD_HEATED, nGroup_NSE);
+			consistency[stage] = CheckConvergency(samples, model, stage, stage+1, 0.0, average_consistency[stage], std_consistency[stage], LB_ESS[stage], LIKELIHOOD_HEATED, nInitial);
 		else
-			logMDD[stage][1] = consistency[stage] = CheckConvergency(samples, model, stage, stage+1, consistency[stage+1], average_consistency[stage], std_consistency[stage], LB_ESS[stage], LIKELIHOOD_HEATED, nGroup_NSE); 
-                cout << "Convergency Measure at Stage " << stage << ": " << setprecision(20) << consistency[stage] << "\t" << average_consistency[stage] << "\t" << std_consistency[stage]<< "\t" << LB_ESS[stage] << endl;  
-		
+			consistency[stage] = CheckConvergency(samples, model, stage, stage+1, consistency[stage+1], average_consistency[stage], std_consistency[stage], LB_ESS[stage], LIKELIHOOD_HEATED, nInitial); 
+                consistency_file << "Stage " << stage << ": " << setprecision(20) << consistency[stage] << "\t" << average_consistency[stage] << "\t" << std_consistency[stage]<< "\t" << LB_ESS[stage]; 
+	
 		////////////////////////////////////////////////////////////////////////////////
 		// Starting points
-		time(&rawtime);
-		// cout << "DispatchTuneSimulation() - getting initial points: stage=" << stage << " " << ctime(&rawtime) << endl;
+	  	time(&rawtime);
+	  	log_file << "DispatchTuneSimulation() - top of loop: stage= " << stage << " " << ctime(&rawtime) << endl;
 		model.storage->InitializeBin(stage); 
 		vector<CSampleIDWeight> start_points; 
 		if (!samples.empty() )
@@ -153,12 +143,12 @@ void DispatchTuneSimulation(double *sPackage, double *rPackage, const int N_MESS
 				start_points[i] = mode; 
 		}
 
-		string start_point_file = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + START_POINT; 
-        	output_file.open(start_point_file.c_str(), ios::binary|ios::out);
-        	if (!output_file)
+		start_point_filename = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + START_POINT; 
+        	output_file.open(start_point_filename.c_str(), ios::binary|ios::out);
+        	if (!output_file.is_open())
 		{
-               		cerr << "Error in writing to " << start_point_file << endl; 
-			abort(); 	
+               		cerr << "Error in writing to " << start_point_filename << endl; 
+			exit(1); 
 		}
         	else
 		{
@@ -167,7 +157,7 @@ void DispatchTuneSimulation(double *sPackage, double *rPackage, const int N_MESS
 		}
         	output_file.close();
 		time(&rawtime);
-		// cout << "DispatchTuneSimulation() - done getting initial points: stage=" << stage << " " << ctime(&rawtime) << endl;
+		log_file << "DispatchTuneSimulation() - done getting initial points: stage=" << stage << " " << ctime(&rawtime) << endl;
 
 
 		/////////////////////// Tuning
@@ -176,6 +166,8 @@ void DispatchTuneSimulation(double *sPackage, double *rPackage, const int N_MESS
                         GetWeightedVarianceMatrix(model, stage, samples);
 	
 		double alpha = ScaleFit(sPackage, rPackage, N_MESSAGE, model, stage, nNode, nInitial); 
+		log_file << "Metropolis acceptance rate at stage " <<  stage << " using the scale matrix of the previous stage " << alpha << endl; 
+
 		int counter = 0; 
 		while (alpha <= alpha_0 || alpha >= alpha_1) 
 		{
@@ -193,45 +185,52 @@ void DispatchTuneSimulation(double *sPackage, double *rPackage, const int N_MESS
         			if (!model.metropolis->WriteBlocks(block_file_name))
         			{
                 			cerr << "DispatchTuneSimulation() : Error in writing BMatrix file.\n";
-                			abort();
+                			exit(1); 
         			}
 			}
 			
 			counter ++; 
 
 			alpha = ScaleFit(sPackage, rPackage, N_MESSAGE, model, stage, nNode, nInitial); 
+			log_file << "Metropolis acceptance rate at stage " <<  stage << " using the scale matrix of the previous stage " << alpha << endl; 
 		} 
 		time(&rawtime);
-	
+		log_file << "DispatchTuneSimulation() - done tuning: stage=" << stage << " " << ctime(&rawtime) << endl;	
+
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// simualtion
-		// cout << "DispatchTuneSimulation() - dispatching simulation (" << model.parameter->simulation_length << "): stage=" << stage << " " << " temperature: " << model.parameter->t[stage] << " " << ctime(&rawtime) << endl;
 		// samples = samples of the current stage
-		samples = DispatchSimulation(sPackage, rPackage, N_MESSAGE, nNode, nInitial, model, model.parameter->simulation_length, stage, SIMULATION_TAG) ;
+		samples = DispatchSimulation(sPackage, rPackage, N_MESSAGE, nNode, nInitial, model, model.parameter->simulation_length, stage, SIMULATION_TAG, jump_file);
 		time(&rawtime);
-		// cout << "DispatchTuneSimulation() - done simulating (" << model.parameter->simulation_length << "): stage=" << stage << " " << ctime(&rawtime) << endl;
+		log_file << "DispatchTuneSimulation() - done simulating (" << model.parameter->simulation_length << "): stage=" << stage << " " << ctime(&rawtime) << endl;
 	
-		// Number of draws in each striation where the striation is defined at the pervious stage	
-		striation_distribution[stage] = StriationDistribution(samples, model, stage+1);
-		for (int i=0; i<(int)(striation_distribution[stage].size()); i++)
-		{
-			if (striation_distribution[stage][i])
-				cout << "Number of sampels in striation " << i << " at stage " << stage << " " << striation_distribution[stage][i] << endl; 
-		} 	
+		// Number of draws in each striation where the striation is defined at the pervious stage
+		if (option & Diagnosis::OPT_DSTR_STR)
+		{	
+			striation_distribution[stage] = StriationDistribution(samples, model, stage+1);
+			distribution_file << "Stage " << stage << ": \n"; 
+			for (int i=0; i<(int)(striation_distribution[stage].size()); i++)
+			{
+				if (striation_distribution[stage][i])
+					distribution_file << "Striation " << i << ": " << striation_distribution[stage][i] << endl; 
+			}
+			distribution_file.flush(); 
+		}	 	
 	
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// logMDD using bridge's method
-		// cout << "DispatchTuneSimulation() - computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
-	     	logMDD[stage][0] = LogMDD(samples, model, model.parameter->lambda[stage], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
+		// logMDD using Mueller's method
+		if (option & Diagnosis::OPT_MLLR)
+		{
+	     		logMDD[stage] = LogMDD(samples, model, model.parameter->lambda[stage], USE_TRUNCATED_POWER, LIKELIHOOD_HEATED);
+			consistency_file << setprecision(20) << "\t" << logMDD[stage]; 	
+			time(&rawtime);
+			log_file << "DispatchTuneSimulation() - done computing MDD: stage=" << stage << " " << ctime(&rawtime) << endl;
+		}
+		consistency_file << endl; 
+		consistency_file.flush(); 
 		
-		mdd_file << setprecision(20) << stage << "\t" << logMDD[stage][0] << "\t" << logMDD[stage][1] << endl;
-		mdd_file.flush();
-		cout << setprecision(20) << "logMDD at stage " << stage << ": " << logMDD[stage][0] << "\t" << logMDD[stage][1] << endl; 
-		cout.flush();
-
 		// to save space, remove stage+1 samples
 		time(&rawtime);
-		// cout << "DispatchTuneSimulation() - deleting files: stage=" << stage << " " << ctime(&rawtime) << endl;
                 if (save_space_flag ) 
 		{
 			model.storage->ClearSample(stage+1);  
@@ -252,10 +251,15 @@ void DispatchTuneSimulation(double *sPackage, double *rPackage, const int N_MESS
 		}
 		model.storage->ClearBin(stage+1); 
 		time(&rawtime);
-		// cout << "DispatchTuneSimulation() - bottom of loop: stage=" << stage << " " << ctime(&rawtime) << endl;
+		log_file << "DispatchTuneSimulation() - bottom of loop: stage=" << stage << " " << ctime(&rawtime) << endl;
 	}
 
-	mdd_file.close();
+	log_file.close(); 
+	consistency_file.close(); 
+	if (option & Diagnosis::OPT_DSTR_STR)
+		distribution_file.close();
+	if (option & Diagnosis::OPT_JMP_RT || option & Diagnosis::OPT_TRAN_STR)
+		jump_file.close(); 
 }
 
 void GetWeightedVarianceMatrix(CEquiEnergyModel &model, int stage, const std::vector<CSampleIDWeight> &samples)
@@ -340,7 +344,6 @@ double ScaleFit(double *sPackage, double *rPackage, const int N_MESSAGE, CEquiEn
 	}
 	double avg_accpt_rate = (double)nJump[1]/((nNode-1)*sPackage[LENGTH_INDEX]); 
 
-	cout << "Metropolis acceptance rate at stage " << stage << " using the scale matrix of the previous stage " << avg_accpt_rate << endl; 
 	return avg_accpt_rate; 
 }
 

@@ -36,4 +36,7 @@ const int SCALE_MATRIX_FIT_TAG = 91;
 const int END_TAG = 0;  
 const int TASK_LENGTH_LONG = 1000; 
 const int TASK_LENGTH_SHORT = 100; 
+
+const double LOWER_ALPHA = 0.234*0.8; 
+const double UPPER_ALPHA = 0.234*1.25; 
 #endif

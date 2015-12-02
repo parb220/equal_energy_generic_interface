@@ -6,10 +6,11 @@
 #include "CEquiEnergyModel.hpp"
 #include "mpi_constant.hpp"
 #include "master_deploying.hpp"
+#include "option.hpp"
 
 using namespace std;
 
-void master_deploying(const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model, const CSampleIDWeight &mode, int nGroup_NSE)
+void master_deploying(const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model, const CSampleIDWeight &mode, const Diagnosis &option)
 {	
 	double *sPackage= new double [N_MESSAGE];
 	double *rPackage= new double [N_MESSAGE];   
@@ -36,7 +37,7 @@ void master_deploying(const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyM
 
 	// Tune & Simulation
 	if (model.parameter->simulation_length) 
-		DispatchTuneSimulation(sPackage, rPackage, N_MESSAGE, nNode, nInitial, model, mode, model.parameter->simulation_length, nGroup_NSE); 
+		DispatchTuneSimulation(sPackage, rPackage, N_MESSAGE, nNode, nInitial, model, mode, model.parameter->simulation_length, option); 
 
 	// tell all the slaves to exit by sending an empty messag with 0 simulation length 
 	for (int i=1; i<nNode; i++)
