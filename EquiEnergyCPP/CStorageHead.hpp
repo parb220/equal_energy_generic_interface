@@ -1,5 +1,5 @@
-#ifndef _STORAGE_HEAD_
-#define _STORAGE_HEAD_
+#ifndef CLASS_STORAGE_HEAD_HEADER
+#define CLASS_STORAGE_HEAD_HEADER
 
 #include <vector>
 #include <string>

@@ -1,5 +1,5 @@
-#ifndef _CSAMPLE_ID_WEIGHT
-#define _CSAMPLE_ID_WEIGHT
+#ifndef CLASS_SAMPLE_ID_WEIGHT_HEADER
+#define CLASS_SAMPLE_ID_WEIGHT_HEADER
 
 #include <iostream>
 #include <fstream>

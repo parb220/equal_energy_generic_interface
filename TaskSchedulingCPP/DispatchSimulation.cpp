@@ -143,7 +143,7 @@ std::vector<CSampleIDWeight> DispatchSimulation(double *sPackage, double *rPacka
 		{
 			for (int i=0; i<jump_table.rows; i++)
 			{
-				if (i!=j && jump_table(i,j))
+				if (jump_table(i,j))
 					jump_file << "Number of jumps from striation " << i << " to striation " << j << " " << jump_table(i,j) << endl; 
 			}
 		}

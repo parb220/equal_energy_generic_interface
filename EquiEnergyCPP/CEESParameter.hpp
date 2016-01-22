@@ -1,5 +1,5 @@
-#ifndef _C_EES_PARAMETER
-#define _C_EES_PARAMETER
+#ifndef CLASS_EES_PARAMETER_HEADER
+#define CLASS_EES_PARAMETER_HEADER
 
 #include <string>
 #include <vector>

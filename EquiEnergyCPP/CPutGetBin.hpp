@@ -1,5 +1,5 @@
-#ifndef _PUT_GET_BIN_
-#define _PUT_GET_BIN_
+#ifndef CLASS_PUT_GET_BIN_HEADER
+#define CLASS_PUT_GET_BIN_HEADER
 
 #include <string>
 #include <vector>

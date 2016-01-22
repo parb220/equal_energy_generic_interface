@@ -1,5 +1,5 @@
-#ifndef _CLASS_METHOPOLIS_
-#define _CLASS_METHOPOLIS_
+#ifndef CLASS_METHOPOLIS_HEADER
+#define CLASS_METHOPOLIS_HEADER
 
 #include <vector>
 #include "dw_dense_matrix.hpp"

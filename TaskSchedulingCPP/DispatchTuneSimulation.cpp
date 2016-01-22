@@ -228,9 +228,30 @@ void DispatchTuneSimulation(double *sPackage, double *rPackage, const int N_MESS
 		}
 		consistency_file << endl; 
 		consistency_file.flush(); 
+
+		// save samples in ascii if stage == 0
+		if (stage == 0)
+		{
+			string ascii_filename = model.parameter->storage_dir + model.parameter->run_id + string("/") + model.parameter->run_id + string(".draw.text");
+			ofstream ascii_file(ascii_filename.c_str(), iostream::out); 
+			if (!ascii_file)
+			{
+				cerr << "Error in writing to " << ascii_filename << endl; 
+				exit(1); 
+			}
+			for (int i=0; i<(int)(samples.size()); i++)
+			{
+				if (i) 
+					ascii_file << endl; 
+				ascii_file << samples[i].weight << "\t" << samples[i].reserved; 
+				for (int j=0; j<samples[i].data.Dimension(); j++)
+					ascii_file << "\t" << samples[i].data[j]; 
+			}
+			ascii_file.close(); 	
+		}
+			
 		
 		// to save space, remove stage+1 samples
-		time(&rawtime);
                 if (save_space_flag ) 
 		{
 			model.storage->ClearSample(stage+1);  

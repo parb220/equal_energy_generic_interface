@@ -1,5 +1,5 @@
-#ifndef _CLASS_STATE_MODEL
-#define _CLASS_STATE_MODEL
+#ifndef CLASS_EQUI_ENERGY_MODEL_HEADER
+#define CLASS_EQUI_ENERGY_MODEL_HEADER
 
 #include <vector>
 #include <ctime>
