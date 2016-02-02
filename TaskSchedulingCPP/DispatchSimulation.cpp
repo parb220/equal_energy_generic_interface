@@ -7,53 +7,27 @@
 #include <iostream>
 #include <iomanip>
 #include "dw_math.h"
-#include "CSampleIDWeight.h"
-#include "CEquiEnergyModel.h"
-#include "CEESParameter.h"
-#include "CStorageHead.h"
-#include "storage_parameter.h"
-#include "mpi_parameter.h"
+#include "CSampleIDWeight.hpp"
+#include "CEquiEnergyModel.hpp"
+#include "CEESParameter.hpp"
+#include "CStorageHead.hpp"
+#include "storage_constant.hpp"
+#include "mpi_constant.hpp"
 
 using namespace std;  
 
 vector<string> glob(const string &pattern); 
 
-void DispatchSimulation_PriorProbability(int nNode, int simulation_length)
+std::vector<CSampleIDWeight> DispatchSimulation(double *sPackage, double *rPackage, const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model, int simulation_length, int stage, int message_tag, ofstream &jump_file)
 {
-	double *sPackage = new double [N_MESSAGE];
-        double *rPackage = new double [N_MESSAGE];
-
-	int simulation_length_per_node =  (int)ceil((double)simulation_length/(double)(nNode-1)); 
-	int total_length = 0; 
-	for (int iNode=1; iNode<nNode; iNode++)
-	{
-		sPackage[LENGTH_INDEX] = simulation_length_per_node;
-		total_length += sPackage[LENGTH_INDEX]; 
-		sPackage[GROUP_INDEX] = iNode; 
-		sPackage[GROUP_NUMBER_INDEX] = 1; 
-		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, iNode, PRIOR_PROB_TAG, MPI_COMM_WORLD);
-	}
-	int accpt_length = 0; 
-	MPI_Status status;
-	for (int iNode=1; iNode<nNode; iNode++)
-	{
-		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, PRIOR_PROB_TAG, MPI_COMM_WORLD, &status);
-		accpt_length += rPackage[LENGTH_INDEX]; 
-	}
-	cout << "log prior probability constant " << setprecision(20) << log((double)accpt_length/(double)total_length) << endl; 
-}
-
-std::vector<CSampleIDWeight> DispatchSimulation(int nNode, int nInitial, CEquiEnergyModel &model, int simulation_length, int stage, int message_tag)
-{
-	double *sPackage = new double [N_MESSAGE]; 
-	double *rPackage = new double [N_MESSAGE]; 
-	sPackage[thin_INDEX] = model.parameter->thin; 
 	sPackage[THIN_INDEX] = model.parameter->THIN;
        	sPackage[LEVEL_INDEX] = stage;
 	sPackage[PEE_INDEX] = model.parameter->pee; 
 	std::vector<CSampleIDWeight> samples(0); 
 
 	MPI_Status status;
+	std::vector<int> nTotalJump(2,0.0); // nTotalJump[0]: EE, nTotalJump[1] : MH
+	TDenseMatrix jump_table(model.parameter->number_striation, model.parameter->number_striation,0.0); 
 	
 	vector<int> available_node(nNode-1); 
 	for (int i=0; i<(int)(available_node.size()); i++)
@@ -111,6 +85,16 @@ std::vector<CSampleIDWeight> DispatchSimulation(int nNode, int nInitial, CEquiEn
 				if (available_node.empty())
 				{
 					MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status); 
+					nTotalJump[0] += (int) rPackage[RETURN_INDEX_1];
+                                        nTotalJump[1] += (int) rPackage[RETURN_INDEX_2];
+					if ((int)rPackage[RESERVE_INDEX_START]) 
+					{
+						TDenseMatrix tmp_jump_table(model.parameter->number_striation, model.parameter->number_striation,0.0); 
+						for (int j=0; j<tmp_jump_table.cols; j++)
+							for (int i=0; i<tmp_jump_table.rows; i++)
+								tmp_jump_table(i,j) = rPackage[RESERVE_INDEX_START+1 + j*tmp_jump_table.rows + i]; 
+						jump_table = jump_table + tmp_jump_table; 
+					}
 					available_node.push_back(status.MPI_SOURCE); 
 				}
 				MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, available_node.back(), message_tag, MPI_COMM_WORLD);
@@ -134,49 +118,46 @@ std::vector<CSampleIDWeight> DispatchSimulation(int nNode, int nInitial, CEquiEn
 		}
 	} 
 
-	/*int simulation_length_per_node, simulation_length_check; 
-	// simulation_length_per_node = (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) > 1000 ? (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) : 1000; 
-	simulation_length_per_node = (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))) > 1 ?  (int)ceil((double)simulation_length/(double)(nInitial*(nNode-1))): 1 ; 
-	simulation_length_check = (int)ceil((double)simulation_length/(double)(nInitial)); 
-
-	
-	int iInitial =0, cumulative_length = 0; 
-	while (iInitial < nInitial)
-	{
-		while (cumulative_length < simulation_length_check)
-		{
-			sPackage[LENGTH_INDEX] = simulation_length_per_node;
-			sPackage[BURN_INDEX] = model.parameter->burn_in_length;
-			sPackage[GROUP_INDEX] = iInitial; 
-			if (available_node.empty())
-			{
-				MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status); 
-				available_node.push_back(status.MPI_SOURCE); 
-			}
-			MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, available_node.back(), message_tag, MPI_COMM_WORLD);
-			available_node.pop_back(); 
-			cumulative_length += simulation_length_per_node; 	
-		}
-		cumulative_length = 0; 
-		iInitial ++; 
-	}*/
-	
 	for (int j=0; j<(nNode-1)-(int)available_node.size(); j++)
+	{
 		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, message_tag, MPI_COMM_WORLD, &status);
+		nTotalJump[0] += (int) rPackage[RETURN_INDEX_1];
+                nTotalJump[1] += (int) rPackage[RETURN_INDEX_2];
+		if ((int)rPackage[RESERVE_INDEX_START])
+  		{
+                	TDenseMatrix tmp_jump_table(model.parameter->number_striation, model.parameter->number_striation,0.0);
+                	for (int j=0; j<tmp_jump_table.cols; j++)
+                		for (int i=0; i<tmp_jump_table.rows; i++)
+                			tmp_jump_table(i,j) = rPackage[RESERVE_INDEX_START+1 + j*tmp_jump_table.rows + i];
+                	jump_table = jump_table + tmp_jump_table;
+                }
+	}
+
+	if (jump_file.is_open())
+	{
+		jump_file << "Stage " << stage  << endl; 
+		jump_file << "EE jump rate " << (double) nTotalJump[0]/(double)(model.parameter->simulation_length*model.parameter->THIN) << endl;
+		jump_file << "MH jump rate " << (double)nTotalJump[1]/(double)(model.parameter->simulation_length*model.parameter->THIN) << endl; 
+		jump_file << "Out of " << nTotalJump[1] << " MH jumps:" << endl; 
+		for (int j=0; j<jump_table.cols; j++)
+		{
+			for (int i=0; i<jump_table.rows; i++)
+			{
+				if (i!=j && jump_table(i,j))
+					jump_file << "Number of jumps from striation " << i << " to striation " << j << " " << jump_table(i,j) << endl; 
+			}
+		}
+	}
 
 	// binning
-	if (message_tag != TUNE_TAG_SIMULATION_FIRST) 
+	if (message_tag != TUNE_TAG_SIMULATION_FIRST && message_tag != SCALE_MATRIX_FIT_TAG) 
 	{
-		model.storage->ClearStatus(stage);	
-		model.storage->consolidate(stage); 
-		samples = model.storage->binning_equal_size(stage, model.parameter->number_striation);
-		model.storage->finalize(stage);
-        	model.storage->ClearDepositDrawHistory(stage);
+		samples = model.storage->binning_equal_size(stage, model.parameter->number_striation, model.parameter->lambda[stage]);
 
 		sPackage[LEVEL_INDEX] = (double)stage;
-        	sPackage[RESERVE_INDEX] = (double)(model.storage->GetNumber_Bin(stage));
+        	sPackage[RESERVE_INDEX_START] = (double)(model.storage->GetNumber_Bin(stage));
         	for (int i=0; i<model.storage->GetNumber_Bin(stage); i++)
-        		sPackage[RESERVE_INDEX + i + 1] = model.storage->GetEnergyLowerBound(stage, i);
+        		sPackage[RESERVE_INDEX_START + i + 1] = model.storage->GetEnergyLowerBound(stage, i);
 
         	for (int i=1; i<nNode; i++)
         		MPI_Send(sPackage, N_MESSAGE, MPI_DOUBLE, i, BINNING_INFO, MPI_COMM_WORLD);
@@ -184,28 +165,5 @@ std::vector<CSampleIDWeight> DispatchSimulation(int nNode, int nInitial, CEquiEn
         	for (int i=1; i<nNode; i++)
         		MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, BINNING_INFO, MPI_COMM_WORLD, &status);
 	}
-	else // Consolidate variance file
-	{
-		stringstream convert; 
-		string input_file_pattern, output_file_name;
-		convert.str(string());
-                convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << stage << ".*.*";
-		input_file_pattern = model.parameter->storage_dir + convert.str();
-
-		convert.str(string());
-		convert << model.parameter->run_id << "/" << model.parameter->run_id << VARIANCE_SAMPLE_FILE_TAG << stage; 
-		output_file_name = model.parameter->storage_dir + convert.str();
-
-		vector<string> input_file_name = glob(input_file_pattern);  
-
-		if (!model.ConsolidateSampleForCovarianceEstimation(input_file_name, output_file_name))
-                {
-                	cerr << "ConsolidateSampleForCovarianceEstimation() : Error.\n";
-                	abort();
-                }
-	}
-	
-	delete [] sPackage;
-	delete [] rPackage;
 	return samples;
 }

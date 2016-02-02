@@ -1,17 +1,16 @@
 #include <cmath>
 #include "prcsn.h"
 #include "dw_rand.h"
-#include "CSampleIDWeight.h"
-#include "CEESParameter.h"
-#include "CStorageHead.h"
-#include "CMetropolis.h"
-#include "CEquiEnergyModel.h"
+#include "CSampleIDWeight.hpp"
+#include "CEESParameter.hpp"
+#include "CStorageHead.hpp"
+#include "CMetropolis.hpp"
+#include "CEquiEnergyModel.hpp"
 #include "dw_dense_matrix.hpp"
 
 extern "C" {
 	void npoptn_(char *, int);
 	void npsol_(int *n, int *nclin, int *ncnln, int *ldA, int *ldJ, int *ldR, double *A, double *bl, double *bu, void *funcon(int *mode, int *ncnln, int *n, int *ldJ, int *needc, double *x, double *c, double *cJac, int *nstate), void *funobj(int *mode, int *n, double *x, double *f, double *g, int *nstate), int *inform, int *iter, int *istate, double *c, double *cJac, double *clamda, double *f, double *g, double *R, double *x, int *iw, int *leniw, double *w, int *lenw);
-	// #include "dw_csminwel.h"
 }
 
 CEquiEnergyModel* MinusLogPosterior_NPSOL::model; 
@@ -21,7 +20,7 @@ void *MinusLogPosterior_NPSOL::function(int *mode, int *n, double *x, double *f,
 	*f = -model->log_posterior_function(x,*n); 
 }
 
-double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iteration, int perturbation_iteration, double perturbation_scale, double scale, const TDenseVector &start_point)
+std::vector<CSampleIDWeight> CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iteration, int perturbation_iteration, double perturbation_scale, double scale, const TDenseVector &start_point)
 {
 	const string COLD_START = string("Cold Start");
         const string NO_PRINT_OUT = string("Major print level = 0");
@@ -90,6 +89,7 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 	double log_posterior_before_perturbation, log_posterior_after_perturbation, log_posterior_optimal; 
 	TDenseVector peak(n,0.0), perturbation(n,0.0), x_plus_perturbation(n,0.0);  
 	TDenseMatrix hessian_cholesky(n,n,0.0); 
+	std::vector<CSampleIDWeight> solution; 
 
 	try {
 		for (int i=0; i<nSolution; i++)
@@ -169,6 +169,8 @@ double CEquiEnergyModel::HillClimb_NPSOL(int nSolution, int optimization_iterati
 				gmm_covariance_sqrt.push_back(eVectorHessian*DiagonalMatrix(diffusedEValue)*Transpose(eVectorHessian)); 
 				gmm_covariance_sqrt_inverse.push_back(eVectorHessian*DiagonalMatrix(diffusedEValueInverse)*Transpose(eVectorHessian)); 
 				gmm_covariance_sqrt_log_determinant.push_back(covariance_sqrt_log_determinant); 
+
+				solution.push_back(CSampleIDWeight(copy, 0, log_posterior_function(copy.vector, copy.dim), log_likelihood_function(copy.vector, copy.dim), true)); 
 			}
 		}
 	}	

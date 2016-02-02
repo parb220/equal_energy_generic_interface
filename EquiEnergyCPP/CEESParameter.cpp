@@ -2,8 +2,8 @@
 #include <cmath>
 
 #include "prcsn.h"
-#include "CSampleIDWeight.h"
-#include "CEESParameter.h"
+#include "CSampleIDWeight.hpp"
+#include "CEESParameter.hpp"
 
 using namespace std; 
 
@@ -14,132 +14,67 @@ CEESParameter::CEESParameter() :
 	number_energy_stage(0),
 	number_striation(0), 
 	pee(0.0),
-	t0(0.0), 
-	tN_1(0.0), 
-	t(vector<double>(0)),
+	lambda_1(0.0), 
+	lambda(vector<double>(0)),
 	highest_stage(0), 
 	lowest_stage(0), 
-	thin(0),
 	THIN(0), 
 	simulation_length(0), 
-	burn_in_length(0),
-	max_energy_tuning_time(0),
-	shuffle_frequency(0),
-	size_per_block(0)
+	burn_in_length(0)
 {}
 
 CEESParameter::~CEESParameter()
 {}		
 
-bool CEESParameter::SaveParameterToFile(string file_name) const
-{
-	fstream oFile(file_name.c_str(), ios::out | ios::binary); 
-	if (!oFile)
-		return false;
-	size_t storage_dir_name_len = storage_dir.length();  
-	oFile.write((char*)(&storage_dir_name_len), sizeof(size_t)); 
-	oFile.write((char*)(storage_dir.c_str()), sizeof(char)*storage_dir_name_len); 
-
-	oFile.write((char*)(&storage_marker), sizeof(size_t)); 
-	size_t run_id_len = run_id.length(); 
-	oFile.write((char*)(&run_id_len), sizeof(size_t)); 
-	oFile.write((char*)(run_id.c_str()), sizeof(char)*run_id_len); 
-	oFile.write((char*)(&number_energy_stage), sizeof(size_t)); 
-	oFile.write((char*)(&number_striation), sizeof(size_t)); 
-	oFile.write((char*)(&pee), sizeof(double)); 
-	oFile.write((char*)(&t0), sizeof(double)); 
-	oFile.write((char*)(&tN_1), sizeof(double)); 
-	
-	for (int i=0; i<=number_energy_stage; i++)
-	 	oFile.write((char*)(&(t[i])), sizeof(double)); 
-
-	oFile.close(); 
-	return true; 
-}
-
-bool CEESParameter::LoadParameterFromFile(string file_name)
-{
-        fstream iFile(file_name.c_str(), ios::in | ios::binary);
-        if (!iFile)
-                return false;
-
-	size_t name_len; 
-	iFile.read((char*)(&name_len), sizeof(size_t)); 
-	char *storage_dir_array = new char[name_len+1]; 
-	iFile.read(storage_dir_array, sizeof(char)*name_len); 
-	storage_dir = string(storage_dir_array); 
-	delete [] storage_dir_array; 
-        
-	iFile.read((char*)(&storage_marker), sizeof(size_t));
-	size_t run_id_len; 
-	iFile.read((char*)(&run_id_len), sizeof(size_t)); 
-	char *run_id_array = new char[run_id_len+1]; 
-	iFile.read(run_id_array, sizeof(char)*run_id_len); 
-	run_id = string(run_id_array); 
-        delete [] run_id_array; 
-
-	iFile.read((char*)(&number_energy_stage), sizeof(size_t));
-	iFile.read((char*)(&number_striation), sizeof(size_t)); 
-        iFile.read((char*)(&pee), sizeof(double));
-        iFile.read((char*)(&t0), sizeof(double));
-	iFile.read((char*)(&tN_1), sizeof(double)); 
-	
-	t.resize(number_energy_stage+1);
-	for (int i=0; i<=number_energy_stage; i++) 
-		iFile.read((char*)(&(t[i])), sizeof(double));
-
-	iFile.close(); 
-	return true; 
-}
-
-bool CEESParameter::WriteSummaryFile(string file_name) const
-{
-	ofstream oFile; 
-	oFile.open(file_name.c_str(), ios::out); 
-	if (!oFile) 
-		return false; 
-	oFile << "Storage Marker:\t" << storage_marker << endl; 
-	oFile << "Number of Energy Stages:\t" << number_energy_stage << endl; 
-	oFile << "Number of Striations Per Stage:\t" << number_striation << endl; 
-	oFile << "Temperatures:"; 
-	for (int i=0; i<=number_energy_stage; i++)
-		oFile << "\t" << t[i]; 
-	oFile << endl; 
-	oFile << "Prob Equi-Jump:\t" << pee << endl;  
-	oFile.close(); 
-	return true; 
-}
-
-bool CEESParameter::SetTemperature()
+bool CEESParameter::SetTemperature_geometric()
 // t[i+1] = t[i] * r
 {
-	t.resize(number_energy_stage+1); 
-	t[0] = t0; 
-	if (number_energy_stage > 1) 
+	// lambda
+	if (number_energy_stage <= 0)
+		return false; 
+	lambda.resize(number_energy_stage+1); 
+	lambda[0] = 1.0;
+	lambda[number_energy_stage] = 0.0;  
+	if (number_energy_stage > 1)
 	{
-		double r=exp(log(tN_1/t0)/double(number_energy_stage-1)); 
-		for (int i=1; i<(int)(t.size()); i++)
-			t[i] = t[i-1] * r; 
+		double r = log(lambda_1)/(number_energy_stage-1); 
+		for (int i=1; i<number_energy_stage; i++)
+			lambda[i] = exp((double)i*r); 	
 	}
-	else
-		t[1] = tN_1; 
 	return true; 
 }
 
 bool CEESParameter::SetTemperature_quadratic()
 {
-	t.resize(number_energy_stage+1);
-	for (int i=0; i<number_energy_stage; i++)
-		t[i] = (double)number_energy_stage*(double)number_energy_stage/((double)(number_energy_stage-i) * (double)(number_energy_stage-i)); 
-
-	t[number_energy_stage] = PLUS_INFINITY; 
+	// lambda
+	if (number_energy_stage <= 0)
+		return false; 
+	lambda.resize(number_energy_stage+1); 
+	lambda[0] = 1.0;
+	lambda[number_energy_stage] = 0.0; 
+	for (int i=1; i<number_energy_stage; i++)
+		lambda[i] = ((double)(number_energy_stage-i) * (double)(number_energy_stage-i)) /((double)number_energy_stage*(double)number_energy_stage ); 
 	return true; 
 }
 
-double CEESParameter::LogRatio_Stage(double original_energy_x, double original_energy_y, int stage) const
+bool CEESParameter::SetTemperature_polynomial(double r)
 {
-	double log_prob_x_bounded = -original_energy_x/t[stage];
-        double log_prob_y_bounded = -original_energy_y/t[stage];
+	if (number_energy_stage <= 0)
+		return false; 	
+	lambda.resize(number_energy_stage+1); 
+	lambda[0] = 1.0; 
+	lambda[number_energy_stage] = 0.0; 
+	double denominator = pow((double)number_energy_stage,r); 
+	for (int i=1; i<number_energy_stage; i++)
+		lambda[i] = pow((double)(number_energy_stage-i),r)/denominator; 
+	return true; 
+}
+
+double CEESParameter::LogRatio_Stage(const CSampleIDWeight &x, const CSampleIDWeight &y, int stage) const 
+{
+	double log_prob_x_bounded = lambda[stage]*x.reserved + (x.weight-x.reserved); 
+	double log_prob_y_bounded = lambda[stage]*y.reserved + (y.weight-y.reserved); 
         return log_prob_x_bounded - log_prob_y_bounded;
 }
+
 
