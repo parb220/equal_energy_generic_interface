@@ -17,6 +17,8 @@ using namespace std;
 
 bool CEquiEnergyModel::JumpAcrossStriation(const CSampleIDWeight &y_end, const CSampleIDWeight &y_initial, TDenseMatrix &jump_table) const 
 {
+	if (energy_stage == parameter->number_energy_stage)
+		return false; 
 	double heated_initial = y_initial.reserved*parameter->lambda[energy_stage+1] + (y_initial.weight - y_initial.reserved);
 	double heated_end = y_end.reserved*parameter->lambda[energy_stage+1] + (y_end.weight - y_end.reserved); 
 	int bin_initial = storage->BinIndex(energy_stage+1, -heated_initial); 

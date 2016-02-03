@@ -1,7 +1,14 @@
 #include <vector>
 #include <string>
+#include <mpi.h>
+#include <algorithm>
+#include <ctime>
+#include "dw_rand.h"
+#include "dw_math.h"
 #include "CEquiEnergyModel.hpp"
+#include "CMetropolis.hpp"
 #include "mpi_constant.hpp"
+#include "storage_constant.hpp"
 #include "master_deploying.hpp"
 
 using namespace std; 
@@ -9,11 +16,10 @@ using namespace std;
 vector<string> glob(const string &pattern); 
 double ScaleFit(double*, double*, const int, CEquiEnergyModel &model, int stage, int nNode, int nInitial);
 
-std::vector<CSampleIDWeight> HighestPlus1Stage(double *sPackage, double *rPackage, const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model, const CSampleIDWeight &mode, ofstream &log_file, const CSampleIDWeight &jump_file)
+std::vector<CSampleIDWeight> HighestPlus1Stage(double *sPackage, double *rPackage, const int N_MESSAGE, int nNode, int nInitial, CEquiEnergyModel &model, const CSampleIDWeight &mode, double alpha_0, double alpha_1,  ofstream &log_file, ofstream &jump_file)
 {
 	// Dispatch hill climb task
 	int nFeasibleSolutionPerNode = ceil( (double)(nInitial*10.0)/(double)(nNode-1.0) ); 
-	double *sPackage = new double [N_MESSAGE];
         sPackage[LENGTH_INDEX] = nFeasibleSolutionPerNode;
         sPackage[LEVEL_INDEX] = model.parameter->number_energy_stage ;
 
@@ -25,7 +31,6 @@ std::vector<CSampleIDWeight> HighestPlus1Stage(double *sPackage, double *rPackag
         }
 
         MPI_Status status;
-        double *rPackage = new double [N_MESSAGE];
         for (int i=1; i<nNode; i++)
                 MPI_Recv(rPackage, N_MESSAGE, MPI_DOUBLE, MPI_ANY_SOURCE, HILL_CLIMB_TAG, MPI_COMM_WORLD, &status);
 
@@ -41,7 +46,7 @@ std::vector<CSampleIDWeight> HighestPlus1Stage(double *sPackage, double *rPackag
 	{
 		vector<CSampleIDWeight> read_from_file = LoadSampleFromFile(merge_file_name[i]); 
 		if (!read_from_file.empty())
-			samples.Insert(samples.end(), read_from_file.begin(), read_from_file.end()); 
+			samples.insert(samples.end(), read_from_file.begin(), read_from_file.end()); 
 	}
 	
 	std::vector<CSampleIDWeight> starters(nInitial); 
@@ -51,10 +56,10 @@ std::vector<CSampleIDWeight> HighestPlus1Stage(double *sPackage, double *rPackag
 		sort(samples.begin(), samples.end(), comparator); 
 
 		// importance weight to select starters 
-		vector<double> log_weight_sum(samples.size()), weight_sum(sample.size());  
-		log_weight_sum[0] = samples.weight[0];
+		vector<double> log_weight_sum(samples.size()), weight_sum(samples.size());  
+		log_weight_sum[0] = samples[0].weight;
 		for (int i=1; i<(int)(samples.size()); i++)
-			log_weight_sum[i] = AddLogs(log_weight_sum[i-1], sample.weight[i]); 
+			log_weight_sum[i] = AddLogs(log_weight_sum[i-1], samples[i].weight); 
 		for (int i=0; i<(int)(samples.size()); i++)
 			weight_sum[i] = exp(log_weight_sum[i] - log_weight_sum.back()); 
 		
@@ -62,12 +67,12 @@ std::vector<CSampleIDWeight> HighestPlus1Stage(double *sPackage, double *rPackag
 		{
 			double random_number = dw_uniform_rnd();
                 	int position = std::lower_bound(weight_sum.begin(), weight_sum.end(), random_number)-weight_sum.begin();
-                	starters[i] = samples[position]
+                	starters[i] = samples[position]; 
 		}
 	}
 	else 
 	{
-		for (int i=0; i<nInitia; i++)
+		for (int i=0; i<nInitial; i++)
 			starters[i] = mode; 
 	}
 
@@ -81,11 +86,12 @@ std::vector<CSampleIDWeight> HighestPlus1Stage(double *sPackage, double *rPackag
         }
         else
         {
-        	for (int i=0; i<(int)(start_points.size()); i++)
-                    write(output_file, &(start_points[i]));
+        	for (int i=0; i<(int)(starters.size()); i++)
+                    write(output_file, &(starters[i]));
         }
         output_file.close();
 
+	time_t rawtime; 
 	time(&rawtime);
        	log_file << "DispatchTuneSimulation() - done getting initial points: stage=" << model.parameter->number_energy_stage << " " << ctime(&rawtime) << endl;
 
@@ -127,11 +133,11 @@ std::vector<CSampleIDWeight> HighestPlus1Stage(double *sPackage, double *rPackag
 
                 counter ++;
 
-                alpha = ScaleFit(sPackage, rPackage, N_MESSAGE, model, stage, nNode, nInitial);
-                log_file << "Metropolis acceptance rate at stage " <<  stage << " using the scale matrix of the previous stage " << alpha << endl;
+                alpha = ScaleFit(sPackage, rPackage, N_MESSAGE, model, model.parameter->number_energy_stage, nNode, nInitial);
+                log_file << "Metropolis acceptance rate at stage " <<  model.parameter->number_energy_stage << " using the scale matrix of the previous stage " << alpha << endl;
         }
         time(&rawtime);
-        log_file << "DispatchTuneSimulation() - done tuning: stage=" << stage << " " << ctime(&rawtime) << endl;
+        log_file << "DispatchTuneSimulation() - done tuning: stage=" << model.parameter->number_energy_stage << " " << ctime(&rawtime) << endl;
 	
 	// simulation
 	samples.clear(); 

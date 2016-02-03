@@ -104,12 +104,10 @@ void DispatchTuneSimulation(double *sPackage, double *rPackage, const int N_MESS
 		log_file << "DispatchTuneSimulation() - drawing from stage=" << model.parameter->highest_stage+1  << " " << ctime(&rawtime) << endl;
 
 		// samples = samples of highest+1 stage
-		samples = HighestPlus1Stage(sPackage, rPackage, N_MESSAGE, nNode, nInitial, model, mode, log_file, jump_file);   // Sample from prior
+		samples = HighestPlus1Stage(sPackage, rPackage, N_MESSAGE, nNode, nInitial, model, mode, alpha_0, alpha_1, log_file, jump_file);   // Sample from prior
 				
 		time(&rawtime);
 		log_file << "DispatchTuneSimulation() - done drawing from stage=" << model.parameter->highest_stage+1 << " " << ctime(&rawtime) << endl;
-
-		}
 	}
 	else 
 		samples = model.storage->DrawAllSample(model.parameter->highest_stage+1);

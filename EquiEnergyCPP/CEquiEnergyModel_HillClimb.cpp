@@ -203,6 +203,6 @@ std::vector<CSampleIDWeight> CEquiEnergyModel::HillClimb_NPSOL(int nSolution, in
 	delete [] cJac; 
 	delete [] A; 
 
-	return (double)nAccpt/(double)nSolution; 
+	return solution; 
 }
 
